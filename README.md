@@ -1,21 +1,21 @@
 # Cóndor
 <img width="1402" height="1122" alt="ChatGPT Image 31 jul 2026, 06_21_05 p m" src="https://github.com/user-attachments/assets/c645240f-8b62-4b23-af63-a1d5957d134c" />
 
-> **Architecture First · Simplicity by Design**
+> **Arquitectura Primero · Simplicidad por Diseno**
 
-Cóndor es una metodología y plataforma de ingeniería de software orientada a construir sistemas mantenibles mediante una arquitectura sólida, documentación viva y decisiones técnicas trazables.
+Cóndor es una metodologia y plataforma de ingenieria de software orientada a construir sistemas mantenibles mediante una arquitectura solida, documentacion viva y decisiones tecnicas trazables.
 
-El proyecto prioriza la simplicidad, la calidad y la evolución continua del software, estableciendo una base consistente para el diseño, desarrollo y mantenimiento de soluciones.
+El proyecto prioriza la simplicidad, la calidad y la evolucion continua del software, estableciendo una base consistente para el diseno, desarrollo y mantenimiento de soluciones.
 
 ---
 
-## Filosofía
+## Filosofia
 
-- Architecture First
-- Simplicity by Design
-- Documentation as Code
-- Traceable Decisions
-- Continuous Evolution
+- Arquitectura Primero
+- Simplicidad por Diseno
+- Documentacion como Codigo
+- Decisiones Trazables
+- Evolucion Continua
 
 ---
 
@@ -35,14 +35,14 @@ condor/
 
 ---
 
-## Documentación
+## Documentacion
 
-La documentación oficial del proyecto se encuentra en la carpeta `docs`.
+La documentacion oficial del proyecto se encuentra en la carpeta `docs`.
 
 El punto de inicio es:
 
 ```text
-docs/00 - Project Charter.md
+docs/00 - Acta de Constitucion.md
 ```
 
 ---
