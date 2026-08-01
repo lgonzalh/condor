@@ -1,5 +1,5 @@
 # Cóndor
-<img width="1402" height="1122" alt="ChatGPT Image 31 jul 2026, 06_21_05 p m" src="https://github.com/user-attachments/assets/c645240f-8b62-4b23-af63-a1d5957d134c" />
+<img width="1097" height="555" alt="condor" src="https://github.com/user-attachments/assets/10e343c2-1c97-4c98-b9f8-3e4f5521785c" />
 
 > **Architecture First · Simplicity by Design**
 
