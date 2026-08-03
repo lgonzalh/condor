@@ -10,16 +10,6 @@ Su objetivo es preservar el contexto, mantener la coherencia arquitectonica y co
 
 En Condor la conversacion es temporal. La documentacion constituye la fuente oficial de verdad.
 
-## Estado rapido
-
-| Elemento | Estado |
-|----------|--------|
-| Version | Condor 1.0 |
-| Estado | En desarrollo |
-| Nivel activo | 02 - Memoria |
-| Nivel 00 | Congelado |
-| Nivel 01 | Congelado |
-
 ---
 
 # Principios
@@ -37,25 +27,15 @@ En Condor la conversacion es temporal. La documentacion constituye la fuente ofi
 
 # Filosofia
 
-Antes de escribir codigo:
+Antes de escribir codigo -> Comprender. 
 
-Comprender.
+Antes de implementar -> Planificar. 
 
-Antes de implementar:
+Antes de modificar -> Analizar. 
 
-Planificar.
+Antes de avanzar -> Validar. 
 
-Antes de modificar:
-
-Analizar.
-
-Antes de avanzar:
-
-Validar.
-
-Antes de finalizar:
-
-Documentar.
+Antes de finalizar -> Documentar.
 
 ---
 
@@ -121,21 +101,7 @@ condor/
 # Flujo de trabajo
 
 ```text
-Comprender
-        ↓
-Planificar
-        ↓
-Disenar
-        ↓
-Implementar
-        ↓
-Verificar
-        ↓
-Documentar
-        ↓
-Congelar
-        ↓
-Continuar
+Comprender -> Planificar -> Disenar -> Implementar -> Verificar -> Documentar -> Congelar -> Continuar
 ```
 
 ---
@@ -162,62 +128,25 @@ Nivel 02 - Memoria
 **Proxima fase**
 
 Construccion del Nivel 02 - Memoria.
-
 ---
 
 ## Documentacion
 
-La documentacion oficial del Proyecto Condor se organiza por niveles dentro de la carpeta `Docs`.
+La documentacion oficial del proyecto se organiza por niveles dentro de la carpeta `Docs`.
 
-El estado general del proyecto se administra desde:
+Los documentos principales para comprender el proyecto son:
 
 ```text
 ESTADO_PROYECTO.md
-```
-
-La documentacion arquitectonica se organiza asi:
-
-```text
 Docs/
 ├── 00_Fundamentos/
 │   ├── CONDOR_CONTEXTO_MAESTRO.md
 │   ├── DIRECTIVA_GLOBAL.md
-│   ├── ESTANDAR_DOCUMENTAL.md
-│   ├── PROTOCOLO_DOCUMENTACION.md
-│   ├── PROTOCOLO_IMPLEMENTACION.md
 │   └── ...
-│
-├── 01_Arquitectura_Ejecutable/
-│   ├── KERNEL_CONDOR.md
-│   ├── CONTRATO_KERNEL.md
-│   ├── CONTEXT_MANAGER.md
-│   ├── KNOWLEDGE_MANAGER.md
-│   ├── PLANNER.md
-│   ├── ARCHITECT.md
-│   ├── IMPLEMENTER.md
-│   ├── REVIEWER.md
-│   ├── VALIDATOR.md
-│   ├── DOCUMENTER.md
-│   └── ...
-│
-├── 02_Memoria/
-├── 03_Planificacion/
-├── 04_Razonamiento/
-├── 05_Ejecucion/
-├── 06_Herramientas/
-├── 07_Interfaz/
-├── 08_Calidad/
-└── 09_Evolucion/
-```
-
-### Orden recomendado de lectura
-
-1. `README.md`
-2. `ESTADO_PROYECTO.md`
-3. `Docs/00_Fundamentos/`
-4. `Docs/01_Arquitectura_Ejecutable/`
-5. Nivel activo del proyecto.
-
+└── 01_Arquitectura_Ejecutable/
+    ├── KERNEL_CONDOR.md
+    ├── CONTRATO_KERNEL.md
+    └── ...
 ```
 
 ### Punto de inicio
