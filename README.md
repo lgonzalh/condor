@@ -77,13 +77,28 @@ Estos documentos constituyen la base operativa y documental del proyecto.
 
 ---
 
-# Estructura del repositorio
+## Estructura del repositorio
 
 ```text
 condor/
 │
+├── ESTADO_PROYECTO.md
 ├── README.md
-├── docs/
+├── LICENSE
+├── NOTICE
+│
+├── Docs/
+│   ├── 00_Fundamentos/
+│   ├── 01_Arquitectura_Ejecutable/
+│   ├── 02_Memoria/
+│   ├── 03_Planificacion/
+│   ├── 04_Razonamiento/
+│   ├── 05_Ejecucion/
+│   ├── 06_Herramientas/
+│   ├── 07_Interfaz/
+│   ├── 08_Calidad/
+│   └── 09_Evolucion/
+│
 ├── resources/
 ├── scripts/
 ├── src/
@@ -115,38 +130,57 @@ Continuar
 
 ---
 
-# Estado del proyecto
+## Estado del proyecto
 
-Version actual:
+**Version actual**
 
 Condor 1.0
 
-Estado:
+**Estado**
 
 En desarrollo.
 
-Fase actual:
+**Nivel activo**
 
-Construccion de la Arquitectura Ejecutable.
+Nivel 02 - Memoria
 
+**Niveles completados**
+
+- Nivel 00 - Fundamentos (Congelado)
+- Nivel 01 - Arquitectura Ejecutable (Congelado)
+
+**Proxima fase**
+
+Construccion del Nivel 02 - Memoria.
 ---
 
-# Documentacion
+## Documentacion
 
-La documentacion oficial se encuentra en la carpeta `docs`.
+La documentacion oficial del proyecto se organiza por niveles dentro de la carpeta `Docs`.
 
-El punto de partida para comprender el proyecto es:
+Los documentos principales para comprender el proyecto son:
 
 ```text
-docs/
-├── CONDOR_CONTEXTO_MAESTRO.md
-├── DIRECTIVA_GLOBAL.md
-├── ESTANDAR_DOCUMENTAL.md
-└── ESTADO_PROYECTO.md
+ESTADO_PROYECTO.md
+Docs/
+├── 00_Fundamentos/
+│   ├── CONDOR_CONTEXTO_MAESTRO.md
+│   ├── DIRECTIVA_GLOBAL.md
+│   └── ...
+└── 01_Arquitectura_Ejecutable/
+    ├── KERNEL_CONDOR.md
+    ├── CONTRATO_KERNEL.md
+    └── ...
 ```
 
-A partir de estos documentos se organiza el conocimiento por niveles del proyecto.
+### Punto de inicio
 
+El orden recomendado de lectura es:
+
+1. `ESTADO_PROYECTO.md`
+2. `Docs/00_Fundamentos/`
+3. `Docs/01_Arquitectura_Ejecutable/`
+4. Nivel activo del proyecto.
 ---
 
 # Vision
