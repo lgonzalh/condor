@@ -19,7 +19,6 @@ En Condor la conversacion es temporal. La documentacion constituye la fuente ofi
 | Nivel activo | 02 - Memoria |
 | Nivel 00 | Congelado |
 | Nivel 01 | Congelado |
-| Licencia | Apache License 2.0 |
 
 ---
 
