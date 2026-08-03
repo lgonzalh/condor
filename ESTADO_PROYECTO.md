@@ -1,6 +1,6 @@
 # ESTADO_PROYECTO
 
-Version: 0.2.0
+Version: 0.3.0
 Estado: Activo
 Proyecto: Condor
 Fecha: 2026-08-03
@@ -8,84 +8,57 @@ Fecha: 2026-08-03
 # RESUMEN
 
 Estado general: En progreso
-Nivel activo: 01 - Arquitectura Ejecutable
-Fase actual: Desarrollo de componentes del Kernel
+Nivel activo: 02 - Memoria
+Fase actual: Preparacion del Nivel 02
 Bloqueadores: Ninguno
 
 # ULTIMO COMANDO EJECUTADO
 
-CondorEntregar
-
-# ULTIMO DOCUMENTO ACTUALIZADO
-
-DOCUMENTER.md
-Version: 1.0.0
-Estado: Activo
+CondorCongelar Nivel 01
 
 # ULTIMA DECISION
 
-El Nivel 01 se desarrolla mediante entregables secuenciales, un componente por documento.
+El Nivel 01 fue revisado, aprobado y congelado. El proyecto queda habilitado para iniciar el Nivel 02.
 
-# DOCUMENTOS GENERADOS
+# NIVELES
 
-✓ ACTA_CONGELAMIENTO_NIVEL_00.md
-✓ KERNEL_CONDOR.md
-✓ CONTRATO_KERNEL.md
-✓ CONTEXT_MANAGER.md
-✓ KNOWLEDGE_MANAGER.md
-✓ PLANNER.md
-✓ ARCHITECT.md
-✓ IMPLEMENTER.md
-✓ REVIEWER.md
-✓ VALIDATOR.md
-✓ DOCUMENTER.md
-
-# DOCUMENTOS ACTUALIZADOS
-
-✓ ESTADO_PROYECTO.md
-
-# DOCUMENTOS CONGELADOS
-
-✓ Nivel 00 - Fundamentos
-
-# DOCUMENTOS EN REVISION
-
-Ninguno
+- Nivel 00 - Fundamentos: Congelado
+- Nivel 01 - Arquitectura Ejecutable: Congelado
+- Nivel 02 - Memoria: Pendiente de inicio
+- Nivel 03 - Planificacion: Pendiente
+- Nivel 04 - Razonamiento: Pendiente
+- Nivel 05 - Ejecucion: Pendiente
+- Nivel 06 - Herramientas: Pendiente
+- Nivel 07 - Interfaz: Pendiente
+- Nivel 08 - Calidad: Pendiente
+- Nivel 09 - Evolucion: Pendiente
 
 # KANBAN
 
-Completados:
+## Pendiente
+- Inicio del Nivel 02
+- Definicion de la arquitectura de memoria
+
+## En progreso
+- Organizacion del repositorio y documentacion
+
+## Completado
 - Nivel 00 - Fundamentos
-- KERNEL_CONDOR.md
-- CONTRATO_KERNEL.md
-- CONTEXT_MANAGER.md
-- KNOWLEDGE_MANAGER.md
-- PLANNER.md
-- ARCHITECT.md
-- IMPLEMENTER.md
-- REVIEWER.md
-- VALIDATOR.md
-- DOCUMENTER.md
-
-En progreso:
 - Nivel 01 - Arquitectura Ejecutable
+- Revision del Nivel 01
+- Congelamiento del Nivel 01
 
-Pendientes:
-- Integracion de componentes
-- Definicion de interfaces ejecutables
-- Primer flujo funcional del Kernel
+# ACTAS DE CONGELAMIENTO
 
-# SIGUIENTE ENTREGABLE
-
-INTEGRACION_KERNEL.md
+- ACTA_CONGELAMIENTO_NIVEL_00.md
+- ACTA_CONGELAMIENTO_NIVEL_01.md
 
 # SIGUIENTE ACCION
 
-Integrar los componentes del Kernel y definir el flujo de comunicacion entre ellos.
+Iniciar la documentacion del Nivel 02 - Memoria.
 
 # OBSERVACIONES
 
-- El nombre de los documentos es permanente.
-- La version vive dentro del documento.
-- Toda actualizacion reemplaza el archivo existente.
+- ESTADO_PROYECTO.md permanece en la raiz del repositorio.
+- Los documentos de cada nivel se almacenan en Docs/<Nivel>.
 - Git constituye el historial oficial del proyecto.
