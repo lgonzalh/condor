@@ -1,25 +1,82 @@
 # Cóndor
 <img width="1097" height="555" alt="condor" src="https://github.com/user-attachments/assets/10e343c2-1c97-4c98-b9f8-3e4f5521785c" />
 
-> **Arquitectura Primero · Simplicidad por Diseno**
+> **Observa · Comprende · Planifica · Construye · Verifica**
 
-Cóndor es una metodologia y plataforma de ingenieria de software orientada a construir sistemas mantenibles mediante una arquitectura solida, documentacion viva y decisiones tecnicas trazables.
+Cóndor es una plataforma de ingenieria de software asistida por inteligencia artificial que prioriza el conocimiento del proyecto antes que la generacion de codigo.
 
-El proyecto prioriza la simplicidad, la calidad y la evolucion continua del software, estableciendo una base consistente para el diseno, desarrollo y mantenimiento de soluciones.
+Su objetivo es preservar el contexto, mantener la coherencia arquitectonica y convertir cada decision en conocimiento permanente mediante documentacion viva, trazabilidad y desarrollo guiado por arquitectura.
 
----
-
-## Filosofia
-
-- Arquitectura Primero
-- Simplicidad por Diseno
-- Documentacion como Codigo
-- Decisiones Trazables
-- Evolucion Continua
+En Condor la conversacion es temporal. La documentacion constituye la fuente oficial de verdad.
 
 ---
 
-## Estructura
+# Principios
+
+- Arquitectura primero.
+- El conocimiento dirige el desarrollo.
+- Documentacion como parte de la ingenieria.
+- Decisiones tecnicas trazables.
+- Simplicidad por diseno.
+- Evolucion continua.
+- Una unica fuente de verdad.
+- Minima friccion para el desarrollador.
+
+---
+
+# Filosofia
+
+Antes de escribir codigo:
+
+Comprender.
+
+Antes de implementar:
+
+Planificar.
+
+Antes de modificar:
+
+Analizar.
+
+Antes de avanzar:
+
+Validar.
+
+Antes de finalizar:
+
+Documentar.
+
+---
+
+# Objetivos
+
+- Preservar el contexto del proyecto.
+- Mantener la coherencia arquitectonica.
+- Reducir la repeticion y la perdida de conocimiento.
+- Guiar el desarrollo mediante documentacion estructurada.
+- Facilitar la continuidad entre sesiones, herramientas y modelos.
+- Permitir que cualquier desarrollador pueda continuar un proyecto sin depender de conversaciones anteriores.
+
+---
+
+# Arquitectura documental
+
+Toda decision relevante se transforma en un documento permanente.
+
+Los documentos principales del proyecto son:
+
+```text
+CONDOR_CONTEXTO_MAESTRO.md
+DIRECTIVA_GLOBAL.md
+ESTANDAR_DOCUMENTAL.md
+ESTADO_PROYECTO.md
+```
+
+Estos documentos constituyen la base operativa y documental del proyecto.
+
+---
+
+# Estructura del repositorio
 
 ```text
 condor/
@@ -35,24 +92,68 @@ condor/
 
 ---
 
-## Documentacion
-
-La documentacion oficial del proyecto se encuentra en la carpeta `docs`.
-
-El punto de inicio es:
+# Flujo de trabajo
 
 ```text
-docs/00 - Acta de Constitucion.md
+Comprender
+        ↓
+Planificar
+        ↓
+Disenar
+        ↓
+Implementar
+        ↓
+Verificar
+        ↓
+Documentar
+        ↓
+Congelar
+        ↓
+Continuar
 ```
 
 ---
 
-## Estado
+# Estado del proyecto
 
-🚧 En desarrollo.
+Version actual:
+
+Condor 1.0
+
+Estado:
+
+En desarrollo.
+
+Fase actual:
+
+Construccion de la Arquitectura Ejecutable.
 
 ---
 
-## Licencia
+# Documentacion
+
+La documentacion oficial se encuentra en la carpeta `docs`.
+
+El punto de partida para comprender el proyecto es:
+
+```text
+docs/
+├── CONDOR_CONTEXTO_MAESTRO.md
+├── DIRECTIVA_GLOBAL.md
+├── ESTANDAR_DOCUMENTAL.md
+└── ESTADO_PROYECTO.md
+```
+
+A partir de estos documentos se organiza el conocimiento por niveles del proyecto.
+
+---
+
+# Vision
+
+Condor busca convertirse en un motor de ingenieria capaz de comprender un proyecto completo antes de modificarlo, preservando el conocimiento, la arquitectura y la continuidad durante todo el ciclo de vida del software.
+
+---
+
+# Licencia
 
 Pendiente de definir.
