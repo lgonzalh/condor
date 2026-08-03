@@ -164,3 +164,4 @@ El repositorio es público con fines de transparencia, documentación y colabora
 La disponibilidad pública del código fuente **no concede permisos** para copiar, modificar, redistribuir, crear trabajos derivados o explotar comercialmente el proyecto sin autorización expresa del titular de los derechos.
 
 Consulte el archivo `LICENSE` para más información.
+
