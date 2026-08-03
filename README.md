@@ -155,6 +155,16 @@ Condor busca convertirse en un motor de ingenieria capaz de comprender un proyec
 
 ---
 
-# Licencia
+## Licencia
 
+<<<<<<< Updated upstream
 Pendiente de definir.
+=======
+Actualmente el Proyecto Cóndor se publica bajo el modelo **All Rights Reserved**.
+
+El repositorio es público con fines de transparencia, documentación y colaboración futura.
+
+La disponibilidad pública del código fuente **no concede permisos** para copiar, modificar, redistribuir, crear trabajos derivados o explotar comercialmente el proyecto sin autorización expresa del titular de los derechos.
+
+Consulte el archivo `LICENSE` para más información.
+>>>>>>> Stashed changes
