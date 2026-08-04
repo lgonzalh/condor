@@ -28,13 +28,9 @@ En Condor la conversacion es temporal. La documentacion constituye la fuente ofi
 # Filosofia
 
 Antes de escribir codigo -> Comprender. 
-
 Antes de implementar -> Planificar. 
-
 Antes de modificar -> Analizar. 
-
 Antes de avanzar -> Validar. 
-
 Antes de finalizar -> Documentar.
 
 ---
@@ -57,10 +53,10 @@ Toda decision relevante se transforma en un documento permanente.
 Los documentos principales del proyecto son:
 
 ```text
+ESTADO_PROYECTO.md
 CONDOR_CONTEXTO_MAESTRO.md
 DIRECTIVA_GLOBAL.md
 ESTANDAR_DOCUMENTAL.md
-ESTADO_PROYECTO.md
 ```
 
 Estos documentos constituyen la base operativa y documental del proyecto.
@@ -108,26 +104,8 @@ Comprender -> Planificar -> Disenar -> Implementar -> Verificar -> Documentar ->
 
 ## Estado del proyecto
 
-**Version actual**
+Consulta el estado actualizado del proyecto en [ESTADO_PROYECTO.md](ESTADO_PROYECTO.md).
 
-Condor 1.0
-
-**Estado**
-
-En desarrollo.
-
-**Nivel activo**
-
-Nivel 02 - Memoria
-
-**Niveles completados**
-
-- Nivel 00 - Fundamentos (Congelado)
-- Nivel 01 - Arquitectura Ejecutable (Congelado)
-
-**Proxima fase**
-
-Construccion del Nivel 02 - Memoria.
 ---
 
 ## Documentacion
@@ -142,6 +120,7 @@ Docs/
 ├── 00_Fundamentos/
 │   ├── CONDOR_CONTEXTO_MAESTRO.md
 │   ├── DIRECTIVA_GLOBAL.md
+│   ├── ESTANDAR_DOCUMENTAL.md
 │   └── ...
 └── 01_Arquitectura_Ejecutable/
     ├── KERNEL_CONDOR.md
