@@ -27,11 +27,11 @@ En Condor la conversacion es temporal. La documentacion constituye la fuente ofi
 
 # Filosofia
 
-Antes de escribir codigo -> Comprender. 
-Antes de implementar -> Planificar. 
-Antes de modificar -> Analizar. 
-Antes de avanzar -> Validar. 
-Antes de finalizar -> Documentar.
+- Antes de escribir codigo -> Comprender. 
+- Antes de implementar -> Planificar. 
+- Antes de modificar -> Analizar. 
+- Antes de avanzar -> Validar. 
+- Antes de finalizar -> Documentar.
 
 ---
 
