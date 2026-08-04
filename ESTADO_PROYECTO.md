@@ -1,68 +1,62 @@
 # ESTADO_PROYECTO
 
-Version: 0.9.0
+Version: 1.2.0
 Estado: Activo
 Proyecto: Condor
 Fecha: 2026-08-04
 
+---
 
 # RESUMEN
 
 Estado general: En progreso
 
-Nivel activo: 05 - Implementacion
+Nivel activo: 07 - Interfaz
 
-Fase actual: Preparacion del Nivel 05
+Nivel 06: Completado, revisado y congelado.
 
-Bloqueadores: Ninguno
+Bloqueadores: Ninguno.
+
+---
 
 # KANBAN
 
-## Pendiente
+## Completado
 
-- Inicio del Nivel 05
-- Generacion de IMPLEMENTACION.md
-- Desarrollo documental del Nivel 05
+- Nivel 00
+- Nivel 01
+- Nivel 02
+- Nivel 03
+- Nivel 04
+- Nivel 05
+- Nivel 06
 
 ## En progreso
 
-Ninguno.
+- Preparacion del Nivel 07
 
-## Completado
+## Pendiente
 
-- Nivel 00 - Fundamentos (Congelado)
-- Nivel 01 - Arquitectura Ejecutable (Congelado)
-- Nivel 02 - Memoria (Congelado)
-- Nivel 03 - Planificacion (Congelado)
-- Nivel 04 - Diseno (Congelado)
+### Nivel 07
 
-# PLAN DOCUMENTAL NIVEL 05
+- INTERFAZ.md
+- EXPERIENCIA_USUARIO.md
+- FLUJO_INTERACCION.md
+- COMPONENTES_UI.md
+- NAVEGACION.md
+- ACCESIBILIDAD.md
+- VALIDACION_INTERFAZ.md
 
-1. IMPLEMENTACION.md
-2. MODULOS.md
-3. FLUJOS_IMPLEMENTACION.md
-4. INTEGRACIONES.md
-5. CONFIGURACION.md
-6. GESTION_ERRORES.md
-7. ESTRATEGIA_PRUEBAS.md
-8. VALIDACION_IMPLEMENTACION.md
-
-# SIGUIENTE ENTREGABLE
-
-IMPLEMENTACION.md
+---
 
 # SIGUIENTE ACCION
 
-condorentregar IMPLEMENTACION.md
+1. INTERFAZ.md
 
-# OBSERVACIONES
-
-- El Nivel 04 fue revisado, congelado y cerrado oficialmente.
-- El Nivel 05 queda habilitado para iniciar en un nuevo chat.
-- El plan documental del siguiente nivel debera definirse al ejecutar condorcerrar del Nivel 05.
+---
 
 # HISTORIAL
 
 | Version | Cambio |
-|----------|--------|
-| 0.9.0 | Cierre oficial del Nivel 04. Activacion del Nivel 05 y definicion del plan documental. |
+|----------|---------|
+| 1.2.0 | Cierre oficial del Nivel 06 y preparacion del Nivel 07. |
