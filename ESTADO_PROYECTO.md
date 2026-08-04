@@ -1,6 +1,6 @@
 # ESTADO_PROYECTO
 
-Version: 0.8.0
+Version: 0.9.0
 Estado: Activo
 Proyecto: Condor
 Fecha: 2026-08-04
@@ -9,9 +9,9 @@ Fecha: 2026-08-04
 
 Estado general: En progreso
 
-Nivel activo: 04 - Diseno
+Nivel activo: 05 - Implementacion
 
-Fase actual: Preparacion del Nivel 04
+Fase actual: Preparacion del Nivel 05
 
 Bloqueadores: Ninguno
 
@@ -19,9 +19,9 @@ Bloqueadores: Ninguno
 
 ## Pendiente
 
-- Inicio del Nivel 04
-- Generacion de DISENO.md
-- Desarrollo documental del Nivel 04
+- Inicio del Nivel 05
+- Generacion de IMPLEMENTACION.md
+- Desarrollo documental del Nivel 05
 
 ## En progreso
 
@@ -33,34 +33,35 @@ Ninguno.
 - Nivel 01 - Arquitectura Ejecutable (Congelado)
 - Nivel 02 - Memoria (Congelado)
 - Nivel 03 - Planificacion (Congelado)
+- Nivel 04 - Diseno (Congelado)
 
-# PLAN DOCUMENTAL NIVEL 04
+# PLAN DOCUMENTAL NIVEL 05
 
-1. DISENO.md
-2. COMPONENTES.md
-3. INTERFACES.md
-4. MODELO_DATOS.md
-5. DIAGRAMAS.md
-6. PATRONES.md
-7. DECISIONES.md
-8. VALIDACION_DISENO.md
+1. IMPLEMENTACION.md
+2. MODULOS.md
+3. FLUJOS_IMPLEMENTACION.md
+4. INTEGRACIONES.md
+5. CONFIGURACION.md
+6. GESTION_ERRORES.md
+7. ESTRATEGIA_PRUEBAS.md
+8. VALIDACION_IMPLEMENTACION.md
 
 # SIGUIENTE ENTREGABLE
 
-DISENO.md
+IMPLEMENTACION.md
 
 # SIGUIENTE ACCION
 
-condorentregar diseno.md
+condorentregar IMPLEMENTACION.md
 
 # OBSERVACIONES
 
-- El Nivel 03 fue revisado, congelado y cerrado oficialmente.
-- El Nivel 04 queda habilitado para iniciar en un nuevo chat.
-- El plan documental del siguiente nivel debera definirse al ejecutar condorcerrar del Nivel 04.
+- El Nivel 04 fue revisado, congelado y cerrado oficialmente.
+- El Nivel 05 queda habilitado para iniciar en un nuevo chat.
+- El plan documental del siguiente nivel debera definirse al ejecutar condorcerrar del Nivel 05.
 
 # HISTORIAL
 
 | Version | Cambio |
 |----------|--------|
-| 0.8.0 | Cierre oficial del Nivel 03. Activacion del Nivel 04 y definicion del plan documental. |
+| 0.9.0 | Cierre oficial del Nivel 04. Activacion del Nivel 05 y definicion del plan documental. |
