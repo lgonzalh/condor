@@ -1,9 +1,9 @@
 # ESTADO_PROYECTO
 
-Version: 0.8.0
-Estado: Activo
-Proyecto: Condor
-Fecha: 2026-08-04
+- Version: 0.8.0
+- Estado: Activo
+- Proyecto: Condor
+- Fecha: 2026-08-04
 
 # RESUMEN
 
