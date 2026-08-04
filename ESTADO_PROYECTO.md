@@ -1,64 +1,66 @@
 # ESTADO_PROYECTO
 
-Version: 0.3.0
+Version: 0.8.0
 Estado: Activo
 Proyecto: Condor
-Fecha: 2026-08-03
+Fecha: 2026-08-04
 
 # RESUMEN
 
 Estado general: En progreso
-Nivel activo: 02 - Memoria
-Fase actual: Preparacion del Nivel 02
+
+Nivel activo: 04 - Diseno
+
+Fase actual: Preparacion del Nivel 04
+
 Bloqueadores: Ninguno
-
-# ULTIMO COMANDO EJECUTADO
-
-CondorCongelar Nivel 01
-
-# ULTIMA DECISION
-
-El Nivel 01 fue revisado, aprobado y congelado. El proyecto queda habilitado para iniciar el Nivel 02.
-
-# NIVELES
-
-- Nivel 00 - Fundamentos: Congelado
-- Nivel 01 - Arquitectura Ejecutable: Congelado
-- Nivel 02 - Memoria: Pendiente de inicio
-- Nivel 03 - Planificacion: Pendiente
-- Nivel 04 - Razonamiento: Pendiente
-- Nivel 05 - Ejecucion: Pendiente
-- Nivel 06 - Herramientas: Pendiente
-- Nivel 07 - Interfaz: Pendiente
-- Nivel 08 - Calidad: Pendiente
-- Nivel 09 - Evolucion: Pendiente
 
 # KANBAN
 
 ## Pendiente
-- Inicio del Nivel 02
-- Definicion de la arquitectura de memoria
+
+- Inicio del Nivel 04
+- Generacion de DISENO.md
+- Desarrollo documental del Nivel 04
 
 ## En progreso
-- Organizacion del repositorio y documentacion
+
+Ninguno.
 
 ## Completado
-- Nivel 00 - Fundamentos
-- Nivel 01 - Arquitectura Ejecutable
-- Revision del Nivel 01
-- Congelamiento del Nivel 01
 
-# ACTAS DE CONGELAMIENTO
+- Nivel 00 - Fundamentos (Congelado)
+- Nivel 01 - Arquitectura Ejecutable (Congelado)
+- Nivel 02 - Memoria (Congelado)
+- Nivel 03 - Planificacion (Congelado)
 
-- ACTA_CONGELAMIENTO_NIVEL_00.md
-- ACTA_CONGELAMIENTO_NIVEL_01.md
+# PLAN DOCUMENTAL NIVEL 04
+
+1. DISENO.md
+2. COMPONENTES.md
+3. INTERFACES.md
+4. MODELO_DATOS.md
+5. DIAGRAMAS.md
+6. PATRONES.md
+7. DECISIONES.md
+8. VALIDACION_DISENO.md
+
+# SIGUIENTE ENTREGABLE
+
+DISENO.md
 
 # SIGUIENTE ACCION
 
-Iniciar la documentacion del Nivel 02 - Memoria.
+condorentregar diseno.md
 
 # OBSERVACIONES
 
-- ESTADO_PROYECTO.md permanece en la raiz del repositorio.
-- Los documentos de cada nivel se almacenan en Docs/<Nivel>.
-- Git constituye el historial oficial del proyecto.
+- El Nivel 03 fue revisado, congelado y cerrado oficialmente.
+- El Nivel 04 queda habilitado para iniciar en un nuevo chat.
+- El plan documental del siguiente nivel debera definirse al ejecutar condorcerrar del Nivel 04.
+
+# HISTORIAL
+
+| Version | Cambio |
+|----------|--------|
+| 0.8.0 | Cierre oficial del Nivel 03. Activacion del Nivel 04 y definicion del plan documental. |
