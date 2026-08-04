@@ -31,6 +31,7 @@ En Condor la conversacion es temporal. La documentacion constituye la fuente ofi
 - Antes de implementar -> Planificar.
 - Antes de modificar -> Analizar.
 - Antes de avanzar -> Validar.
+
 - Antes de finalizar -> Documentar.
 
 ---
