@@ -1,28 +1,58 @@
 # ESTADO_PROYECTO
 
-Version: 1.2.0
-Estado: Activo
+Version: 1.0.0
+Estado: Actualizado
+Clasificacion: Estado del Proyecto
+
+------------------------------------------------------------------------
+
+# Resumen
+
 Proyecto: Condor
-Fecha: 2026-08-04
 
----
+Estado general: En desarrollo
 
-# RESUMEN
+Nivel activo: 08 - Calidad
 
-Estado general: En progreso
+Nivel recientemente cerrado: 07 - Interfaz
 
-Nivel activo: 07 - Interfaz
+------------------------------------------------------------------------
 
-Nivel 06: Completado, revisado y congelado.
+# Estado por nivel
 
-Bloqueadores: Ninguno.
+| Nivel | Nombre | Estado |
+|-------|--------|--------|
+| 00 | Fundamentos | Congelado |
+| 01 | Vision | Congelado |
+| 02 | Arquitectura | Congelado |
+| 03 | Motores | Congelado |
+| 04 | Desarrollo | Congelado |
+| 05 | Operacion | Congelado |
+| 06 | Implementacion | Congelado |
+| 07 | Interfaz | Cerrado |
+| 08 | Calidad | Activo |
+| 09 | Evolucion | Pendiente |
 
----
+------------------------------------------------------------------------
 
-# KANBAN
+# Verificacion
 
-## Completado
+- Nivel 07 entregado: SI
+- Nivel 07 revisado: SI
+- Nivel 07 congelado: SI
+- Nivel 07 cerrado: SI
 
+------------------------------------------------------------------------
+
+# Kanban
+
+BACKLOG
+- Nivel 09 - Evolucion
+
+EN PROGRESO
+- Nivel 08 - Calidad
+
+COMPLETADO
 - Nivel 00
 - Nivel 01
 - Nivel 02
@@ -30,33 +60,34 @@ Bloqueadores: Ninguno.
 - Nivel 04
 - Nivel 05
 - Nivel 06
+- Nivel 07
 
-## En progreso
+------------------------------------------------------------------------
 
-- Preparacion del Nivel 07
+# Siguiente accion
 
-## Pendiente
+Iniciar el desarrollo documental del Nivel 08 - Calidad.
 
-### Nivel 07
+------------------------------------------------------------------------
 
-- INTERFAZ.md
-- EXPERIENCIA_USUARIO.md
-- FLUJO_INTERACCION.md
-- COMPONENTES_UI.md
-- NAVEGACION.md
-- ACCESIBILIDAD.md
-- VALIDACION_INTERFAZ.md
+# Plan documental Nivel 08
 
----
+- CALIDAD.md
+- VALIDACION.md
+- PRUEBAS.md
+- CRITERIOS_ACEPTACION.md
+- METRICAS.md
+- ASEGURAMIENTO_CALIDAD.md
+- TRAZABILIDAD.md
 
-# SIGUIENTE ACCION
+------------------------------------------------------------------------
 
-1. INTERFAZ.md
+# Primer entregable recomendado
 
----
+CALIDAD.md
 
-# HISTORIAL
+------------------------------------------------------------------------
 
-| Version | Cambio |
-|----------|---------|
-| 1.2.0 | Cierre oficial del Nivel 06 y preparacion del Nivel 07. |
+# Bloqueadores
+
+No se identifican bloqueadores para iniciar el Nivel 08.
