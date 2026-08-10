@@ -1,7 +1,7 @@
 # DIRECTIVA_OPERATIVA_PROYECTO_CONDOR
 
-Version: 2.1.0
-Estado: En desarrollo
+Version: 2.2.0
+Estado: Vigente
 Nivel: Global
 Clasificacion: Directiva Operativa
 
@@ -12,6 +12,8 @@ Clasificacion: Directiva Operativa
 Este documento define las reglas operativas permanentes del Proyecto Condor.
 
 Estas reglas son obligatorias durante toda la operacion del proyecto y tienen prioridad sobre las reglas locales de cualquier chat.
+
+Su objetivo es garantizar una ejecucion consistente, minimizar trabajo manual, preservar el conocimiento y mantener la coherencia metodologica y arquitectonica del proyecto.
 
 ---
 
@@ -59,6 +61,10 @@ Antes de ejecutar una tarea Condor debera consultarse:
 
 La conversacion nunca sera considerada la fuente principal de verdad.
 
+Nunca deberan inventarse decisiones tomadas en otros chats.
+
+Toda decision permanente debera incorporarse posteriormente al documento correspondiente.
+
 ---
 
 # IDENTIFICACION DEL NIVEL ACTIVO
@@ -100,13 +106,15 @@ La discrepancia debera informarse de forma explicita y no podra resolverse media
 
 # DEPENDENCIAS ARQUITECTONICAS
 
-Las dependencias arquitectonicas prevalecen sobre el orden cronologico.
+Las dependencias arquitectonicas prevalecen sobre el orden cronologico de ejecucion.
 
 Cuando exista una dependencia arquitectonica critica:
 
 - podra alterarse temporalmente el orden registrado en ESTADO_PROYECTO.md;
 - debera resolverse primero la dependencia;
-- posteriormente debera actualizarse ESTADO_PROYECTO.md para reflejar el estado oficial.
+- posteriormente debera actualizarse ESTADO_PROYECTO.md para reflejar el nuevo estado oficial.
+
+Esta excepcion solo aplica cuando continuar el orden cronologico comprometa la coherencia metodologica o arquitectonica del Proyecto Condor.
 
 ---
 
@@ -125,6 +133,8 @@ Debera:
 - continuar el desarrollo.
 
 No solicitara instrucciones adicionales salvo bloqueo real.
+
+Cuando no exista un nivel siguiente porque se haya cerrado el ultimo nivel estructural, debera continuar en modo de Evolucion Continua y no inventar un nuevo nivel.
 
 ---
 
@@ -190,8 +200,13 @@ condorestado Global muestra el estado consolidado de todo el Proyecto Condor.
 Debe:
 
 1. actualizar el documento solicitado;
-2. actualizar internamente ESTADO_PROYECTO.md;
-3. entregar el documento solicitado en formato Markdown listo para repositorio.
+2. entregar el documento solicitado en formato Markdown listo para repositorio.
+
+Durante una entrega ordinaria, CondorEntregar no modifica formalmente ESTADO_PROYECTO.md.
+
+La entrega de un documento no equivale al cierre del nivel.
+
+ESTADO_PROYECTO.md se actualizara formalmente durante el cierre del nivel mediante condorcerrar, salvo solicitud explicita del usuario o dependencia arquitectonica critica.
 
 No mostrara el documento completo en el chat salvo solicitud explicita.
 
@@ -203,11 +218,19 @@ Durante CondorEntregar queda prohibido:
 - crear documentos adicionales;
 - detener la entrega para solicitar confirmaciones innecesarias.
 
-ESTADO_PROYECTO.md solo se entregara cuando:
+Todo documento entregado debera:
 
-- el usuario lo solicite explicitamente;
-- se complete un conjunto de entregables;
-- se cierre oficialmente un nivel.
+- conservar su nombre;
+- actualizar su version internamente;
+- conservar su historial de cambios;
+- quedar listo para reemplazar el archivo existente.
+
+Cuando un documento exceda el limite tecnico de una respuesta:
+
+- CondorEntregar podra dividir la entrega en partes consecutivas;
+- cada parte debera preservar la continuidad del documento;
+- el resultado final debera constituir un unico artefacto listo para el repositorio;
+- nunca debera resumirse ni omitirse contenido para ajustarse al limite de la plataforma.
 
 ---
 
@@ -226,6 +249,10 @@ Debe:
 
 Toda mejora detectada debera incorporarse directamente al documento revisado.
 
+CondorRevisar no modifica formalmente ESTADO_PROYECTO.md.
+
+Los resultados de la revision forman parte de la evidencia necesaria para el posterior congelamiento o cierre.
+
 ---
 
 # CONDORCONGELAR
@@ -237,6 +264,10 @@ Despues del congelamiento solo podra modificarse por:
 - solicitud explicita;
 - error critico;
 - dependencia arquitectonica.
+
+CondorCongelar no modifica formalmente ESTADO_PROYECTO.md.
+
+El estado de congelamiento se considera una condicion de cierre y debera quedar reflejado en la documentacion correspondiente cuando se ejecute condorcerrar.
 
 ---
 
@@ -254,6 +285,8 @@ Vigila:
 
 Solo advertira inconsistencias criticas.
 
+Cuando detecte una inconsistencia menor la resolvera directamente dentro del alcance de la tarea, evitando generar trabajo manual innecesario.
+
 ---
 
 # CONDORCONDENSAR
@@ -269,31 +302,250 @@ Reduce un entregable a su minima expresion sin perder:
 
 # CONDORCERRAR
 
-Finaliza oficialmente un nivel.
+## Proposito
 
-Debe:
+Finalizar oficialmente un nivel del Proyecto Condor y dejar preparado el siguiente estado de desarrollo sin perdida de contexto.
 
-1. verificar que todos los entregables planificados existan;
+Debe ejecutar:
+
+1. verificar que todos los entregables planificados del nivel existan;
 2. verificar que el nivel haya sido revisado;
 3. verificar que el nivel haya sido congelado;
 4. actualizar ESTADO_PROYECTO.md;
-5. marcar el nivel como Completado;
-6. establecer el siguiente nivel como Activo;
-7. registrar el plan documental del siguiente nivel;
-8. registrar el primer entregable recomendado;
-9. entregar unicamente ESTADO_PROYECTO.md.
+5. actualizar INVENTARIO_PROYECTO.md;
+6. actualizar el tablero Kanban;
+7. marcar el nivel como Completado;
+8. determinar si existe un siguiente nivel estructural;
+9. si existe un siguiente nivel, establecerlo como Activo;
+10. si no existe un siguiente nivel estructural, declarar completada la linea base inicial y establecer el modo Evolucion Continua;
+11. cuando exista siguiente nivel, generar el plan documental completo del siguiente nivel;
+12. cuando no exista siguiente nivel, registrar que no existe Nivel 10 y que la continuidad se realiza mediante Evolucion Continua;
+13. registrar la siguiente accion;
+14. registrar el primer entregable recomendado cuando exista un siguiente nivel;
+15. entregar unicamente ESTADO_PROYECTO.md.
 
-La transicion de nivel no se considera oficial hasta que ESTADO_PROYECTO.md refleje el nuevo nivel activo.
+---
+
+# CONDORCERRAR - NIVELES NO TERMINALES
+
+Cuando el nivel cerrado no sea el ultimo nivel estructural definido por el Proyecto Condor:
+
+- se marcara el nivel como Completado;
+- se activara el siguiente nivel;
+- se registrara su plan documental;
+- se registrara su primer entregable;
+- se actualizara ESTADO_PROYECTO.md;
+- se actualizara INVENTARIO_PROYECTO.md.
+
+---
+
+# CONDORCERRAR - NIVEL TERMINAL
+
+Cuando el nivel cerrado sea el ultimo nivel estructural definido por el Proyecto Condor:
+
+- se marcara el nivel como Completado;
+- no se creara ni activara un Nivel 10 por inferencia;
+- se declarara completada la linea base inicial de niveles;
+- se establecera el modo operativo Evolucion Continua;
+- se actualizara ESTADO_PROYECTO.md;
+- se actualizara INVENTARIO_PROYECTO.md;
+- se registrara como siguiente accion el inicio del desarrollo de Condor o la evolucion correspondiente;
+- no se generara un plan documental de un nivel inexistente.
+
+El Nivel 09 - Evolucion es actualmente el ultimo nivel estructural definido del Proyecto Condor.
+
+La evolucion posterior no constituye un nuevo nivel.
+
+La evolucion posterior opera mediante ciclos continuos de:
+
+Comprender
+
+↓
+
+Planificar
+
+↓
+
+Disenar
+
+↓
+
+Implementar
+
+↓
+
+Verificar
+
+↓
+
+Documentar
+
+↓
+
+Congelar
+
+↓
+
+Continuar
+
+---
+
+# ESTADO_PROYECTO EN CONDORCERRAR
+
+ESTADO_PROYECTO.md debera incorporar como minimo:
+
+- estado general del proyecto;
+- nivel activo cuando exista;
+- modo operativo cuando no exista un nivel activo;
+- tablero Kanban actualizado;
+- historial de niveles completados;
+- siguiente accion;
+- plan documental del siguiente nivel cuando exista;
+- primer entregable recomendado cuando exista;
+- estado de la linea base;
+- bloqueadores, si existen.
+
+Cuando se cierre el Nivel 09, el estado debera indicar que la linea base inicial de niveles fue completada y que el proyecto entra en Evolucion Continua.
+
+---
+
+# INVENTARIO EN CONDORCERRAR
+
+INVENTARIO_PROYECTO.md debera actualizarse durante condorcerrar.
+
+Debera:
+
+- registrar todos los artefactos efectivamente entregados;
+- reemplazar el estado Planificado por el estado correspondiente;
+- actualizar las versiones;
+- conservar dependencias;
+- reflejar el cierre del nivel;
+- registrar la linea base inicial cuando se cierre el Nivel 09.
+
+El inventario no determina el nivel activo.
+
+La fuente oficial para determinar el nivel activo es ESTADO_PROYECTO.md.
+
+---
+
+# TRANSICION DE NIVEL
+
+La transicion de nivel no se considera oficial hasta que ESTADO_PROYECTO.md refleje el nuevo estado.
 
 El titulo del chat de origen no determina la transicion.
+
+Para el ultimo nivel estructural no existe una transicion automatica a otro nivel.
+
+---
+
+# EVOLUCION CONTINUA
+
+Evolucion Continua es el modo operativo posterior al cierre del ultimo nivel estructural.
+
+No constituye un nuevo nivel.
+
+En este modo Condor continua mediante ciclos de evolucion y desarrollo.
+
+La documentacion deja de ser una fase previa que deba completarse antes de actuar y pasa a acompañar el desarrollo de forma proporcional a las necesidades reales.
+
+El software pasa a constituir el resultado principal del proyecto.
+
+La documentacion permanente continuara siendo obligatoria para decisiones, arquitectura, contratos, requisitos, cambios relevantes y conocimiento que deba preservarse.
+
+---
+
+# PALABRAS CLAVE
+
+Las palabras clave no distinguen entre mayusculas y minusculas.
+
+Las palabras clave oficiales del Proyecto Condor son:
+
+- condorfoco
+- condoriniciar
+- condorestado
+- condorentregar
+- condorrevisar
+- condorcongelar
+- condorguardian
+- condorcondensar
+- condorcerrar
+- Continua
+
+Todas operan sobre el nivel activo cuando exista.
+
+Solo el sufijo:
+
+Global
+
+autoriza una operacion sobre la totalidad del Proyecto Condor.
+
+Nunca debera asumirse alcance global por defecto.
+
+Cuando el proyecto se encuentre en Evolucion Continua y no exista nivel activo, las operaciones se ejecutaran sobre el ciclo de evolucion o desarrollo vigente, manteniendo las reglas de alcance.
+
+---
+
+# OBJETIVO PERMANENTE
+
+Cada respuesta debera dejar el Proyecto Condor objetivamente mas avanzado que antes.
+
+Toda accion debera cumplir simultaneamente los siguientes criterios:
+
+- preservar la coherencia arquitectonica;
+- preservar el conocimiento;
+- minimizar trabajo manual;
+- reducir friccion;
+- producir un artefacto permanente cuando corresponda.
+
+Si una accion no aporta valor al proyecto, debera descartarse automaticamente.
+
+---
+
+# REGLAS DE EJECUCION
+
+Antes de ejecutar cualquier tarea Condor debera:
+
+1. identificar el nivel activo o el modo Evolucion Continua;
+2. consultar las fuentes oficiales;
+3. verificar dependencias;
+4. determinar si existe una dependencia arquitectonica critica;
+5. seleccionar la siguiente mejor accion;
+6. ejecutar;
+7. actualizar el conocimiento generado cuando corresponda.
+
+Nunca debera:
+
+- asumir contexto inexistente;
+- inventar decisiones;
+- duplicar informacion;
+- romper la separacion entre niveles;
+- generar trabajo manual innecesario;
+- crear un nivel estructural no definido por el proyecto.
 
 ---
 
 # REGLA DE PERSISTENCIA
 
-Toda decision relevante debera convertirse en un documento permanente antes de continuar.
+Toda decision relevante debera transformarse en un documento permanente antes de continuar cuando dicha decision tenga valor de conocimiento futuro.
 
-La conversacion nunca sera considerada memoria permanente.
+La conversacion nunca sera considerada memoria permanente del proyecto.
+
+En Evolucion Continua, la documentacion debera ser proporcional al cambio y no debera convertirse en un bloqueo artificial para la implementacion.
+
+---
+
+# REGLA DE ENTREGA
+
+Toda entrega debera ser:
+
+- completa;
+- consistente;
+- lista para incorporarse al repositorio;
+- coherente con la documentacion existente.
+
+Una limitacion tecnica de la plataforma nunca justificara reducir el contenido de un entregable.
+
+Cuando sea necesario, la entrega se dividira en partes consecutivas preservando la continuidad del documento y produciendo un unico artefacto final.
 
 ---
 
@@ -303,19 +555,17 @@ Cuando se detecte una diferencia entre documentos, debera prevalecer el document
 
 Cuando la diferencia afecte al nivel activo y no pueda resolverse mediante esa jerarquia, la ejecucion debera detenerse y solicitar resolucion explicita.
 
+La ausencia de un nivel siguiente despues del ultimo nivel estructural no constituye una discrepancia: constituye el inicio de Evolucion Continua.
+
 ---
 
-# OBJETIVO PERMANENTE
+# CIERRE
 
-Cada respuesta debera dejar el Proyecto Condor objetivamente mas avanzado que antes.
+Esta directiva constituye la norma operativa superior del Proyecto Condor.
 
-Toda accion debera:
+Toda documentacion, conversacion, implementacion y evolucion futura debera ser coherente con ella.
 
-- preservar la coherencia arquitectonica;
-- preservar el conocimiento;
-- minimizar trabajo manual;
-- reducir friccion;
-- producir un artefacto permanente cuando corresponda.
+En caso de conflicto entre documentos, prevalecera el documento de mayor prioridad definido en esta directiva.
 
 ---
 
@@ -323,5 +573,6 @@ Toda accion debera:
 
 | Version | Cambios |
 |---------|---------|
+| 2.2.0 | Se corrige el cierre del ultimo nivel estructural: Nivel 09 no activa un Nivel 10, sino Evolucion Continua. Se establece la actualizacion obligatoria de ESTADO_PROYECTO.md e INVENTARIO_PROYECTO.md durante condorcerrar. Se aclara que Entregar, Revisar y Congelar no actualizan formalmente ESTADO_PROYECTO.md. Se define el comportamiento terminal de condorcerrar y la transicion de la documentacion previa a documentacion proporcional al desarrollo. |
 | 2.1.0 | Se formaliza ESTADO_PROYECTO.md como fuente oficial para determinar el nivel activo y se establece el protocolo de deteccion y tratamiento de discrepancias entre chat, estado y documentacion. Se refuerza la transicion formal de niveles mediante condorcerrar. |
 | 2.0.0 | Refactorizacion integral de la Directiva Operativa. |
