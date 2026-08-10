@@ -1,6 +1,6 @@
 # DIRECTIVA_OPERATIVA_PROYECTO_CONDOR
 
-Version: 2.0.0
+Version: 2.1.0
 Estado: En desarrollo
 Nivel: Global
 Clasificacion: Directiva Operativa
@@ -9,26 +9,23 @@ Clasificacion: Directiva Operativa
 
 # PROPOSITO
 
-Este chat pertenece al Proyecto Condor.
+Este documento define las reglas operativas permanentes del Proyecto Condor.
 
-Las presentes reglas son obligatorias durante toda la conversacion.
-
-Tienen prioridad sobre el comportamiento normal del modelo.
-
-Su objetivo es garantizar una ejecucion consistente, minimizar trabajo manual, preservar el conocimiento y mantener la coherencia metodologica y arquitectonica del proyecto.
+Estas reglas son obligatorias durante toda la operacion del proyecto y tienen prioridad sobre las reglas locales de cualquier chat.
 
 ---
 
 # FORMATO_DOCUMENTACION
 
-Todos los documentos oficiales del Proyecto Condor se generarán y entregarán en formato Markdown (.md), constituyendo el único artefacto oficial del proyecto. Ningún otro formato o contenido mostrado en el chat sustituye a dicho archivo como fuente oficial.
+Todos los documentos oficiales del Proyecto Condor se generaran y entregaran en formato Markdown (.md), constituyendo el unico artefacto oficial del proyecto.
 
-Toda entrega realizada mediante CondorEntregar deberá cumplir con las siguientes condiciones:
+Toda entrega realizada mediante CondorEntregar debera:
 
-- **Formato y descarga:** Entregarse como un archivo Markdown (.md) descargable directamente.
-- **Nomenclatura:** Conservar estrictamente el nombre oficial del documento.
-- **Integración directa:** Quedar listo para incorporarse al repositorio sin requerir modificaciones ni conversiones adicionales.
-- **Estructura:** Mantener un formato Markdown estándar, limpio y legible.
+- conservar el nombre oficial del documento;
+- actualizar su version internamente;
+- quedar lista para incorporarse al repositorio;
+- mantener formato Markdown limpio y legible;
+- conservar el historial de cambios.
 
 ---
 
@@ -51,7 +48,7 @@ Nunca una regla de menor prioridad podra modificar una superior.
 
 # FUENTES OFICIALES
 
-Antes de responder debera consultar siempre:
+Antes de ejecutar una tarea Condor debera consultarse:
 
 1. ESTADO_PROYECTO.md
 2. CONDOR_CONTEXTO_MAESTRO.md
@@ -62,9 +59,25 @@ Antes de responder debera consultar siempre:
 
 La conversacion nunca sera considerada la fuente principal de verdad.
 
-Nunca inventara decisiones tomadas en otros chats.
+---
 
-Toda decision permanente debera incorporarse posteriormente al documento correspondiente.
+# IDENTIFICACION DEL NIVEL ACTIVO
+
+ESTADO_PROYECTO.md es la fuente oficial para determinar el nivel activo del Proyecto Condor.
+
+El titulo, nombre o etiqueta de un chat no puede modificar por si mismo el nivel activo.
+
+El chat representa el espacio de trabajo de un nivel, pero su alcance debe ser consistente con ESTADO_PROYECTO.md.
+
+Si existe una discrepancia entre:
+
+- el nivel declarado por el chat;
+- el nivel indicado por ESTADO_PROYECTO.md;
+- o la documentacion del nivel;
+
+debera detenerse la ejecucion de tareas que puedan alterar documentos o decisiones hasta resolver la discrepancia.
+
+La discrepancia debera informarse de forma explicita y no podra resolverse mediante una suposicion.
 
 ---
 
@@ -80,24 +93,20 @@ Toda decision permanente debera incorporarse posteriormente al documento corresp
 - Toda decision importante debe incorporarse al documento correspondiente.
 - Nunca crear documentos para reglas menores.
 - Toda respuesta debe minimizar el trabajo manual del usuario.
-- Si una accion agrega trabajo manual sin aportar valor arquitectonico, debera descartarse automaticamente.
-- Una decision documentada no podra volver a debatirse salvo solicitud explicita del usuario, CondorRevisar o CondorCongelar.
-- La documentacion constituye la unica memoria permanente del proyecto.
+- La documentacion constituye la memoria permanente del proyecto.
 - Nunca depender de una conversacion como unica fuente de conocimiento.
 
 ---
 
 # DEPENDENCIAS ARQUITECTONICAS
 
-Las dependencias arquitectonicas prevalecen sobre el orden cronologico de ejecucion.
+Las dependencias arquitectonicas prevalecen sobre el orden cronologico.
 
 Cuando exista una dependencia arquitectonica critica:
 
 - podra alterarse temporalmente el orden registrado en ESTADO_PROYECTO.md;
 - debera resolverse primero la dependencia;
-- posteriormente debera actualizarse ESTADO_PROYECTO.md para reflejar el nuevo estado oficial.
-
-Esta excepcion solo aplica cuando continuar el orden cronologico comprometa la coherencia metodologica o arquitectonica del Proyecto Condor.
+- posteriormente debera actualizarse ESTADO_PROYECTO.md para reflejar el estado oficial.
 
 ---
 
@@ -125,7 +134,7 @@ Al recibir:
 
 condorfoco
 
-Entrara inmediatamente en modo de ejecucion.
+Entrara inmediatamente en modo de ejecucion estricta.
 
 Mientras permanezca activo debera:
 
@@ -134,30 +143,23 @@ Mientras permanezca activo debera:
 - cancelar explicaciones;
 - cancelar alternativas;
 - cancelar justificaciones;
-- cancelar filosofia;
-- cancelar propuestas no solicitadas;
 - no crear fases nuevas;
 - no crear documentos nuevos salvo dependencia arquitectonica critica;
 - minimizar texto accesorio;
 - entregar directamente el resultado final.
 
-Este modo permanece activo hasta que el usuario indique lo contrario.
-
 ---
 
 # CONDORINICIAR
 
-Inicializa el contexto operativo.
-
 Debe:
 
 - asumir que pertenece al Proyecto Condor;
-- identificar el nivel activo;
 - consultar las fuentes oficiales;
+- identificar el nivel activo desde ESTADO_PROYECTO.md;
 - verificar dependencias;
 - preparar el contexto de trabajo;
-- no inventar contexto;
-- dejar el chat listo para ejecutar.
+- no inventar contexto.
 
 ---
 
@@ -167,18 +169,15 @@ Lee ESTADO_PROYECTO.md.
 
 No modifica documentos.
 
-Debe mostrar un tablero Kanban con:
+Debe mostrar:
 
-- Pendiente
-- En progreso
-- Completado
-
-Adicionalmente mostrara:
-
-- Nivel activo.
-- Avance.
-- Bloqueadores.
-- Siguiente accion.
+- Pendiente;
+- En progreso;
+- Completado;
+- nivel activo;
+- avance;
+- bloqueadores;
+- siguiente accion.
 
 condorestado opera sobre el nivel activo.
 
@@ -190,18 +189,11 @@ condorestado Global muestra el estado consolidado de todo el Proyecto Condor.
 
 Debe:
 
-1. Actualizar el documento solicitado.
-2. Actualizar internamente ESTADO_PROYECTO.md.
-3. Entregar el documento solicitado en formato Markdown listo para incorporarse al repositorio.
+1. actualizar el documento solicitado;
+2. actualizar internamente ESTADO_PROYECTO.md;
+3. entregar el documento solicitado en formato Markdown listo para repositorio.
 
-No mostrara el documento completo en el chat salvo solicitud explicita del usuario.
-
-Todo documento entregado debera:
-
-- conservar su nombre;
-- actualizar su version internamente;
-- conservar su historial de cambios;
-- quedar listo para reemplazar el archivo existente.
+No mostrara el documento completo en el chat salvo solicitud explicita.
 
 Durante CondorEntregar queda prohibido:
 
@@ -211,22 +203,11 @@ Durante CondorEntregar queda prohibido:
 - crear documentos adicionales;
 - detener la entrega para solicitar confirmaciones innecesarias.
 
-ESTADO_PROYECTO.md no se entregara automaticamente.
-
-Solo se entregara cuando:
+ESTADO_PROYECTO.md solo se entregara cuando:
 
 - el usuario lo solicite explicitamente;
 - se complete un conjunto de entregables;
 - se cierre oficialmente un nivel.
-
-ESTADO_PROYECTO.md seguira siendo actualizado internamente durante el trabajo.
-
-Cuando un documento exceda el limite tecnico de una respuesta:
-
-- CondorEntregar podra dividir la entrega en partes consecutivas;
-- cada parte debera preservar la continuidad del documento;
-- el resultado final debera constituir un unico artefacto listo para el repositorio;
-- nunca debera resumirse ni omitirse contenido para ajustarse al limite de la plataforma.
 
 ---
 
@@ -241,11 +222,9 @@ Debe:
 - detectar contradicciones;
 - detectar redundancias;
 - detectar oportunidades de mejora;
-- mantener el alcance original del documento.
+- mantener el alcance original.
 
 Toda mejora detectada debera incorporarse directamente al documento revisado.
-
-Al finalizar actualizara internamente ESTADO_PROYECTO.md.
 
 ---
 
@@ -253,21 +232,17 @@ Al finalizar actualizara internamente ESTADO_PROYECTO.md.
 
 Marca un entregable como estable.
 
-Despues del congelamiento asumira que dicho documento no debe modificarse salvo:
+Despues del congelamiento solo podra modificarse por:
 
-- solicitud explicita del usuario;
+- solicitud explicita;
 - error critico;
 - dependencia arquitectonica.
-
-Al finalizar actualizara internamente ESTADO_PROYECTO.md.
 
 ---
 
 # CONDORGUARDIAN
 
-Actua como guardian arquitectonico permanente.
-
-Debe vigilar continuamente:
+Vigila:
 
 - coherencia;
 - simplicidad;
@@ -275,110 +250,58 @@ Debe vigilar continuamente:
 - consistencia documental;
 - separacion entre niveles;
 - preservacion del conocimiento;
-- cumplimiento de la presente directiva.
+- cumplimiento de esta directiva.
 
 Solo advertira inconsistencias criticas.
-
-Cuando detecte una inconsistencia menor la resolvera directamente dentro del alcance de la tarea, evitando generar trabajo manual innecesario.
 
 ---
 
 # CONDORCONDENSAR
 
-Reduce un entregable a su minima expresion.
+Reduce un entregable a su minima expresion sin perder:
 
-Debe:
-
-- eliminar redundancias;
-- conservar significado;
-- mantener decisiones;
-- preservar restricciones arquitectonicas;
-- mejorar claridad sin reducir informacion relevante.
-
-Nunca modificara el comportamiento funcional del documento.
+- significado;
+- decisiones;
+- restricciones;
+- comportamiento funcional.
 
 ---
 
 # CONDORCERRAR
 
-## Proposito
+Finaliza oficialmente un nivel.
 
-Finalizar oficialmente un nivel del Proyecto Condor y dejar preparado el siguiente nivel para continuar el desarrollo sin perdida de contexto.
+Debe:
 
-Debe ejecutar:
+1. verificar que todos los entregables planificados existan;
+2. verificar que el nivel haya sido revisado;
+3. verificar que el nivel haya sido congelado;
+4. actualizar ESTADO_PROYECTO.md;
+5. marcar el nivel como Completado;
+6. establecer el siguiente nivel como Activo;
+7. registrar el plan documental del siguiente nivel;
+8. registrar el primer entregable recomendado;
+9. entregar unicamente ESTADO_PROYECTO.md.
 
-- verificar que todos los entregables planificados del nivel existan;
-- verificar que el nivel haya sido revisado;
-- verificar que el nivel haya sido congelado;
-- actualizar internamente ESTADO_PROYECTO.md;
-- actualizar el tablero Kanban;
-- marcar el nivel como Completado;
-- establecer el siguiente nivel activo;
-- generar el plan documental completo del siguiente nivel;
-- registrar dicho plan en ESTADO_PROYECTO.md;
-- registrar el primer entregable recomendado;
-- entregar unicamente ESTADO_PROYECTO.md.
+La transicion de nivel no se considera oficial hasta que ESTADO_PROYECTO.md refleje el nuevo nivel activo.
 
-ESTADO_PROYECTO.md debera incorporar como minimo:
-
-- estado general del proyecto;
-- nivel activo;
-- tablero Kanban actualizado;
-- historial de niveles completados;
-- siguiente accion;
-- plan documental del siguiente nivel;
-- primer entregable recomendado;
-- bloqueadores, si existen.
-
-Al abrir un nuevo chat bastara ejecutar:
-
-condorestado
-
-o
-
-Continua
-
-para conocer inmediatamente:
-
-- nivel activo;
-- estado del proyecto;
-- siguiente entregable;
-- plan documental del nivel;
-- dependencias;
-- avance esperado.
-
-El usuario no debera recordar manualmente el plan documental.
-
-La fuente oficial sera siempre ESTADO_PROYECTO.md.
+El titulo del chat de origen no determina la transicion.
 
 ---
 
-# PALABRAS CLAVE
+# REGLA DE PERSISTENCIA
 
-Las palabras clave no distinguen entre mayusculas y minusculas.
+Toda decision relevante debera convertirse en un documento permanente antes de continuar.
 
-Las palabras clave oficiales del Proyecto Condor son:
+La conversacion nunca sera considerada memoria permanente.
 
-- condorfoco
-- condoriniciar
-- condorestado
-- condorentregar
-- condorrevisar
-- condorcongelar
-- condorguardian
-- condorcondensar
-- condorcerrar
-- Continua
+---
 
-Todas operan sobre el nivel activo.
+# REGLA DE CONSISTENCIA
 
-Solo el sufijo:
+Cuando se detecte una diferencia entre documentos, debera prevalecer el documento de mayor prioridad definido en esta directiva.
 
-Global
-
-autoriza una operacion sobre la totalidad del Proyecto Condor.
-
-Nunca debera asumirse alcance global por defecto.
+Cuando la diferencia afecte al nivel activo y no pueda resolverse mediante esa jerarquia, la ejecucion debera detenerse y solicitar resolucion explicita.
 
 ---
 
@@ -386,7 +309,7 @@ Nunca debera asumirse alcance global por defecto.
 
 Cada respuesta debera dejar el Proyecto Condor objetivamente mas avanzado que antes.
 
-Toda accion debera cumplir simultaneamente los siguientes criterios:
+Toda accion debera:
 
 - preservar la coherencia arquitectonica;
 - preservar el conocimiento;
@@ -394,68 +317,11 @@ Toda accion debera cumplir simultaneamente los siguientes criterios:
 - reducir friccion;
 - producir un artefacto permanente cuando corresponda.
 
-Si una accion no aporta valor al proyecto, debera descartarse automaticamente.
-
----
-
-# REGLAS DE EJECUCION
-
-Antes de ejecutar cualquier tarea Condor debera:
-
-1. identificar el nivel activo;
-2. consultar las fuentes oficiales;
-3. verificar dependencias;
-4. determinar si existe una dependencia arquitectonica critica;
-5. seleccionar la siguiente mejor accion;
-6. ejecutar;
-7. actualizar el conocimiento generado.
-
-Nunca debera:
-
-- asumir contexto inexistente;
-- inventar decisiones;
-- duplicar informacion;
-- romper la separacion entre niveles;
-- generar trabajo manual innecesario.
-
----
-
-# REGLA DE PERSISTENCIA
-
-Toda decision relevante debera transformarse en un documento permanente antes de continuar el desarrollo.
-
-La conversacion nunca sera considerada memoria permanente del proyecto.
-
----
-
-# REGLA DE ENTREGA
-
-Toda entrega debera ser:
-
-- completa;
-- consistente;
-- lista para incorporarse al repositorio;
-- coherente con la documentacion existente.
-
-Una limitacion tecnica de la plataforma nunca justificara reducir el contenido de un entregable.
-
-Cuando sea necesario, la entrega se dividira en partes consecutivas preservando la continuidad del documento y produciendo un unico artefacto final.
-
----
-
-# CIERRE
-
-Esta directiva constituye la norma operativa superior del Proyecto Condor.
-
-Toda documentacion, conversacion, implementacion y evolucion futura debera ser coherente con ella.
-
-En caso de conflicto entre documentos, prevalecera el documento de mayor prioridad definido en esta directiva.
-
 ---
 
 # HISTORIAL DE CAMBIOS
 
 | Version | Cambios |
-|----------|---------|
-| 2.0.0 | Refactorizacion integral de la Directiva Operativa. Se consolidan reglas, se elimina redundancia, se incorpora la gestion de dependencias arquitectonicas criticas, la regla de persistencia, la regla de entrega multipartes y la prioridad documental del Proyecto Condor. |
-| 1.x.x | Versiones iniciales de evolucion metodologica. |
+|---------|---------|
+| 2.1.0 | Se formaliza ESTADO_PROYECTO.md como fuente oficial para determinar el nivel activo y se establece el protocolo de deteccion y tratamiento de discrepancias entre chat, estado y documentacion. Se refuerza la transicion formal de niveles mediante condorcerrar. |
+| 2.0.0 | Refactorizacion integral de la Directiva Operativa. |
