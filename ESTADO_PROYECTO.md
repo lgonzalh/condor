@@ -1,8 +1,18 @@
 # ESTADO_PROYECTO
 
-Version: 1.1.0
+Version: 1.2.0
 Estado: Actualizado
 Clasificacion: Estado del Proyecto
+
+---
+
+# FUENTE OFICIAL DEL NIVEL ACTIVO
+
+La fuente oficial para determinar el nivel activo del Proyecto Condor es este documento.
+
+El titulo del chat, su nombre visible o la denominacion utilizada en la interfaz no modifica el nivel activo.
+
+Si el nivel indicado por el chat y el nivel indicado por este documento difieren, debera detenerse la ejecucion de tareas del nivel hasta verificar la discrepancia.
 
 ---
 
@@ -46,9 +56,9 @@ Nivel recientemente cerrado: 08 - Calidad
 
 # KANBAN
 
-## BACKLOG
+## PENDIENTE
 
-Ninguno.
+- Desarrollo documental del Nivel 09 - Evolucion
 
 ## EN PROGRESO
 
@@ -122,9 +132,34 @@ No se identifican bloqueadores para iniciar el Nivel 09.
 
 ---
 
+# REGLA DE TRANSICION
+
+Cuando un nivel sea cerrado mediante condorcerrar:
+
+1. El nivel cerrado se marca como Completado.
+2. El siguiente nivel se marca como Activo.
+3. El plan documental del siguiente nivel se registra aqui.
+4. El primer entregable del siguiente nivel se establece como Siguiente Entregable.
+5. El estado resultante de este documento se convierte en la referencia oficial para todos los chats posteriores.
+
+No se considerara iniciado un nivel diferente hasta que este documento refleje formalmente la transicion.
+
+---
+
+# REGLA DE CONSISTENCIA ENTRE CHAT Y PROYECTO
+
+Cada chat de nivel debe trabajar exclusivamente sobre el nivel indicado por ESTADO_PROYECTO.md.
+
+El nombre del chat puede identificar el espacio de trabajo, pero no constituye una fuente de verdad independiente.
+
+Si un chat conserva el nombre de un nivel anterior despues de su cierre, esto no significa que dicho nivel continue activo.
+
+---
+
 # HISTORIAL
 
 | Version | Cambio |
 |---------|--------|
+| 1.2.0 | Se formaliza ESTADO_PROYECTO.md como fuente unica para determinar el nivel activo y se incorporan reglas explicitas de transicion y consistencia entre chat y proyecto. Se actualiza el tablero y la situacion oficial del Nivel 09. |
 | 1.1.0 | Cierre oficial del Nivel 08 - Calidad, activacion del Nivel 09 - Evolucion y definicion de su plan documental inicial. |
 | 1.0.0 | Estado del Nivel 08 - Calidad. |
