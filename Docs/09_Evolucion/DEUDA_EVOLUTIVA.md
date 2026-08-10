@@ -1,6 +1,6 @@
 # DEUDA_EVOLUTIVA
 
-Version: 1.0.0
+Version: 1.0.1
 Estado: Activo
 Nivel: 09 - Evolucion
 Clasificacion: Deuda Evolutiva
@@ -114,31 +114,11 @@ Cuando sea necesario tambien debera registrar:
 
 # REGISTRO
 
-## DE-001
+Actualmente no existen elementos de deuda evolutiva formalmente registrados para el Nivel 09.
 
-Estado: Pendiente
+La ausencia de elementos en este registro no constituye un error ni requiere crear entradas artificiales.
 
-Prioridad: Media
-
-Origen: Nivel 09 - Evolucion
-
-Componente: Modelo evolutivo de Condor
-
-Descripcion:
-
-Evaluar y formalizar mecanismos adicionales para gestionar oportunidades de evolucion que surjan durante ciclos posteriores.
-
-Razon:
-
-Mantener separadas las mejoras futuras de la linea principal de desarrollo.
-
-Impacto:
-
-Bajo.
-
-Version objetivo:
-
-Posterior a la primera linea base evolutiva.
+Cuando se identifique una deuda real que cumpla los criterios de este documento, debera incorporarse con su identificador y trazabilidad correspondientes.
 
 ---
 
@@ -236,6 +216,8 @@ Los elementos sin valor deberan ser descartados formalmente.
 6. Toda resolucion debe conservar trazabilidad.
 7. La deuda debe mantenerse comprensible para futuras etapas.
 8. La acumulacion de deuda debe ser revisada periodicamente.
+9. No crear entradas artificiales para completar el registro.
+10. Un registro vacio es un estado valido cuando no existen deudas evolutivas identificadas.
 
 ---
 
@@ -258,4 +240,5 @@ Este documento se relaciona principalmente con:
 
 | Version | Cambios |
 |---------|---------|
+| 1.0.1 | Se elimina DE-001 por no corresponder a una deuda evolutiva real identificada. Se establece que el registro puede permanecer vacio y no deben crearse entradas artificiales. |
 | 1.0.0 | Creacion del registro de deuda evolutiva del Proyecto Condor para el Nivel 09. |
