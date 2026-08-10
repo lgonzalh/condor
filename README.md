@@ -31,7 +31,6 @@ En Condor la conversacion es temporal. La documentacion constituye la fuente ofi
 - Antes de implementar -> Planificar.
 - Antes de modificar -> Analizar.
 - Antes de avanzar -> Validar.
-
 - Antes de finalizar -> Documentar.
 
 ---
@@ -55,12 +54,14 @@ Los documentos principales del proyecto son:
 
 ```text
 ESTADO_PROYECTO.md
-CONDOR_CONTEXTO_MAESTRO.md
-DIRECTIVA_GLOBAL.md
-ESTANDAR_DOCUMENTAL.md
+AGENTE_CONDOR.md
+Docs/00_Fundamentos/CONDOR_CONTEXTO_MAESTRO.md
+Docs/00_Fundamentos/DIRECTIVA_GLOBAL.md
+Docs/00_Fundamentos/ESTANDAR_DOCUMENTAL.md
+operacion/
 ```
 
-Estos documentos constituyen la base operativa y documental del proyecto.
+Estos documentos y artefactos constituyen la base operativa y documental del proyecto.
 
 ---
 
@@ -70,6 +71,7 @@ Estos documentos constituyen la base operativa y documental del proyecto.
 condor/
 │
 ├── ESTADO_PROYECTO.md
+├── AGENTE_CONDOR.md
 ├── README.md
 ├── LICENSE
 ├── NOTICE
@@ -85,6 +87,16 @@ condor/
 │   ├── 07_Interfaz/
 │   ├── 08_Calidad/
 │   └── 09_Evolucion/
+│
+├── operacion/
+│   ├── README.md
+│   ├── ESTADO_DESARROLLO.md
+│   ├── RELEVO.md
+│   ├── BACKLOG.md
+│   ├── KANBAN.md
+│   ├── REGISTRO_CAMBIOS.md
+│   └── TAREAS/
+│       └── T-001.md
 │
 ├── resources/
 ├── scripts/
@@ -117,6 +129,7 @@ Los documentos principales para comprender el proyecto son:
 
 ```text
 ESTADO_PROYECTO.md
+AGENTE_CONDOR.md
 Docs/
 ├── 00_Fundamentos/
 │   ├── CONDOR_CONTEXTO_MAESTRO.md
@@ -129,14 +142,16 @@ Docs/
     └── ...
 ```
 
-### Punto de inicio
-
-El orden recomendado de lectura es:
+### Punto de inicio para agentes
 
 1. `ESTADO_PROYECTO.md`
-2. `Docs/00_Fundamentos/`
-3. `Docs/01_Arquitectura_Ejecutable/`
-4. Nivel activo del proyecto.
+2. `AGENTE_CONDOR.md`
+3. `Docs/00_Fundamentos/`
+4. `Docs/01_Arquitectura_Ejecutable/`
+5. `Docs/02_Memoria/`
+6. `operacion/`
+7. Documentacion del componente o tarea asignada.
+
 ---
 
 # Vision
@@ -154,4 +169,3 @@ El repositorio es público con fines de transparencia, documentación y colabora
 La disponibilidad pública del código fuente **no concede permisos** para copiar, modificar, redistribuir, crear trabajos derivados o explotar comercialmente el proyecto sin autorización expresa del titular de los derechos.
 
 Consulte el archivo `LICENSE` para más información.
-
