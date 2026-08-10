@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/Src/">
+    <Project Path="Src/Condor.Cli/Condor.Cli.csproj" />
+    <Project Path="Src/Condor.Core/Condor.Core.csproj" />
+    <Project Path="Src/Condor.Infrastructure/Condor.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/Tests/" />
+  <Folder Name="/Tests/Architecture/">
+    <Project Path="Tests/Architecture/Condor.Architecture.Tests/Condor.Architecture.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Tests/Integration/">
+    <Project Path="Tests/Integration/Condor.Infrastructure.Tests/Condor.Infrastructure.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Tests/Unit/">
+    <Project Path="Tests/Unit/Condor.Core.Tests/Condor.Core.Tests.csproj" />
+  </Folder>
+</Solution>

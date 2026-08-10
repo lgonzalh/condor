@@ -1,8 +1,8 @@
 # INVENTARIO_ARQUITECTURA
 
-Version: 1.0.0\
-Estado: Activo\
-Nivel: Global\
+Version: 1.1.0
+Estado: Activo
+Nivel: Global
 Clasificacion: Inventario Arquitectonico
 
 ------------------------------------------------------------------------
@@ -80,7 +80,7 @@ Actualizar
   --------- -------------- ----------------- -------------- ---------------------------------
   ARQ-001   Kernel Condor  Kernel            Planificado    KERNEL_CONDOR.md
 
-  ARQ-002   Assessment     Engine            Planificado    ASSESSMENT_ENGINE.md
+  ARQ-002   Assessment     Engine            Implementado   ASSESSMENT_ENGINE.md
             Engine                                          
 
   ARQ-003   Context Engine Engine            Planificado    CONTEXT_ENGINE.md
@@ -104,7 +104,7 @@ Actualizar
             Ciclo de Vida                                   
             de Artefactos                                   
 
-  ARQ-012   Interfaz CLI   Interfaz          Planificado    Nivel 07
+  ARQ-012   Interfaz CLI   Interfaz          En desarrollo  INTERFAZ.md
             Windows                                         
 
   ARQ-013   Integracion    Infraestructura   Especificado   ADN_CONDOR.md
@@ -113,6 +113,10 @@ Actualizar
   ARQ-014   Modelos LLM    Infraestructura   Especificado   ADN_CONDOR.md
             Locales                                         
   -------------------------------------------------------------------------------------------
+
+Nota: ARQ-002 fue implementado inicialmente mediante T-001. ARQ-012
+cuenta con una CLI inicial (identidad, estado y comando assess)
+pendiente de evolucion con los motores posteriores.
 
 ------------------------------------------------------------------------
 
@@ -143,4 +147,6 @@ Actualizar
 
   Version   Cambios
   --------- -------------------------------------------------------------
+  1.1.0     ARQ-002 pasa a Implementado y ARQ-012 a En desarrollo tras la
+            ejecucion de T-001 (bootstrap del MVP y Assessment inicial).
   1.0.0     Creacion del Inventario Arquitectonico del Proyecto Condor.
