@@ -1,6 +1,6 @@
 # KANBAN
 
-Version: 1.0.0
+Version: 1.1.0
 
 ## PENDIENTE
 
@@ -18,7 +18,7 @@ Version: 1.0.0
 
 ## EN PROGRESO
 
-- T-001 Bootstrap del MVP y Assessment inicial
+Ninguna.
 
 ## REVISION
 
@@ -26,4 +26,4 @@ Ninguna.
 
 ## COMPLETADO
 
-Ninguna.
+- T-001 Bootstrap del MVP y Assessment inicial

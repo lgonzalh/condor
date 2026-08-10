@@ -1,0 +1,17 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+# Resultados de pruebas
+TestResults/
+[Tt]est[Rr]esult*/
+
+# Estado local de Condor
+*.log
+
+# Editor
+.idea/
+.vscode/

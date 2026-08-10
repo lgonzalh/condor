@@ -96,13 +96,20 @@ condor/
 │   ├── KANBAN.md
 │   ├── REGISTRO_CAMBIOS.md
 │   └── TAREAS/
-│       └── T-001.md
 │
-├── resources/
-├── scripts/
-├── src/
-├── tests/
-└── tools/
+├── Assets/
+├── Samples/
+├── Scripts/
+├── Src/
+│   ├── Condor.Cli/
+│   ├── Condor.Core/
+│   └── Condor.Infrastructure/
+├── Tests/
+│   ├── Unit/
+│   ├── Integration/
+│   └── Architecture/
+│
+└── Condor.slnx
 ```
 
 ---

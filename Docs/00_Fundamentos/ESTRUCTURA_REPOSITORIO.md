@@ -1,6 +1,6 @@
 # ESTRUCTURA_REPOSITORIO
 
-Version: 1.0.0
+Version: 2.0.0
 Estado: Activo
 Nivel: Global
 Clasificacion: Arquitectura
@@ -24,67 +24,97 @@ La organizacion del repositorio debera facilitar la comprension por personas e I
 
 ---
 
-# Estructura inicial
+# Estructura vigente
 
 condor/
-
-├── conocimiento/
-│   ├── maestro/
-│   ├── protocolos/
-│   ├── directivas/
-│   ├── arquitectura/
-│   ├── desarrollo/
-│   ├── decisiones/
-│   └── niveles/
 │
-├── codigo/
+├── AGENTE_CONDOR.md
+├── ESTADO_PROYECTO.md
+├── INVENTARIO_PROYECTO.md
+├── README.md
+├── LICENSE
+├── NOTICE
 │
-├── pruebas/
+├── Docs/
+│   ├── 00_Fundamentos/
+│   ├── 01_Arquitectura_Ejecutable/
+│   ├── 02_Memoria/
+│   ├── 03_Planificacion/
+│   ├── 04_Razonamiento/
+│   ├── 05_Ejecucion/
+│   ├── 06_Herramientas/
+│   ├── 07_Interfaz/
+│   ├── 08_Calidad/
+│   └── 09_Evolucion/
 │
-├── herramientas/
+├── operacion/
+│   └── TAREAS/
 │
-├── recursos/
+├── Assets/
+├── Samples/
+├── Scripts/
+├── Src/
+├── Tests/
 │
-└── README.md
+└── Condor.slnx
 
 ---
 
 # Responsabilidad de cada carpeta
 
-## conocimiento
+## Docs
 
-Contiene el conocimiento permanente del proyecto.
+Contiene el conocimiento permanente del proyecto, organizado por niveles estructurales del 00 al 09.
 
-## codigo
+## operacion
 
-Implementacion del sistema Condor.
+Contiene el estado operativo del desarrollo y el mecanismo de continuidad entre agentes (ESTADO_DESARROLLO, RELEVO, BACKLOG, KANBAN, REGISTRO_CAMBIOS y TAREAS).
 
-## pruebas
+## Assets
 
-Pruebas funcionales, integracion y validacion.
+Activos visuales no ejecutables (imagenes, plantillas).
 
-## herramientas
+## Samples
 
-Recursos de apoyo al desarrollo.
+Ejemplos de uso y proyectos de muestra.
 
-## recursos
+## Scripts
 
-Imagenes, plantillas y demas activos no ejecutables.
+Scripts de apoyo al desarrollo y a la operacion.
+
+## Src
+
+Implementacion del sistema Condor (proyectos .NET del MVP 1.0).
+
+## Tests
+
+Pruebas unitarias, de integracion y de arquitectura.
 
 ---
 
 # Reglas
 
-- Ningun documento oficial se almacena fuera de conocimiento.
+- Ningun documento oficial se almacena fuera de Docs.
 - Ningun archivo se duplica entre carpetas.
-- Toda IA debe consultar primero conocimiento antes de modificar codigo.
+- Toda IA debe consultar primero Docs antes de modificar codigo.
 - Toda nueva carpeta debe tener un proposito claramente definido.
+- Los nombres de carpetas y archivos no utilizan tildes, acentos ni la letra n con tilde, conforme a la directiva operativa.
+- La estructura vigente se ajusta a la convencion efectivamente utilizada por el repositorio real y por los documentos de nivel.
 
 ---
 
 # Evolucion
 
 La estructura podra ampliarse sin romper esta organizacion base.
+
+---
+
+# Historial de cambios
+
+| Version | Cambios |
+|---------|---------|
+| 2.0.0 | Correccion de la estructura oficial para reflejar la estructura real del repositorio (Docs/00-09, operacion/, Src/, Tests/, Assets/, Samples/, Scripts/ y Condor.slnx). Se elimina la descripcion de una estructura previa (conocimiento/, codigo/, pruebas/, herramientas/, recursos/) que nunca existio en el repositorio. La discrepancia se registra en DEUDA_EVOLUTIVA.md. |
+| 1.0.0 | Version inicial con una estructura previa no materializada. |
 
 ---
 

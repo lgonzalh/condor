@@ -1,6 +1,6 @@
 # DEUDA_EVOLUTIVA
 
-Version: 1.0.1
+Version: 1.1.0
 Estado: Activo
 Nivel: 09 - Evolucion
 Clasificacion: Deuda Evolutiva
@@ -114,11 +114,18 @@ Cuando sea necesario tambien debera registrar:
 
 # REGISTRO
 
-Actualmente no existen elementos de deuda evolutiva formalmente registrados para el Nivel 09.
+## DE-001
 
-La ausencia de elementos en este registro no constituye un error ni requiere crear entradas artificiales.
-
-Cuando se identifique una deuda real que cumpla los criterios de este documento, debera incorporarse con su identificador y trazabilidad correspondientes.
+- Origen: Reconocimiento previo a T-001 (Agente Condor).
+- Componente o documento afectado: `Docs/00_Fundamentos/ESTRUCTURA_REPOSITORIO.md`.
+- Descripcion: El documento describia una estructura del repositorio (conocimiento/, codigo/, pruebas/, herramientas/, recursos/) que nunca existio en el historial del repositorio, en contradiccion con la estructura real (Docs/00-09, operacion/, Src/, Tests/, Assets/, Samples/, Scripts/).
+- Razon: Discrepancia documental entre una fuente oficial y el estado real del repositorio.
+- Impacto: Referencias inexistentes y orientacion incorrecta para agentes y personas.
+- Prioridad: Alta.
+- Estado: Resuelta.
+- Version objetivo: 2.0.0 de ESTRUCTURA_REPOSITORIO.md.
+- Resolucion: ESTRUCTURA_REPOSITORIO.md fue corregido a la version 2.0.0 describiendo la estructura vigente real. La correccion quedo registrada en el historial del propio documento y en DECISIONES.md (DEC-012).
+- Fecha de resolucion: 2026-08-10, durante la ejecucion de T-001.
 
 ---
 
@@ -240,5 +247,6 @@ Este documento se relaciona principalmente con:
 
 | Version | Cambios |
 |---------|---------|
+| 1.1.0 | Se incorpora DE-001 como deuda documental resuelta durante la ejecucion de T-001 (correccion de ESTRUCTURA_REPOSITORIO.md). |
 | 1.0.1 | Se elimina DE-001 por no corresponder a una deuda evolutiva real identificada. Se establece que el registro puede permanecer vacio y no deben crearse entradas artificiales. |
 | 1.0.0 | Creacion del registro de deuda evolutiva del Proyecto Condor para el Nivel 09. |

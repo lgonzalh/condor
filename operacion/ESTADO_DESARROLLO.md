@@ -1,30 +1,44 @@
 # ESTADO_DESARROLLO
 
-Version: 1.0.0
-Estado: Inicial
+Version: 1.1.0
+Estado: Activo
 Modo: Evolucion Continua
 MVP: Condor 1.0
 
 ## Estado actual
 
-Condor se encuentra en preparacion para la implementacion del MVP.
+Condor 1.0 cuenta con una primera base ejecutable para Windows.
 
-La documentacion fundacional y arquitectonica existe. El siguiente objetivo es convertir la arquitectura definida en un producto local ejecutable para Windows.
+T-001 fue completada: la CLI inicial y el Assessment local funcionan, la deteccion del entorno es 100% local y el resultado estructurado queda disponible para los siguientes componentes.
+
+La tecnologia de implementacion es .NET 10 / C# (decision registrada en DECISIONES.md DEC-007). Los contratos permanecen agnosticos a la tecnologia.
 
 ## Objetivo inmediato
 
-Construir una primera version funcional que permita:
+La siguiente tarea es:
 
-1. Ejecutarse localmente en Windows.
-2. Detectar el entorno del usuario.
-3. Analizar hardware y capacidades disponibles.
-4. Detectar herramientas y modelos locales.
-5. Recomendar una estrategia de modelos LLM compatible.
-6. Integrarse localmente con Ollama.
-7. Recibir una intencion del usuario desde terminal.
-8. Descubrir el proyecto objetivo.
-9. Preparar el contexto necesario para planificar una tarea.
-10. Mantener el estado para permitir continuidad.
+`operacion/TAREAS/T-002.md`
+
+Integracion local con Ollama: Condor debe detectar Ollama, consultar modelos disponibles y ejecutar una inferencia local.
+
+El Assessment ya detecta Ollama y los modelos disponibles; T-002 debe consumir esa informacion sin romper el contrato de Condor.Core.
+
+## Estado por tarea
+
+| ID | Estado |
+|---|---|
+| T-001 Bootstrap del MVP y Assessment inicial | Completada |
+| T-002 Integracion local con Ollama | Pendiente |
+| T-003 Recomendador de modelos | Pendiente |
+| T-004 Descubrimiento de proyecto | Pendiente |
+| T-005 Context Engine inicial | Pendiente |
+| T-006 Flujo de intencion a plan | Pendiente |
+| T-007 Builder inicial | Pendiente |
+| T-008 Verificacion inicial | Pendiente |
+| T-009 Documentacion y continuidad | Pendiente |
+| T-010 Capacidades avanzadas de desarrollo | Pendiente |
+| T-011 Vision local | Pendiente |
+| T-012 Instalador/puesta en marcha simplificada | Pendiente |
 
 ## Restricciones MVP 1.0
 
@@ -47,8 +61,8 @@ Construir una primera version funcional que permita:
 
 ## Punto exacto de continuidad
 
-La primera tarea de implementacion es `T-001`.
+T-001 completada. La siguiente tarea de implementacion es `T-002`.
 
 ## Siguiente accion
 
-Ejecutar `operacion/TAREAS/T-001.md`.
+Ejecutar `operacion/TAREAS/T-002.md`.
