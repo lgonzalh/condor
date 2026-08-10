@@ -1,6 +1,6 @@
 # AGENTE_CONDOR
 
-Version: 1.0.0
+Version: 1.1.0
 Estado: Base operativa
 Clasificacion: Contrato transversal de agentes
 
@@ -25,13 +25,13 @@ Un agente debe poder entrar, trabajar, verificar y salir dejando el proyecto en 
 
 Antes de modificar codigo, el agente debe:
 
-1. Leer `CONDOR_CONTEXTO_MAESTRO.md`.
-2. Leer `ADN_CONDOR.md`.
-3. Leer `DIRECTIVA_GLOBAL.md`.
-4. Leer `DIRECTIVA_OPERATIVA_PROYECTO_CONDOR.md`.
-5. Leer `ESTADO_PROYECTO.md`.
-6. Leer `PATRIMONIO_CONOCIMIENTO.md`.
-7. Leer `INVENTARIO_ARQUITECTURA.md`.
+1. Leer `ESTADO_PROYECTO.md`.
+2. Leer `Docs/00_Fundamentos/CONDOR_CONTEXTO_MAESTRO.md`.
+3. Leer `Docs/00_Fundamentos/ADN_CONDOR.md`.
+4. Leer `Docs/00_Fundamentos/DIRECTIVA_GLOBAL.md`.
+5. Leer `Docs/00_Fundamentos/DIRECTIVA_OPERATIVA_PROYECTO_CONDOR.md`.
+6. Leer `Docs/00_Fundamentos/PATRIMONIO_CONOCIMIENTO.md`.
+7. Leer `Docs/02_Memoria/INVENTARIO_ARQUITECTURA.md`.
 8. Leer `operacion/ESTADO_DESARROLLO.md`.
 9. Leer `operacion/RELEVO.md`.
 10. Leer `operacion/BACKLOG.md`.
