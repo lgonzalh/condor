@@ -1,6 +1,6 @@
 # AUDITORIA
 
-Version: 1.0.0
+Version: 1.0.1
 Estado: Activo
 Nivel: 09 - Evolucion
 Clasificacion: Auditoria
@@ -24,6 +24,7 @@ La auditoria puede evaluar:
 - arquitectura;
 - documentacion;
 - estado del proyecto;
+- inventario documental;
 - trazabilidad;
 - calidad;
 - compatibilidad;
@@ -147,9 +148,12 @@ Antes de una auditoria deberan identificarse:
 - criterios aplicables;
 - versiones vigentes;
 - dependencias;
-- estado oficial del proyecto.
+- estado oficial del proyecto;
+- inventario documental vigente.
 
 La fuente oficial para determinar el nivel activo es `ESTADO_PROYECTO.md`.
+
+El inventario oficial de artefactos es `INVENTARIO_PROYECTO.md`.
 
 ---
 
@@ -184,7 +188,19 @@ Verificar:
 - dependencias validas;
 - historial conservado.
 
-## 4. Arquitectura
+## 4. Inventario
+
+Verificar:
+
+- correspondencia entre documentos realmente entregados e inventario;
+- ausencia de documentos existentes sin registrar;
+- ausencia de documentos marcados como planificados cuando ya fueron entregados;
+- consistencia entre version, estado y clasificacion;
+- correspondencia entre el inventario y la linea documental del nivel.
+
+El inventario no determina el nivel activo.
+
+## 5. Arquitectura
 
 Verificar:
 
@@ -193,7 +209,7 @@ Verificar:
 - ausencia de contradicciones arquitectonicas;
 - respeto de niveles congelados.
 
-## 5. Trazabilidad
+## 6. Trazabilidad
 
 Verificar la cadena aplicable:
 
@@ -247,9 +263,9 @@ Documentacion
 
 Version
 
-Esta cadena debe utilizarse de acuerdo con `TRAZABILIDAD.md`.
+Esta cadena debe utilizarse de acuerdo con los mecanismos de trazabilidad vigentes del proyecto.
 
-## 6. Calidad
+## 7. Calidad
 
 Verificar:
 
@@ -262,7 +278,7 @@ Verificar:
 
 La autoauditoria puede utilizarse antes de una auditoria formal cuando las capacidades disponibles lo permitan.
 
-## 7. Evolucion
+## 8. Evolucion
 
 Verificar:
 
@@ -273,7 +289,7 @@ Verificar:
 - deuda registrada;
 - roadmap coherente.
 
-## 8. Continuidad
+## 9. Continuidad
 
 Verificar:
 
@@ -374,6 +390,61 @@ La auditoria no modifica automaticamente estos registros. El hallazgo debe conse
 
 ---
 
+# SINCRONIZACION DOCUMENTAL
+
+La auditoria debera distinguir entre:
+
+- artefactos entregados durante un nivel;
+- estado operativo del nivel;
+- inventario de artefactos;
+- cierre formal del nivel.
+
+La entrega de un artefacto no implica por si misma el cierre del nivel.
+
+`ESTADO_PROYECTO.md` se actualiza como parte del cierre formal del nivel mediante `condorcerrar`.
+
+`INVENTARIO_PROYECTO.md` debera actualizarse durante `condorcerrar` para reflejar el conjunto definitivo de artefactos entregados y su estado posterior al cierre.
+
+Por tanto:
+
+Entrega
+
+↓
+
+Revision
+
+↓
+
+Correcciones
+
+↓
+
+Congelamiento
+
+↓
+
+Condorcerrar
+
+↓
+
+Actualizar ESTADO_PROYECTO
+
+↓
+
+Actualizar INVENTARIO_PROYECTO
+
+↓
+
+Cerrar nivel
+
+↓
+
+Activar siguiente nivel
+
+Esta secuencia evita que los documentos de control global queden desincronizados respecto de los entregables reales.
+
+---
+
 # RESULTADO DE LA AUDITORIA
 
 Una auditoria debera concluir con uno de los siguientes resultados:
@@ -432,7 +503,9 @@ Debe buscar como minimo:
 - inconsistencias arquitectonicas;
 - inconsistencias documentales;
 - errores evidentes;
-- trazabilidad incompleta.
+- trazabilidad incompleta;
+- desincronizacion entre artefactos e inventario;
+- desincronizacion entre el estado operativo y los artefactos entregados.
 
 La autoauditoria reduce defectos detectables, pero no sustituye la auditoria formal ni la decision de aceptacion.
 
@@ -450,6 +523,8 @@ La autoauditoria reduce defectos detectables, pero no sustituye la auditoria for
 8. Los hallazgos deben evaluarse segun impacto real.
 9. La auditoria debe dejar el proyecto mas comprensible que antes.
 10. La auditoria debe facilitar la continuidad.
+11. La entrega de documentos no equivale al cierre de un nivel.
+12. El cierre de un nivel debe sincronizar `ESTADO_PROYECTO.md` e `INVENTARIO_PROYECTO.md`.
 
 ---
 
@@ -462,10 +537,10 @@ Este documento se relaciona principalmente con:
 - VERSIONADO.md
 - MIGRACION.md
 - COMPATIBILIDAD.md
-- TRAZABILIDAD.md
-- CALIDAD.md
 - REGISTRO_DEUDA_ARQUITECTONICA.md
+- DEUDA_EVOLUTIVA.md
 - ESTADO_PROYECTO.md
+- INVENTARIO_PROYECTO.md
 - DIRECTIVA_OPERATIVA_PROYECTO_CONDOR.md
 
 ---
@@ -474,4 +549,5 @@ Este documento se relaciona principalmente con:
 
 | Version | Cambios |
 |---------|---------|
+| 1.0.1 | Se incorpora la auditoria del inventario y la regla de sincronizacion durante `condorcerrar` entre los artefactos entregados, `INVENTARIO_PROYECTO.md` y `ESTADO_PROYECTO.md`. Se eliminan referencias no establecidas a `TRAZABILIDAD.md` y `CALIDAD.md`. |
 | 1.0.0 | Creacion del marco de auditoria del Proyecto Condor para el Nivel 09. |
