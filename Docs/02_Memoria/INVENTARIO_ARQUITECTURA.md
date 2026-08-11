@@ -1,6 +1,6 @@
 # INVENTARIO_ARQUITECTURA
 
-Version: 1.2.0
+Version: 1.4.0
 Estado: Activo
 Nivel: Global
 Clasificacion: Inventario Arquitectonico
@@ -112,12 +112,15 @@ Actualizar
 
   ARQ-014   Modelos LLM    Infraestructura   Especificado   ADN_CONDOR.md
             Locales                                         
+
+  ARQ-015   Recomendador   Servicio          Implementado   DECISIONES.md
+            de Modelos                                       
   -------------------------------------------------------------------------------------------
 
 Nota: ARQ-002 fue implementado inicialmente mediante T-001. ARQ-012
-cuenta con una CLI inicial (identidad, estado, assess y ask) pendiente
+cuenta con una CLI inicial (identidad, estado, analizar y consultar) pendiente
 de evolucion con los motores posteriores. ARQ-013 fue implementado
-mediante T-002 (OllamaClient local y comando ask).
+mediante T-002 (OllamaClient local y comando consultar). ARQ-015 fue implementado mediante T-003 (ModelRecommender, ModelRoleClassifier, ModelMemoryBudget y comando recomendar). El contrato publico de la CLI fue corregido al espanol por DEC-025.
 
 ------------------------------------------------------------------------
 
@@ -132,6 +135,9 @@ mediante T-002 (OllamaClient local y comando ask).
 -   Guardian protege la coherencia del proyecto.
 -   La integracion con Ollama (ARQ-013) consume el Assessment (ARQ-002)
     para seleccionar el modelo y ejecuta la inferencia local.
+-   El Recomendador de Modelos (ARQ-015) consume el Assessment (ARQ-002)
+    y el inventario de Ollama (ARQ-013) para producir una recomendacion
+    explicable.
 
 ------------------------------------------------------------------------
 
@@ -150,6 +156,11 @@ mediante T-002 (OllamaClient local y comando ask).
 
   Version   Cambios
   --------- -------------------------------------------------------------
+  1.4.0     Se actualizan las referencias al contrato CLI tras la
+            correccion DEC-025 (analizar, consultar, recomendar, ayuda).
+  1.3.0     Se incorpora ARQ-015 (Recomendador de Modelos) tras la
+            ejecucion de T-003, con la logica pura en Condor.Core y el
+            comando condor recommend en la CLI.
   1.2.0     ARQ-013 pasa a Implementado tras la ejecucion de T-002
             (OllamaClient local y comando ask). Se actualiza la nota y
             la relacion con ARQ-002.

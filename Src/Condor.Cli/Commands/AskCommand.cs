@@ -14,8 +14,15 @@ public static class AskCommand
         CancellationToken cancellationToken = default)
     {
         var list = args.ToList();
+
+        if (list.Any(argument => argument.Equals("--model", StringComparison.OrdinalIgnoreCase)))
+        {
+            Terminal.WriteError("El argumento '--model' ya no se usa. Usa '--modelo <modelo>'.");
+            return 1;
+        }
+
         var modelIndex = list.FindIndex(argument =>
-            argument.Equals("--model", StringComparison.OrdinalIgnoreCase));
+            argument.Equals("--modelo", StringComparison.OrdinalIgnoreCase));
 
         string? explicitModel = null;
         if (modelIndex >= 0 && modelIndex + 1 < list.Count)
@@ -28,7 +35,7 @@ public static class AskCommand
         var prompt = string.Join(" ", list).Trim();
         if (string.IsNullOrWhiteSpace(prompt))
         {
-            Terminal.WriteError("Uso: condor ask \"<mensaje>\" [--model <modelo>]");
+            Terminal.WriteError("Uso: condor consultar \"<mensaje>\" [--modelo <modelo>]");
             return 1;
         }
 
@@ -38,7 +45,7 @@ public static class AskCommand
         if (string.IsNullOrWhiteSpace(model))
         {
             Terminal.WriteError("No hay un modelo disponible.");
-            Terminal.WriteDim("Ejecuta 'condor assess' para detectar los modelos o especifica uno con --model.");
+            Terminal.WriteDim("Ejecuta 'condor analizar' para detectar los modelos o especifica uno con --modelo.");
             return 1;
         }
 

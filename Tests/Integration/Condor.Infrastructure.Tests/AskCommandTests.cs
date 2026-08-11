@@ -44,6 +44,23 @@ public class AskCommandTests
         Assert.False(llmClient.FueUsado);
     }
 
+    [Fact]
+    public async Task ExecuteAsync_CuandoSeUsaElArgumentoInglesModel_DevuelveErrorSinLlamarAlCliente()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "condor-tests-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        var stateStore = new LocalStateStore(directory);
+        var llmClient = new LlmClientQueFallaSiSeUsa();
+
+        var exitCode = await AskCommand.ExecuteAsync(
+            llmClient,
+            stateStore,
+            new[] { "hola", "--model", "qwen3:8b" });
+
+        Assert.Equal(1, exitCode);
+        Assert.False(llmClient.FueUsado);
+    }
+
     private class LlmClientQueFallaSiSeUsa : ILlmClient
     {
         public bool FueUsado { get; private set; }

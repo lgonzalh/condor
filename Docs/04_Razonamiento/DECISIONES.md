@@ -1,6 +1,6 @@
 # DECISIONES
 
-Version: 1.2.0
+Version: 1.4.0
 Estado: Activo
 Nivel: 04 - Diseno
 Clasificacion: Decisiones Arquitectonicas
@@ -234,7 +234,7 @@ para ejecutar una inferencia local mediante Ollama, coherente con la interfaz de
 El comando es minimo y no interactivo; los flujos conversacionales completos pertenecen a tareas posteriores.
 
 Estado:
-Aceptada.
+Aceptada. Actualizada por DEC-025 (correccion del contrato publico al espanol).
 
 Origen:
 T-002.
@@ -336,10 +336,148 @@ T-002.
 
 ---
 
+# DEC-019
+
+Titulo:
+Campos de ModelInfo ampliados para la recomendacion.
+
+Decision:
+`ModelInfo` incorpora de forma aditiva los campos `ContextLength`, `Capabilities`, `ParameterSize` y `Quantization` (normalizado) para describir el inventario real de Ollama.
+
+La ampliacion es compatible con el esquema `AssessmentResult` 1.0.0 (DEC-009) y no modifica los campos existentes.
+
+Estado:
+Aceptada.
+
+Origen:
+T-003.
+
+---
+
+# DEC-020
+
+Titulo:
+Mapeo normalizado de la respuesta de Ollama /api/tags.
+
+Decision:
+El inventario de modelos de Ollama se consume mediante el parser `OllamaTagsParser` (Infrastructure), que mapea el formato snake_case real de la API (`parameter_size`, `quantization_level`, `context_length`, `capabilities`) y admite tanto el objeto `models` como el arreglo plano que emite `ollama list --format json`.
+
+Un modelo con datos parciales no descarta el resto del inventario.
+
+Estado:
+Aceptada.
+
+Origen:
+T-003.
+
+---
+
+# DEC-021
+
+Titulo:
+Recomendador como logica pura en Condor.Core.
+
+Decision:
+El recomendador (`ModelRecommender`) y sus componentes de evaluacion (`ModelRoleClassifier`, `ModelMemoryBudget`) residen en `Condor.Core.Evaluation` y son logica pura: no realizan I/O, no dependen de infraestructura ni de frameworks.
+
+Reciben el `AssessmentResult` persistido y producen `ModelRecommendationResult`.
+
+Estado:
+Aceptada.
+
+Origen:
+T-003.
+
+---
+
+# DEC-022
+
+Titulo:
+Heuristica de memoria ajustable y calibrada.
+
+Decision:
+La viabilidad por memoria se calcula con `ModelMemoryBudget`: pico estimado = tamano del modelo x 1,2; presupuesto = maximo entre (RAM libre - reserva) y (RAM total x 0,45).
+
+Los factores son constantes publicas aisladas para calibrarse en el futuro con mediciones reales. La calibracion inicial se realizo con el equipo de desarrollo real, donde un modelo 7B Q4 (4,36 GB) es viable y un 8B queda al limite.
+
+Estado:
+Aceptada.
+
+Origen:
+T-003.
+
+---
+
+# DEC-023
+
+Titulo:
+Comando condor recommend con proposito.
+
+Decision:
+T-003 introduce el comando:
+
+`condor recommend [--purpose <tipo>]`
+
+con tipos `development` (por defecto), `general` y `vision`. La recomendacion lee el Assessment persistido, no descarga modelos y no cambia la seleccion de `condor ask`.
+
+Estado:
+Aceptada. Actualizada por DEC-025 (correccion del contrato publico al espanol).
+
+Origen:
+T-003.
+
+---
+
+# DEC-024
+
+Titulo:
+Prioridad de compatibilidad sobre tamano en la recomendacion.
+
+Decision:
+La recomendacion puntua candidatos viables con pesos por proposito (compatibilidad 35%, desarrollo 30%, memoria 20%, funcional 10% y estabilidad 5% para development) y no asume que el modelo mas grande es el mejor.
+
+Los modelos que superan el presupuesto de memoria quedan descartados con su motivo; el resultado incluye motivos, alternativas y limitaciones.
+
+Estado:
+Aceptada.
+
+Origen:
+T-003.
+
+---
+
+# DEC-025
+
+Titulo:
+Correccion del contrato CLI al espanol sin tildes.
+
+Decision:
+El contrato publico de la CLI se traduce al espanol latinoamericano sin tildes conforme a la regla fundacional de idioma:
+
+- `condor analizar [--json]` reemplaza a `condor assess [--json]`.
+- `condor consultar "<mensaje>" [--modelo <modelo>]` reemplaza a `condor ask "<mensaje>" [--model <modelo>]`.
+- `condor recomendar [--proposito <tipo>]` reemplaza a `condor recommend [--purpose <tipo>]`.
+- `condor ayuda` reemplaza a `condor help`.
+- `condor version` se conserva (palabra espanola sin tilde).
+- Los valores publicos de proposito son `desarrollo`, `general` y `vision`.
+- Se mantienen los alias tecnicos universales `-h`, `--help`, `-v`, `--version` y `--json`.
+
+Los nombres internos (clases, metodos, namespaces y claves de `assessment.json`) no se modifican. Los comandos y argumentos ingleses previos dejan de ser contrato publico valido; los argumentos `--model` y `--purpose` se rechazan con un mensaje que indica su reemplazo.
+
+Estado:
+Aceptada.
+
+Origen:
+Auditoria del contrato CLI previa a continuar T-003. Correccion transversal, no constituye una tarea funcional nueva.
+
+---
+
 # Historial de Cambios
 
 | Version | Cambio |
 |---------|--------|
+| 1.4.0 | Se incorpora DEC-025 (correccion del contrato CLI al espanol) y se actualizan DEC-013 y DEC-023. |
+| 1.3.0 | Se incorporan DEC-019 a DEC-024 correspondientes a las decisiones aprobadas para T-003. |
 | 1.2.0 | Se incorporan DEC-013 a DEC-018 correspondientes a las decisiones aprobadas para T-002. |
 | 1.1.0 | Se incorporan DEC-007 a DEC-012 correspondientes a las decisiones aprobadas para T-001. |
 | 1.0.0 | Primera version. |

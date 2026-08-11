@@ -57,7 +57,7 @@ public class OllamaClient : ILlmClient
                 return new LlmResponse
                 {
                     Success = false,
-                    Error = "El modelo '" + request.Model + "' no existe en el servidor de Ollama. Usa 'condor assess' para ver los modelos disponibles."
+                    Error = "El modelo '" + request.Model + "' no existe en el servidor de Ollama. Usa 'condor analizar' para ver los modelos disponibles."
                 };
             }
 

@@ -64,22 +64,11 @@ public class OllamaDetector
     {
         try
         {
-            var response = await http.GetFromJsonAsync<OllamaTagsResponse>(
-                ApiBase + "/api/tags",
-                cancellationToken);
-
-            if (response?.Models is not null)
+            var json = await http.GetStringAsync(ApiBase + "/api/tags", cancellationToken);
+            var models = OllamaTagsParser.Parse(json);
+            if (models.Count > 0)
             {
-                status.Models = response.Models
-                    .Select(model => new ModelInfo
-                    {
-                        Name = model.Name ?? "",
-                        SizeBytes = model.Size ?? 0,
-                        Family = model.Details?.Family,
-                        ParameterSize = model.Details?.ParameterSize,
-                        Quantization = model.Details?.QuantizationLevel
-                    })
-                    .ToList();
+                status.Models = models;
             }
         }
         catch
@@ -101,58 +90,116 @@ public class OllamaDetector
             return;
         }
 
+        var models = OllamaTagsParser.Parse(output);
+        if (models.Count > 0)
+        {
+            status.Models = models;
+            status.ServerRunning = true;
+            status.Note = "Modelos detectados mediante el ejecutable local de Ollama";
+        }
+    }
+}
+
+internal static class OllamaTagsParser
+{
+    public static List<ModelInfo> Parse(string json)
+    {
+        var models = new List<ModelInfo>();
+
         try
         {
-            using var document = JsonDocument.Parse(output);
+            using var document = JsonDocument.Parse(json);
             var root = document.RootElement;
 
-            var models = new List<ModelInfo>();
-            if (root.ValueKind == JsonValueKind.Array)
+            var array = root.ValueKind == JsonValueKind.Array
+                ? root
+                : root.TryGetProperty("models", out var modelsProperty) ? modelsProperty : default;
+
+            if (array.ValueKind != JsonValueKind.Array)
             {
-                foreach (var item in root.EnumerateArray())
-                {
-                    var name = OsDetector.ReadString(item, "name");
-                    if (!string.IsNullOrWhiteSpace(name))
-                    {
-                        models.Add(new ModelInfo { Name = name });
-                    }
-                }
+                return models;
             }
 
-            if (models.Count > 0)
+            foreach (var item in array.EnumerateArray())
             {
-                status.Models = models;
-                status.ServerRunning = true;
-                status.Note = "Modelos detectados mediante el ejecutable local de Ollama";
+                var name = ReadString(item, "name");
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    continue;
+                }
+
+                var details = ReadObject(item, "details");
+                models.Add(new ModelInfo
+                {
+                    Name = name,
+                    SizeBytes = ReadLong(item, "size"),
+                    Family = details is null ? null : ReadString(details.Value, "family"),
+                    ParameterSize = details is null ? null : ReadString(details.Value, "parameter_size"),
+                    Quantization = details is null ? null : ReadString(details.Value, "quantization_level"),
+                    ContextLength = details is null ? null : ReadLongNullable(details.Value, "context_length"),
+                    Capabilities = ReadStringList(item, "capabilities")
+                });
             }
         }
         catch
         {
-            // El formato del ejecutable pudo variar entre versiones.
+            // El formato de la respuesta pudo variar entre versiones.
         }
+
+        return models;
+    }
+
+    private static string? ReadString(JsonElement element, string propertyName)
+    {
+        if (element.ValueKind != JsonValueKind.Object) return null;
+        if (!element.TryGetProperty(propertyName, out var value) || value.ValueKind != JsonValueKind.String) return null;
+        return value.GetString();
+    }
+
+    private static long ReadLong(JsonElement element, string propertyName)
+    {
+        if (element.ValueKind != JsonValueKind.Object) return 0;
+        if (!element.TryGetProperty(propertyName, out var value) || value.ValueKind != JsonValueKind.Number) return 0;
+        return value.TryGetInt64(out var parsed) ? parsed : 0;
+    }
+
+    private static long? ReadLongNullable(JsonElement element, string propertyName)
+    {
+        if (element.ValueKind != JsonValueKind.Object) return null;
+        if (!element.TryGetProperty(propertyName, out var value) || value.ValueKind != JsonValueKind.Number) return null;
+        return value.TryGetInt64(out var parsed) ? parsed : null;
+    }
+
+    private static JsonElement? ReadObject(JsonElement element, string propertyName)
+    {
+        if (element.ValueKind != JsonValueKind.Object) return null;
+        if (!element.TryGetProperty(propertyName, out var value) || value.ValueKind != JsonValueKind.Object) return null;
+        return value;
+    }
+
+    private static List<string> ReadStringList(JsonElement element, string propertyName)
+    {
+        var list = new List<string>();
+        if (element.ValueKind != JsonValueKind.Object) return list;
+        if (!element.TryGetProperty(propertyName, out var value) || value.ValueKind != JsonValueKind.Array) return list;
+
+        foreach (var item in value.EnumerateArray())
+        {
+            if (item.ValueKind == JsonValueKind.String)
+            {
+                var text = item.GetString();
+                if (!string.IsNullOrWhiteSpace(text))
+                {
+                    list.Add(text);
+                }
+            }
+        }
+
+        return list;
     }
 }
 
 internal class OllamaVersionResponse
 {
     public string? Version { get; set; }
-}
-
-internal class OllamaTagsResponse
-{
-    public List<OllamaModelResponse>? Models { get; set; }
-}
-
-internal class OllamaModelResponse
-{
-    public string? Name { get; set; }
-    public long? Size { get; set; }
-    public OllamaModelDetailsResponse? Details { get; set; }
-}
-
-internal class OllamaModelDetailsResponse
-{
-    public string? Family { get; set; }
-    public string? ParameterSize { get; set; }
-    public string? QuantizationLevel { get; set; }
 }
