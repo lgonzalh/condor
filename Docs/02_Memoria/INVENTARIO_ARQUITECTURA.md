@@ -1,6 +1,6 @@
 # INVENTARIO_ARQUITECTURA
 
-Version: 1.1.0
+Version: 1.2.0
 Estado: Activo
 Nivel: Global
 Clasificacion: Inventario Arquitectonico
@@ -107,7 +107,7 @@ Actualizar
   ARQ-012   Interfaz CLI   Interfaz          En desarrollo  INTERFAZ.md
             Windows                                         
 
-  ARQ-013   Integracion    Infraestructura   Especificado   ADN_CONDOR.md
+  ARQ-013   Integracion    Infraestructura   Implementado   ADN_CONDOR.md
             con Ollama                                      
 
   ARQ-014   Modelos LLM    Infraestructura   Especificado   ADN_CONDOR.md
@@ -115,8 +115,9 @@ Actualizar
   -------------------------------------------------------------------------------------------
 
 Nota: ARQ-002 fue implementado inicialmente mediante T-001. ARQ-012
-cuenta con una CLI inicial (identidad, estado y comando assess)
-pendiente de evolucion con los motores posteriores.
+cuenta con una CLI inicial (identidad, estado, assess y ask) pendiente
+de evolucion con los motores posteriores. ARQ-013 fue implementado
+mediante T-002 (OllamaClient local y comando ask).
 
 ------------------------------------------------------------------------
 
@@ -129,6 +130,8 @@ pendiente de evolucion con los motores posteriores.
 -   Verifier valida resultados antes de documentar.
 -   Documenter genera artefactos permanentes.
 -   Guardian protege la coherencia del proyecto.
+-   La integracion con Ollama (ARQ-013) consume el Assessment (ARQ-002)
+    para seleccionar el modelo y ejecuta la inferencia local.
 
 ------------------------------------------------------------------------
 
@@ -147,6 +150,9 @@ pendiente de evolucion con los motores posteriores.
 
   Version   Cambios
   --------- -------------------------------------------------------------
+  1.2.0     ARQ-013 pasa a Implementado tras la ejecucion de T-002
+            (OllamaClient local y comando ask). Se actualiza la nota y
+            la relacion con ARQ-002.
   1.1.0     ARQ-002 pasa a Implementado y ARQ-012 a En desarrollo tras la
             ejecucion de T-001 (bootstrap del MVP y Assessment inicial).
   1.0.0     Creacion del Inventario Arquitectonico del Proyecto Condor.

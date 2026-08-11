@@ -5,4 +5,6 @@ namespace Condor.Core.Contracts;
 public interface IStateStore
 {
     Task SaveAssessmentAsync(AssessmentResult result, CancellationToken cancellationToken = default);
+
+    Task<AssessmentResult?> LoadAssessmentAsync(CancellationToken cancellationToken = default);
 }

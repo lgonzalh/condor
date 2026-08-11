@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\Src\Condor.Cli\Condor.Cli.csproj" />
     <ProjectReference Include="..\..\..\Src\Condor.Core\Condor.Core.csproj" />
     <ProjectReference Include="..\..\..\Src\Condor.Infrastructure\Condor.Infrastructure.csproj" />
   </ItemGroup>
