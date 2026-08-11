@@ -1,6 +1,6 @@
 # INVENTARIO_ARQUITECTURA
 
-Version: 1.4.0
+Version: 1.5.0
 Estado: Activo
 Nivel: Global
 Clasificacion: Inventario Arquitectonico
@@ -156,6 +156,8 @@ mediante T-002 (OllamaClient local y comando consultar). ARQ-015 fue implementad
 
   Version   Cambios
   --------- -------------------------------------------------------------
+  1.5.0     Se confirma ARQ-015 integrado en main tras el cierre de
+            T-003 (PR #1, merge 12a3c5b). T-003 queda cerrada.
   1.4.0     Se actualizan las referencias al contrato CLI tras la
             correccion DEC-025 (analizar, consultar, recomendar, ayuda).
   1.3.0     Se incorpora ARQ-015 (Recomendador de Modelos) tras la

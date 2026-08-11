@@ -1,6 +1,6 @@
 # REGISTRO_CAMBIOS
 
-Version: 1.3.0
+Version: 1.4.0
 Estado: Activo
 
 | ID | Fecha | Tarea | Cambio | Resultado | Commit |
@@ -12,13 +12,14 @@ Estado: Activo
 | CH-005 | 2026-08-10 | T-002 | Integracion en main | Completado | e558efd36f4369cfd69a04887f43cbfef9fb2136 |
 | CH-006 | 2026-08-11 | T-003 | Recomendador de modelos (ModelRecommender, condor recommend, mapeo de /api/tags) | Completado en rama, pendiente de integracion | - |
 | CH-007 | 2026-08-11 | Correccion transversal | Contrato CLI al espanol sin tildes (analizar, consultar, recomendar, ayuda; --modelo, --proposito; DEC-025) | Completado en rama, pendiente de integracion | - |
+| CH-008 | 2026-08-11 | T-003 | Integracion en main mediante PR #1 y cierre documental de la tarea | Completado | 12a3c5b031da00f36d32a6f66322bcc1392573d9 |
 
 ## Estado
 
-T-001 y T-002 completadas y publicadas.
+T-001, T-002 y T-003 completadas, integradas en `main` y publicadas.
 
-T-003 implementada y verificada en la rama `feature/T-003-model-recommender`, pendiente de revision e integracion.
+T-003 fue integrada mediante PR #1 (merge `12a3c5b031da00f36d32a6f66322bcc1392573d9`) y queda cerrada y congelada.
 
-Correccion del contrato CLI aplicada en la rama (DEC-025): `analizar`, `consultar`, `recomendar`, `ayuda`, `--modelo` y `--proposito`.
+Correccion del contrato CLI (DEC-025) integrada: `analizar`, `consultar`, `recomendar`, `ayuda`, `--modelo` y `--proposito`.
 
 Siguiente tarea: T-004.

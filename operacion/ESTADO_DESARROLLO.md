@@ -1,15 +1,15 @@
 # ESTADO_DESARROLLO
 
-Version: 1.2.0
+Version: 1.3.0
 Estado: Activo
 Modo: Evolucion Continua
 MVP: Condor 1.0
 
 ## Estado actual
 
-Condor 0.1.0 cuenta con T-001 y T-002 completadas, verificadas e integradas en `main`.
+Condor 0.1.0 cuenta con T-001, T-002 y T-003 completadas, verificadas, integradas en `main` y publicadas.
 
-T-003 (Recomendador de modelos) esta implementada y verificada en la rama `feature/T-003-model-recommender`, pendiente de revision e integracion.
+T-003 (Recomendador de modelos) fue integrada mediante PR #1 (merge `12a3c5b031da00f36d32a6f66322bcc1392573d9`) y queda cerrada y congelada.
 
 ## Estado funcional
 
@@ -43,15 +43,13 @@ Condor puede:
 ## Estado Git
 
 Ultimo estado conocido de `main`:
-`e558efd36f4369cfd69a04887f43cbfef9fb2136`
+`12a3c5b031da00f36d32a6f66322bcc1392573d9`
 
-T-001 y T-002 estan integradas y publicadas.
-
-T-003 implementada en `feature/T-003-model-recommender` (sin commits autorizados aun).
+T-001, T-002 y T-003 estan integradas y publicadas.
 
 ## Siguiente tarea
 
-Integracion de T-003 en `main`; luego `T-004 - Descubrimiento de proyecto`.
+`T-004 - Descubrimiento de proyecto` (referencia conservada; sin definicion formal aun).
 
 ## Secuencia prevista
 

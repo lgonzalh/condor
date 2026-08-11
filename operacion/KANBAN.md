@@ -1,6 +1,6 @@
 # KANBAN
 
-Version: 1.2.0
+Version: 1.3.0
 
 ## PENDIENTE
 
@@ -20,9 +20,10 @@ Ninguna.
 
 ## REVISION
 
-- T-003 Recomendador de modelos
+Ninguna.
 
 ## COMPLETADO
 
 - T-001 Bootstrap del MVP y Assessment inicial
 - T-002 Integracion local con Ollama
+- T-003 Recomendador de modelos

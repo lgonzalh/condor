@@ -1,18 +1,21 @@
 # RELEVO
 
-Version: 1.2.0
+Version: 1.3.0
 Estado: Activo
 
 ## Ultimo trabajo
 
-T-003 - Recomendador de modelos.
+T-003 - Recomendador de modelos (cerrada e integrada).
 
 ## Estado
 
-T-003 implementada y verificada en la rama `feature/T-003-model-recommender`, pendiente de revision e integracion en `main`.
+T-003 completada, verificada e integrada en `main` mediante PR #1.
 
-T-002 sigue integrada y publicada en `main`:
-`e558efd36f4369cfd69a04887f43cbfef9fb2136`
+Merge commit:
+`12a3c5b031da00f36d32a6f66322bcc1392573d9`
+
+Estado actual de `main`:
+`12a3c5b031da00f36d32a6f66322bcc1392573d9`
 
 ## Evidencia
 
@@ -52,9 +55,28 @@ O-1 a O-6 de T-002 quedan como deuda futura y no bloquean el avance.
 
 Calibracion de la heuristica de memoria: los factores de ModelMemoryBudget son estimaciones iniciales; requieren mediciones reales para ajustarse.
 
+## Funcionalidades disponibles
+
+- `condor analizar [--json]`: analiza el entorno y persiste el Assessment.
+- `condor consultar "<mensaje>" [--modelo <modelo>]`: inferencia local mediante Ollama.
+- `condor recomendar [--proposito desarrollo|general|vision]`: recomendacion de modelo local.
+- `condor version`, `condor ayuda`, alias `-h/--help/-v/--version`.
+
+## Funcionalidades pendientes
+
+- T-004 Descubrimiento de proyecto.
+- T-005 Context Engine inicial.
+- T-006 Flujo de intencion → plan.
+- T-007 Builder inicial.
+- T-008 Verificacion inicial.
+- T-009 Documentacion y continuidad.
+- T-010 Capacidades avanzadas de desarrollo.
+- T-011 Vision local.
+- T-012 Instalador/puesta en marcha simplificada.
+
 ## Siguiente tarea exacta
 
-Integracion de T-003 en `main`; luego `operacion/TAREAS/T-004.md`.
+T-004 - Descubrimiento de proyecto (referencia conservada en backlog y kanban; sin definicion formal aun: `operacion/TAREAS/T-004.md` no existe).
 
 ## Regla
 
