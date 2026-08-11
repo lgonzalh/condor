@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 using Condor.Core.Contracts;
 using Condor.Core.Models;
 using Condor.Core.Serialization;
@@ -30,5 +31,26 @@ public class LocalStateStore : IStateStore
         var filePath = Path.Combine(_stateDirectory, "assessment.json");
         var json = AssessmentJson.Serialize(result);
         await File.WriteAllTextAsync(filePath, json, new UTF8Encoding(false), cancellationToken);
+    }
+
+    public async Task<AssessmentResult?> LoadAssessmentAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var filePath = Path.Combine(_stateDirectory, "assessment.json");
+        if (!File.Exists(filePath))
+        {
+            return null;
+        }
+
+        var json = await File.ReadAllTextAsync(filePath, cancellationToken);
+
+        try
+        {
+            return AssessmentJson.Deserialize(json);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 }

@@ -1,6 +1,6 @@
 # DECISIONES
 
-Version: 1.1.0
+Version: 1.2.0
 Estado: Activo
 Nivel: 04 - Diseno
 Clasificacion: Decisiones Arquitectonicas
@@ -219,9 +219,127 @@ T-001.
 
 ---
 
+# DEC-013
+
+Titulo:
+Comando condor ask para inferencia local.
+
+Decision:
+T-002 introduce el comando:
+
+`condor ask "<mensaje>" [--model <modelo>]`
+
+para ejecutar una inferencia local mediante Ollama, coherente con la interfaz de terminal de Condor 1.0.
+
+El comando es minimo y no interactivo; los flujos conversacionales completos pertenecen a tareas posteriores.
+
+Estado:
+Aceptada.
+
+Origen:
+T-002.
+
+---
+
+# DEC-014
+
+Titulo:
+Extension aditiva de IStateStore con lectura del Assessment.
+
+Decision:
+Se agrega de forma aditiva `LoadAssessmentAsync` al contrato `IStateStore` para permitir consumir el resultado del Assessment persistido.
+
+El metodo de escritura existente (`SaveAssessmentAsync`) no se modifica.
+
+La extension es compatible con el esquema `AssessmentResult` 1.0.0 (DEC-009) y no constituye un cambio de contrato destructivo.
+
+Estado:
+Aceptada.
+
+Origen:
+T-002.
+
+---
+
+# DEC-015
+
+Titulo:
+Estrategia provisional de seleccion de modelo.
+
+Decision:
+En T-002 el modelo se selecciona asi:
+
+1. El modelo explicito indicado con `--model` si fue proporcionado.
+2. En caso contrario, temporalmente, el primer modelo disponible en el Assessment.
+
+Esta estrategia es provisional. T-003 (Recomendador de modelos) sera responsable de la recomendacion inteligente basada en hardware, capacidades y modelos disponibles.
+
+Estado:
+Aceptada.
+
+Origen:
+T-002.
+
+---
+
+# DEC-016
+
+Titulo:
+Comunicacion con Ollama mediante /api/chat local sin streaming.
+
+Decision:
+La integracion con Ollama usa el endpoint local `http://127.0.0.1:11434/api/chat` con `stream: false`.
+
+La comunicacion es exclusivamente loopback (127.0.0.1) y no introduce dependencias externas ni servicios cloud.
+
+El streaming queda fuera de T-002 y se evaluara cuando los motores posteriores (Builder, Verifier) lo requieran.
+
+Estado:
+Aceptada.
+
+Origen:
+T-002.
+
+---
+
+# DEC-017
+
+Titulo:
+Tarea T-002 y actualizacion de artefactos operativos.
+
+Decision:
+T-002 se formaliza mediante la creacion de `operacion/TAREAS/T-002.md` y la actualizacion de los artefactos operativos correspondientes (ESTADO_DESARROLLO, BACKLOG, KANBAN, REGISTRO_CAMBIOS, RELEVO e INVENTARIO_ARQUITECTURA) conforme al contrato AGENTE_CONDOR.md.
+
+Estado:
+Aceptada.
+
+Origen:
+T-002.
+
+---
+
+# DEC-018
+
+Titulo:
+Rama de trabajo de T-002.
+
+Decision:
+La implementacion de T-002 se realiza exclusivamente en la rama `feature/T-002-ollama` creada desde `main`.
+
+La integracion a `main` se realizara posteriormente mediante revision y merge, sin eliminar la rama.
+
+Estado:
+Aceptada.
+
+Origen:
+T-002.
+
+---
+
 # Historial de Cambios
 
 | Version | Cambio |
 |---------|--------|
+| 1.2.0 | Se incorporan DEC-013 a DEC-018 correspondientes a las decisiones aprobadas para T-002. |
 | 1.1.0 | Se incorporan DEC-007 a DEC-012 correspondientes a las decisiones aprobadas para T-001. |
 | 1.0.0 | Primera version. |

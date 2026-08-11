@@ -2,6 +2,7 @@ using Condor.Cli.Commands;
 using Condor.Cli.Presentation;
 using Condor.Core.Contracts;
 using Condor.Infrastructure;
+using Condor.Infrastructure.Llm;
 using Condor.Infrastructure.State;
 
 namespace Condor.Cli;
@@ -12,6 +13,7 @@ public static class Program
     {
         IAssessmentService assessmentService = new AssessmentService();
         IStateStore stateStore = new LocalStateStore();
+        ILlmClient llmClient = new OllamaClient();
 
         if (args.Length == 0)
         {
@@ -42,6 +44,13 @@ public static class Program
                     args.Skip(1).ToArray(),
                     CancellationToken.None);
 
+            case "ask":
+                return await AskCommand.ExecuteAsync(
+                    llmClient,
+                    stateStore,
+                    args.Skip(1).ToArray(),
+                    CancellationToken.None);
+
             default:
                 Terminal.WriteError("Comando desconocido: " + args[0]);
                 RenderHelp();
@@ -58,6 +67,7 @@ public static class Program
         Terminal.WriteLine("Que quieres construir?");
         Terminal.WriteLine();
         Terminal.WriteDim("Usa 'condor assess' para analizar el entorno.");
+        Terminal.WriteDim("Usa 'condor ask' para consultar al modelo local.");
         Terminal.WriteDim("Usa 'condor help' para ver los comandos disponibles.");
     }
 
@@ -71,6 +81,9 @@ public static class Program
         Terminal.WriteLine("  condor                     Muestra el estado inicial.");
         Terminal.WriteLine("  condor assess              Analiza el entorno y muestra el resumen.");
         Terminal.WriteLine("  condor assess --json       Genera el resultado en formato JSON.");
+        Terminal.WriteLine("  condor ask \"<mensaje>\"      Consulta al modelo local.");
+        Terminal.WriteLine("  condor ask \"<mensaje>\" --model <modelo>");
+        Terminal.WriteLine("                             Consulta usando un modelo especifico.");
         Terminal.WriteLine("  condor version             Muestra la version.");
         Terminal.WriteLine("  condor help                Muestra esta ayuda.");
     }

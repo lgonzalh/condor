@@ -1,10 +1,9 @@
 # KANBAN
 
-Version: 1.1.0
+Version: 1.2.0
 
 ## PENDIENTE
 
-- T-002 Integracion local con Ollama
 - T-003 Recomendador de modelos
 - T-004 Descubrimiento de proyecto
 - T-005 Context Engine inicial
@@ -22,7 +21,7 @@ Ninguna.
 
 ## REVISION
 
-Ninguna.
+- T-002 Integracion local con Ollama
 
 ## COMPLETADO
 
