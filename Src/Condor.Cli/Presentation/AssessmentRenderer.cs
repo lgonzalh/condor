@@ -7,6 +7,7 @@ public static class AssessmentRenderer
     public static void RenderSummary(AssessmentResult result)
     {
         RenderEnvironment(result);
+        RenderProject(result);
         RenderTools(result);
         RenderCapabilities(result);
         RenderDegradations(result);
@@ -128,6 +129,130 @@ public static class AssessmentRenderer
         {
             Terminal.WriteWarning("  - " + issue.Capability + ": " + issue.Reason);
         }
+    }
+
+    private static void RenderProject(AssessmentResult result)
+    {
+        var project = result.Project;
+        if (project is null)
+        {
+            return;
+        }
+
+        Terminal.WriteHeader("PROYECTO");
+        Terminal.WriteLine("  Nombre            : " + project.RootName);
+        Terminal.WriteLine("  Ruta              : " + project.RootPath);
+        Terminal.WriteLine("  Git               : " + GitLine(project));
+
+        if (project.Git is { Status: DetectionStatus.Detected } && project.Git.Commits.Count > 0)
+        {
+            foreach (var commit in project.Git.Commits)
+            {
+                Terminal.WriteLine("  Cambios           : " + commit.Hash + " " + commit.Subject);
+            }
+        }
+
+        Terminal.WriteLine("  Lenguajes         : " + LenguajesLine(project));
+        Terminal.WriteLine("  Frameworks        : " + FrameworksLine(project));
+        Terminal.WriteLine("  Manifiestos       : " + project.Manifests.Count);
+        Terminal.WriteLine("  Documentacion     : " + DocumentacionLine(project));
+        Terminal.WriteLine("  Estructura        : " + EstructuraLine(project));
+
+        var volumen = project.FilesCount + " archivos / " + project.DirectoriesCount + " directorios / " +
+                      FormatoBytes(project.TotalSizeBytes);
+        if (project.TotalSizeExceeded)
+        {
+            volumen += " (tamano maximo excedido)";
+        }
+
+        Terminal.WriteLine("  Volumen           : " + volumen);
+        Terminal.WriteLine("  Limites aplicados : " + (project.LimitsApplied.Count > 0 ? string.Join(", ", project.LimitsApplied) : "ninguno"));
+
+        if (project.Status != DetectionStatus.Detected && !string.IsNullOrWhiteSpace(project.Reason))
+        {
+            Terminal.WriteWarning("  - Descubrimiento: " + project.Reason);
+        }
+    }
+
+    private static string GitLine(ProjectProfile project)
+    {
+        if (!project.IsGitRepository || project.Git is null)
+        {
+            return "no es un repositorio Git.";
+        }
+
+        var git = project.Git;
+        if (git.Status == DetectionStatus.Error)
+        {
+            var motivo = !string.IsNullOrWhiteSpace(git.Reason) ? " (" + git.Reason + ")" : "";
+            return "estado no disponible" + motivo + ".";
+        }
+
+        var parts = new List<string>
+        {
+            "rama " + (git.Branch ?? "(sin rama)"),
+            git.IsDirty ? "estado sucio" : "estado limpio",
+            "ultimos " + git.Commits.Count + " cambios"
+        };
+
+        return string.Join(" | ", parts) + ".";
+    }
+
+    private static string LenguajesLine(ProjectProfile project)
+    {
+        if (project.Languages.Count == 0)
+        {
+            return "no identificados (estructura desconocida o sin senales)";
+        }
+
+        var items = project.Languages.Select(language =>
+            language.Name + " (senal: " + string.Join(", ", language.Signals.Select(signal => signal.Value)) + ")");
+        return string.Join(", ", items);
+    }
+
+    private static string FrameworksLine(ProjectProfile project)
+    {
+        if (project.Frameworks.Count == 0)
+        {
+            return "ninguno identificado.";
+        }
+
+        var items = project.Frameworks.Select(framework =>
+            framework.Name + " (senal: " + framework.Signal + ")");
+        return string.Join(", ", items);
+    }
+
+    private static string DocumentacionLine(ProjectProfile project)
+    {
+        return project.Documentation.Count == 0
+            ? "(ninguna)"
+            : string.Join(", ", project.Documentation.Select(document => document.Path));
+    }
+
+    private static string EstructuraLine(ProjectProfile project)
+    {
+        var items = project.TopLevelDirectories.Concat(project.TopLevelFiles).ToList();
+        return items.Count == 0 ? "(vacia)" : string.Join(", ", items);
+    }
+
+    private static string FormatoBytes(long bytes)
+    {
+        if (bytes >= 1024L * 1024 * 1024)
+        {
+            return (bytes / 1024.0 / 1024.0 / 1024.0).ToString("0.0") + " GB";
+        }
+
+        if (bytes >= 1024 * 1024)
+        {
+            return (bytes / 1024.0 / 1024.0).ToString("0.0") + " MB";
+        }
+
+        if (bytes >= 1024)
+        {
+            return (bytes / 1024.0).ToString("0.0") + " KB";
+        }
+
+        return bytes + " B";
     }
 
     private static string SiNo(bool value)

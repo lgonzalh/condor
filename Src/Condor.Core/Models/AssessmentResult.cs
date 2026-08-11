@@ -8,4 +8,5 @@ public class AssessmentResult
     public EnvironmentProfile Environment { get; set; } = new();
     public ToolsProfile Tools { get; set; } = new();
     public CapabilitiesSummary Capabilities { get; set; } = new();
+    public ProjectProfile? Project { get; set; }
 }

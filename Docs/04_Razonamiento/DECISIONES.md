@@ -1,6 +1,6 @@
 # DECISIONES
 
-Version: 1.4.0
+Version: 1.6.0
 Estado: Activo
 Nivel: 04 - Diseno
 Clasificacion: Decisiones Arquitectonicas
@@ -472,10 +472,60 @@ Auditoria del contrato CLI previa a continuar T-003. Correccion transversal, no 
 
 ---
 
+# DEC-026
+
+Titulo:
+Descubrimiento de proyecto (T-004).
+
+Decision:
+T-004 introduce el descubrimiento objetivo del proyecto local a partir del directorio de trabajo, que produce un perfil de proyecto aditivo al Assessment:
+
+- El perfil se expone como campo `Project` de `AssessmentResult` y se persiste dentro de `assessment.json`; los Assessments existentes sin el campo siguen siendo validos y `SchemaVersion` se conserva en 1.0.0.
+- La identidad se resuelve con 9 familias o ecosistemas de senales (C#, JavaScript/TypeScript, Python, Java, Go, Rust, C/C++, HTML/CSS y Shell/Windows) y frameworks solo con senal manifiesta.
+- Los manifiestos se leen mediante contratos acotados; los formatos sin parser solo registran presencia.
+- Los limites de exploracion se centralizan en un modelo unico con valores predeterminados: profundidad 6, 2000 directorios, 10000 archivos, 64 KB por manifiesto, 2 GB total, 30 segundos de descubrimiento, 10 segundos por operacion Git, 50 manifiestos, 100 dependencias, 5 cambios Git, hash de 8 caracteres y asunto de 80 caracteres.
+- El descubrimiento excluye directorios generados (.git, node_modules, bin, obj, dist, build y .vs), no sigue puntos de reanalisis, no lee secretos ni binarios, consulta Git solo en modo lectura y no utiliza red.
+- El resultado es determinista (orden ordinal en todas las colecciones) y se degrada por parte sin excepciones.
+- La frontera con T-005 es estricta: T-004 observa y estructura; T-005 interpreta y determina el punto de continuacion.
+
+Estado:
+Aceptada.
+
+Origen:
+T-004 (formalizacion tras la aprobacion de alcance y de las decisiones D-1 a D-9).
+
+---
+
+# DEC-027
+
+Titulo:
+Diseno aprobado de T-004 (descubrimiento de proyecto).
+
+Decision:
+El diseno tecnico de T-004 fue aprobado para implementacion con las decisiones adicionales D-D1 a D-D7:
+
+- D-D1: el enum `DetectionStatus` se amplia con el valor `Limited` al final de la enumeracion. Es aditivo: los valores existentes (`Detected`, `NotDetected`, `Error`) conservan su numeracion y la serializacion de Assessments guardados no cambia.
+- D-D2: `ProcessProbe.RunAsync` se amplia con un directorio de trabajo opcional (valor predeterminado: comportamiento actual), necesario para ejecutar las operaciones Git dentro del proyecto descubierto.
+- D-D3: los parsers de manifiestos residen en `Condor.Core.Project` como logica pura y reciben solo el texto ya acotado y metadatos necesarios; `ManifestFileReader` (Infrastructure) es el unico componente autorizado a abrir archivos de manifiesto. Los parsers no realizan IO y no reciben rutas con capacidad de apertura.
+- D-D4: un manifiesto que supera el limite de 64 KB no se parsea: se registra `ParseError: true`, el `SizeBytes` real y `manifest-size` en `LimitsApplied`. No se agregan campos nuevos al modelo.
+- D-D5: cuando el repositorio Git tiene HEAD detached o no tiene commits, `Branch` queda en null y `Commits` vacio, sin error (`Git.Status` en `Detected`).
+- D-D6: el motivo de degradacion del descubrimiento se muestra en la seccion PROYECTO de la CLI; no se agrega a `Capabilities.Issues` para no alterar los consumidores actuales.
+- D-D7: `GitRepositoryProbe` recibe el path de git desde `Tools.Git.Path` (detectado previamente por `GitDetector`) y no vuelve a buscarlo en PATH.
+
+Estado:
+Aceptada.
+
+Origen:
+Revision del diseno de T-004 previa a la implementacion.
+
+---
+
 # Historial de Cambios
 
 | Version | Cambio |
 |---------|--------|
+| 1.6.0 | Se incorpora DEC-027 (diseno aprobado de T-004, decisiones D-D1 a D-D7). |
+| 1.5.0 | Se incorpora DEC-026 (descubrimiento de proyecto, T-004). |
 | 1.4.0 | Se incorpora DEC-025 (correccion del contrato CLI al espanol) y se actualizan DEC-013 y DEC-023. |
 | 1.3.0 | Se incorporan DEC-019 a DEC-024 correspondientes a las decisiones aprobadas para T-003. |
 | 1.2.0 | Se incorporan DEC-013 a DEC-018 correspondientes a las decisiones aprobadas para T-002. |

@@ -2,6 +2,7 @@ using Condor.Core.Contracts;
 using Condor.Core.Evaluation;
 using Condor.Core.Models;
 using Condor.Infrastructure.Detection;
+using Condor.Infrastructure.Project;
 
 namespace Condor.Infrastructure;
 
@@ -77,6 +78,10 @@ public class AssessmentService : IAssessmentService
                 () => new OllamaStatus { Note = "No fue posible verificar Ollama" })
         };
 
+        var project = await RunDetectorAsync<ProjectProfile?>(
+            async () => await new ProjectDetector().DiscoverAsync(request.WorkingDirectory, tools.Git, cancellationToken),
+            () => null);
+
         return new AssessmentResult
         {
             SchemaVersion = "1.0.0",
@@ -84,7 +89,8 @@ public class AssessmentService : IAssessmentService
             WorkingDirectory = request.WorkingDirectory,
             Environment = environment,
             Tools = tools,
-            Capabilities = CapabilityEvaluator.Evaluate(environment, tools)
+            Capabilities = CapabilityEvaluator.Evaluate(environment, tools),
+            Project = project
         };
     }
 

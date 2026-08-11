@@ -1,10 +1,9 @@
 # KANBAN
 
-Version: 1.3.0
+Version: 1.5.0
 
 ## PENDIENTE
 
-- T-004 Descubrimiento de proyecto
 - T-005 Context Engine inicial
 - T-006 Flujo de intencion → plan
 - T-007 Builder inicial
@@ -14,13 +13,17 @@ Version: 1.3.0
 - T-011 Vision local
 - T-012 Instalador/puesta en marcha simplificada
 
+## ESPECIFICADA
+
+Ninguna.
+
 ## EN PROGRESO
 
 Ninguna.
 
 ## REVISION
 
-Ninguna.
+- T-004 Descubrimiento de proyecto (implementada; en revision pre-commit; sin commit)
 
 ## COMPLETADO
 
