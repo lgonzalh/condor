@@ -25,7 +25,7 @@ public static class Program
 
         switch (command)
         {
-            case "help":
+            case "ayuda":
             case "--help":
             case "-h":
                 RenderHelp();
@@ -37,16 +37,22 @@ public static class Program
                 Console.WriteLine(VersionInfo.Product + " " + VersionInfo.Version);
                 return 0;
 
-            case "assess":
+            case "analizar":
                 return await AssessCommand.ExecuteAsync(
                     assessmentService,
                     stateStore,
                     args.Skip(1).ToArray(),
                     CancellationToken.None);
 
-            case "ask":
+            case "consultar":
                 return await AskCommand.ExecuteAsync(
                     llmClient,
+                    stateStore,
+                    args.Skip(1).ToArray(),
+                    CancellationToken.None);
+
+            case "recomendar":
+                return await RecommendCommand.ExecuteAsync(
                     stateStore,
                     args.Skip(1).ToArray(),
                     CancellationToken.None);
@@ -66,9 +72,10 @@ public static class Program
         Terminal.WriteLine();
         Terminal.WriteLine("Que quieres construir?");
         Terminal.WriteLine();
-        Terminal.WriteDim("Usa 'condor assess' para analizar el entorno.");
-        Terminal.WriteDim("Usa 'condor ask' para consultar al modelo local.");
-        Terminal.WriteDim("Usa 'condor help' para ver los comandos disponibles.");
+        Terminal.WriteDim("Usa 'condor analizar' para analizar el entorno.");
+        Terminal.WriteDim("Usa 'condor recomendar' para elegir un modelo local.");
+        Terminal.WriteDim("Usa 'condor consultar' para consultar al modelo local.");
+        Terminal.WriteDim("Usa 'condor ayuda' para ver los comandos disponibles.");
     }
 
     private static void RenderHelp()
@@ -79,12 +86,19 @@ public static class Program
         Terminal.WriteLine();
         Terminal.WriteLine("Uso:");
         Terminal.WriteLine("  condor                     Muestra el estado inicial.");
-        Terminal.WriteLine("  condor assess              Analiza el entorno y muestra el resumen.");
-        Terminal.WriteLine("  condor assess --json       Genera el resultado en formato JSON.");
-        Terminal.WriteLine("  condor ask \"<mensaje>\"      Consulta al modelo local.");
-        Terminal.WriteLine("  condor ask \"<mensaje>\" --model <modelo>");
+        Terminal.WriteLine("  condor analizar            Analiza el entorno y muestra el resumen.");
+        Terminal.WriteLine("  condor analizar --json     Genera el resultado en formato JSON.");
+        Terminal.WriteLine("  condor recomendar          Recomienda un modelo para el equipo.");
+        Terminal.WriteLine("  condor recomendar --proposito <tipo>");
+        Terminal.WriteLine("                             tipo: desarrollo, general o vision.");
+        Terminal.WriteLine("  condor consultar \"<mensaje>\"  Consulta al modelo local.");
+        Terminal.WriteLine("  condor consultar \"<mensaje>\" --modelo <modelo>");
         Terminal.WriteLine("                             Consulta usando un modelo especifico.");
         Terminal.WriteLine("  condor version             Muestra la version.");
-        Terminal.WriteLine("  condor help                Muestra esta ayuda.");
+        Terminal.WriteLine("  condor ayuda               Muestra esta ayuda.");
+        Terminal.WriteLine();
+        Terminal.WriteLine("Alias:");
+        Terminal.WriteLine("  condor -h, --help          Muestra esta ayuda.");
+        Terminal.WriteLine("  condor -v, --version       Muestra la version.");
     }
 }

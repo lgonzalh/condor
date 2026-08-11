@@ -1,6 +1,6 @@
 # INTEGRACIONES
 
-Version: 1.1.0
+Version: 1.2.0
 Estado: Activo
 Nivel: 05 - Implementacion
 Clasificacion: Documento de Ingenieria
@@ -47,6 +47,11 @@ Funciones:
 - inferencia
 - herramientas
 - contexto
+
+Endpoints utilizados:
+- `GET /api/version` - verificacion del servidor.
+- `GET /api/tags` - inventario de modelos (`name`, `size`, `details.family`, `details.parameter_size`, `details.quantization_level`, `details.context_length`, `capabilities`).
+- `POST /api/chat` - inferencia local con stream desactivado.
 
 ---
 
@@ -139,4 +144,5 @@ Modulo solicitante
 
 | Version | Fecha | Cambio |
 |----------|------------|----------------------------------------------|
+| 1.2.0 | 2026-08-11 | Se documentan los endpoints reales de Ollama utilizados por T-002 y T-003. |
 | 1.1.0 | 2026-08-04 | Regeneracion incorporando contratos, adaptadores y arquitectura de integraciones. |

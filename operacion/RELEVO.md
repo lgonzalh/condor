@@ -1,29 +1,27 @@
 # RELEVO
 
-Version: 1.1.0
+Version: 1.2.0
 Estado: Activo
 
 ## Ultimo trabajo
 
-T-002 - Integracion local con Ollama.
+T-003 - Recomendador de modelos.
 
 ## Estado
 
-T-002 completada, revisada, probada, integrada en `main` y publicada.
+T-003 implementada y verificada en la rama `feature/T-003-model-recommender`, pendiente de revision e integracion en `main`.
 
-Commit T-002:
-`dfaa5d6105c682e7b692f85350db22a892fdac11`
-
-Merge T-002:
+T-002 sigue integrada y publicada en `main`:
 `e558efd36f4369cfd69a04887f43cbfef9fb2136`
 
 ## Evidencia
 
-- `condor assess` funciona en el equipo real.
-- `condor ask "di hola"` funciona.
-- `condor ask "di hola" --model qwen3:8b` funciona.
-- Ollama detenido produce degradacion clara.
-- Assessment corrupto produce error controlado.
+- `condor analizar` funciona y completa los detalles reales de los 6 modelos.
+- `condor recomendar` recomienda `hhao/qwen2.5-coder-tools:7b` y ordena alternativas con puntajes.
+- `condor recomendar --proposito vision` degrada correctamente.
+- `condor recomendar --proposito raro` rechaza el proposito invalido.
+- 98 pruebas: 9 arquitectura + 40 unitarias + 49 integracion
+- Determinismo: el mismo Assessment produce siempre la misma recomendacion.
 - Condor no requiere internet; Ollama se consume por loopback.
 
 ## Entorno real observado
@@ -39,31 +37,27 @@ Merge T-002:
 
 ## Modelos observados
 
-- qwen-tools:7b
-- qwen3:8b
-- hhao/qwen2.5-coder-tools:7b
-- qwen2.5-coder:7b
-- deepseek-r1:7b
-- deepseek-coder:6.7b
+- qwen-tools:7b (qwen2, 7.6B, Q4_K_M, tools)
+- qwen3:8b (qwen3, 8.2B, Q4_K_M, tools/thinking)
+- hhao/qwen2.5-coder-tools:7b (qwen2, 7.6B, Q4_K_M, tools)
+- qwen2.5-coder:7b (qwen2, 7.6B, Q4_K_M, tools)
+- deepseek-r1:7b (qwen2, 7.6B, Q4_K_M, thinking)
+- deepseek-coder:6.7b (llama, 7B, Q4_0)
 
-Son inventario real, no recomendacion definitiva.
+Inventario real con detalles completos tras T-003.
 
 ## Observaciones pendientes
 
 O-1 a O-6 de T-002 quedan como deuda futura y no bloquean el avance.
 
+Calibracion de la heuristica de memoria: los factores de ModelMemoryBudget son estimaciones iniciales; requieren mediciones reales para ajustarse.
+
 ## Siguiente tarea exacta
 
-`operacion/TAREAS/T-003.md`
-
-Rama prevista:
-
-`feature/T-003-model-recommender`
+Integracion de T-003 en `main`; luego `operacion/TAREAS/T-004.md`.
 
 ## Regla
 
-No borrar los modelos actuales antes de T-003. Son datos reales para validar el recomendador.
-
-No elegir manualmente un modelo como "el mejor" antes de ejecutar el recomendador.
+No borrar los modelos actuales. Son datos reales para validar el recomendador.
 
 No hacer commit, push o merge sin autorizacion.

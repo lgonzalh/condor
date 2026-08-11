@@ -1,6 +1,6 @@
 # KANBAN
 
-Version: 1.1.0
+Version: 1.2.0
 
 ## PENDIENTE
 
@@ -16,11 +16,11 @@ Version: 1.1.0
 
 ## EN PROGRESO
 
-- T-003 Recomendador de modelos
+Ninguna.
 
 ## REVISION
 
-Ninguna.
+- T-003 Recomendador de modelos
 
 ## COMPLETADO
 

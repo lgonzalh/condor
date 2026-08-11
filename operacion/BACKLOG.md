@@ -1,13 +1,13 @@
 # BACKLOG
 
-Version: 1.1.0
+Version: 1.2.0
 Estado: Activo
 
 | ID | Prioridad | Trabajo | Estado |
 |---|---|---|---|
 | T-001 | Critica | Bootstrap del MVP y Assessment inicial | Completada |
 | T-002 | Critica | Integracion local con Ollama | Completada |
-| T-003 | Critica | Recomendador de modelos | Pendiente |
+| T-003 | Critica | Recomendador de modelos | En revision |
 | T-004 | Alta | Descubrimiento de proyecto | Pendiente |
 | T-005 | Alta | Context Engine inicial | Pendiente |
 | T-006 | Alta | Flujo de intencion → plan | Pendiente |
@@ -20,4 +20,4 @@ Estado: Activo
 
 ## Siguiente
 
-T-003.
+Integracion de T-003 en main; luego T-004.
