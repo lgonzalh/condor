@@ -1,6 +1,6 @@
 # DECISIONES
 
-Version: 1.7.0
+Version: 1.8.0
 Estado: Activo
 Nivel: 04 - Diseno
 Clasificacion: Decisiones Arquitectonicas
@@ -571,10 +571,45 @@ Revision del diseno de T-005 previa a la implementacion.
 
 ---
 
+# DEC-030
+
+Titulo:
+Formalizacion del contrato de T-006 (Flujo de intencion a plan).
+
+Decision:
+El contrato de T-006 queda formalizado en `operacion/TAREAS/T-006.md` (version 1.0.0):
+
+- T-006 implementa la version inicial del Planner (ARQ-004): transforma la solicitud del usuario en un plan de ejecucion estructurado a partir del `ProjectContext` reconstruido por T-005, sin LLM, sin internet y sin dependencia del historial de conversaciones;
+- la frontera con T-005 es estricta: T-005 entrega contexto y recomendaciones; T-006 consume ese contexto, interpreta la intencion del usuario y genera el plan; la capacidad "interpretar la intencion" de CONTEXT_ENGINE.md queda delegada a T-006 (coherente con DEC-028);
+- la frontera con T-007 es estricta: T-006 produce el plan; T-007 (Builder) lo consume para implementar cambios; T-006 no implementa cambios;
+- la capacidad se expone mediante el comando publico `condor planear` (texto y `--json`);
+- el plan se persiste como artefacto derivado y transitorio en el estado local (`plan.json`), sin modificar `assessment.json` ni `context.json`;
+- la version inicial interpreta la intencion de forma acotada y determinista (nueva / continuar / modificar / indefinida) mediante heuristica textual, sin LLM ni Ollama.
+
+Las decisiones D-E1 a D-E8 que dan forma tecnica a T-006 son:
+
+- D-E1: el modelo principal se denomina tecnicamente `WorkPlan` (concepto de dominio: "plan de trabajo") junto con `PlanTask` y `PlanLimits`, y reside en `Condor.Core.Models` (patron D-D1). Los identificadores tecnicos y las claves JSON permanecen en ingles. El modelo tiene `SchemaVersion` propio.
+- D-E2: `IPlanService` expone un unico metodo `BuildPlanAsync(string userRequest, CancellationToken)` en `Condor.Core.Contracts`, siguiendo el patron de `IAssessmentService` e `IContextService`; las entradas se cargan internamente desde `IStateStore` y la solicitud del usuario.
+- D-E3: la interpretacion de la intencion en la version inicial es determinista y acotada (nueva / continuar / modificar / indefinida), por heuristica textual, sin LLM; se preserva la restriction de T-005 y las restricciones MVP (operacion local).
+- D-E4: `IStateStore` se extiende de forma aditiva con `SavePlanAsync` y `LoadPlanAsync` (precedente D-D4); `plan.json` vive en el mismo directorio de estado local; serializacion UTF-8 sin BOM.
+- D-E5: `PlanGenerator` reside en `Condor.Core.Planning` como logica pura (patron D-D5): recibe el `ProjectContext`, la solicitud y `PlanLimits`; no realiza IO. `PlanService` (Infrastructure) orquesta la carga y delega en `PlanGenerator`.
+- D-E6: la CLI incorpora `condor planear` y `condor planear --json` en espanol sin tildes (DEC-025); sin contexto, salida degradada con mensaje instructivo y exit code 1 (patron D-D10); el comando se agrega a la ayuda y al estado inicial.
+- D-E7: determinismo: todas las colecciones se ordenan ordinalmente antes de construir el resultado y `GeneratedAtUtc` es la unica excepcion (patron D-D11); se incluye una prueba de doble ejecucion.
+- D-E8: limite de frontera T-006/T-007: T-006 no implementa cambios en el proyecto objetivo; entrega el plan a T-007. No se reimplementan capacidades congeladas de T-004 ni T-005.
+
+Estado:
+Aceptada.
+
+Origen:
+Reconocimiento y formalizacion de T-006 (Flujo de intencion a plan).
+
+---
+
 # Historial de Cambios
 
 | Version | Cambio |
 |---------|--------|
+| 1.8.0 | Se incorpora DEC-030 (formalizacion del contrato de T-006, decisiones D-E1 a D-E8). |
 | 1.7.0 | Se incorporan DEC-028 (formalizacion del contrato de T-005) y DEC-029 (diseno tecnico aprobado de T-005, decisiones D-D1 a D-D12). |
 | 1.6.0 | Se incorpora DEC-027 (diseno aprobado de T-004, decisiones D-D1 a D-D7). |
 | 1.5.0 | Se incorpora DEC-026 (descubrimiento de proyecto, T-004). |
