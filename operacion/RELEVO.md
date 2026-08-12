@@ -78,13 +78,13 @@ Estado confirmado al cierre:
 
 ## Siguiente tarea exacta
 
-`T-005 - Context Engine inicial`
+`T-006 - Flujo de intencion a plan`
 
 Estado: Pendiente. No iniciada.
 
-T-005 debe formalizarse antes de implementar.
-
-No existe `operacion/TAREAS/T-005.md` al cierre de T-004.
+T-005 (Context Engine inicial) quedo completada, verificada e integrada
+(REGISTRO_CAMBIOS.md, CH-015). T-006 consumira el `ProjectContext`
+entregado por el Context Engine para interpretar la intencion del usuario.
 
 ## Regla de continuidad
 
@@ -98,7 +98,7 @@ El siguiente agente debe leer primero:
 -   `operacion/KANBAN.md`
 -   `operacion/REGISTRO_CAMBIOS.md`
 
-Despues debe reconocer el estado de T-005 y proponer su formalizacion.
+Despues debe reconocer el estado de T-006 y proponer su formalizacion.
 
 No debe comenzar codigo directamente.
 
