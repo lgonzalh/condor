@@ -85,7 +85,7 @@ Actualizar
   FN-002   Preservar         Gobernanza        Especificada   PATRIMONIO_CONOCIMIENTO.md
            conocimiento                                       
 
-  FN-003   Descubrir         Motor             Planificada    CONTEXT_ENGINE.md
+  FN-003   Descubrir         Motor             Implementada   CONTEXT_ENGINE.md
            automaticamente                                    
            el contexto                                        
 
