@@ -1,6 +1,6 @@
 # ESTADO_PROYECTO
 
-Version: 1.6.0
+Version: 1.7.0
 Estado: Vigente
 Clasificacion: Estado del Proyecto
 
@@ -166,9 +166,11 @@ El trabajo operativo se controla mediante:
 
 # SIGUIENTE ACCION
 
-Ejecutar `operacion/TAREAS/T-005.md` (Context Engine inicial) mediante un agente que cumpla `AGENTE_CONDOR.md`.
+Ejecutar `operacion/TAREAS/T-006.md` (Flujo de intencion a plan) mediante un agente que cumpla `AGENTE_CONDOR.md`.
 
-Las tareas T-001 a T-004 fueron completadas, verificadas e integradas en `main`.
+Las tareas T-001 a T-005 fueron completadas, verificadas e integradas en `main`.
+
+T-005 (Context Engine inicial) quedo cerrada y congelada.
 
 El detalle operativo del avance se controla en `operacion/ESTADO_DESARROLLO.md`.
 
@@ -211,6 +213,7 @@ Al no existir nivel activo, los trabajos nuevos se consideran parte del ciclo de
 
 | Version | Cambio |
 |---------|--------|
+| 1.7.0 | Se actualiza SIGUIENTE ACCION: T-001 a T-005 fueron completadas, verificadas e integradas en main; T-005 (Context Engine inicial) queda cerrada y congelada; la siguiente tarea operativa es T-006 (Flujo de intencion a plan). |
 | 1.6.0 | Se actualiza SIGUIENTE ACCION: las tareas T-001 a T-004 fueron completadas, verificadas e integradas en main; la siguiente tarea operativa es T-005 (Context Engine inicial). |
 | 1.5.0 | Se consolida el estado posterior al cierre del Nivel 09: ningun nivel activo, Evolucion Continua y comienzo formal del desarrollo del software mediante el sistema operativo multi-agente y T-001. Se eliminan duplicidades y fragmentos inconsistentes del historial anterior. |
 | 1.4.0 | Se corrige el estado oficial para reflejar que los niveles 07, 08 y 09 ya fueron revisados, congelados y cerrados. Se declara completada la linea base inicial y se establece Evolucion Continua sin nivel activo y sin Nivel 10. |
