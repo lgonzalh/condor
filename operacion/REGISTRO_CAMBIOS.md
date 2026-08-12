@@ -1,6 +1,6 @@
 # REGISTRO_CAMBIOS
 
-Version: 1.7.0
+Version: 1.8.0
 Estado: Activo
 
 | ID | Fecha | Tarea | Cambio | Resultado | Commit |
@@ -16,13 +16,15 @@ Estado: Activo
 | CH-009 | 2026-08-11 | T-004 | Formalizacion documental del descubrimiento de proyecto (T-004.md v1.0.0, DEC-026, artefactos de planificacion actualizados) | Especificada, sin implementar | - |
 | CH-010 | 2026-08-11 | T-004 | Diseno aprobado (DEC-027, D-D1 a D-D7); T-004.md v1.1.0; tarea preparada para implementacion | Preparada, sin implementar | - |
 | CH-011 | 2026-08-11 | T-004 | Implementacion del descubrimiento de proyecto (ProjectDetector, parsers de manifiestos, seccion PROYECTO, campo project) y revision pre-commit con correccion de BOM UTF-8 en la lectura de manifiestos | Implementada en rama, en revision pre-commit, sin commit | - |
+| CH-012 | 2026-08-11 | T-004 | Integracion mediante PR #2, verificacion (174/174 pruebas, build limpio) y cierre documental con congelacion formal de T-004 | Completada y congelada | a90366338678988ec0a13fdf636bf72dc921dfd8 |
 
 ## Estado
 
-T-001, T-002 y T-003 completadas, integradas en `main` y publicadas.
+T-001, T-002, T-003 y T-004 completadas, integradas en `main` y publicadas.
 
 T-003 fue integrada mediante PR #1 (merge `12a3c5b031da00f36d32a6f66322bcc1392573d9`) y queda cerrada y congelada.
 
 Correccion del contrato CLI (DEC-025) integrada: `analizar`, `consultar`, `recomendar`, `ayuda`, `--modelo` y `--proposito`.
+T-004 fue integrada mediante PR #2 (merge `a90366338678988ec0a13fdf636bf72dc921dfd8`; commit de implementacion `ea42eec040937521942acab861c0302cf0429595`) y queda cerrada y congelada: su alcance aprobado no se modifica dentro de T-004 y las mejoras futuras se tratan como nueva tarea, decision o deuda.
 
-Siguiente tarea: T-004 (implementada; en revision pre-commit en la rama `feature/T-004-project-discovery`; sin commit).
+Siguiente tarea: T-005 (pendiente; no iniciada).

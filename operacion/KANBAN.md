@@ -1,6 +1,6 @@
 # KANBAN
 
-Version: 1.5.0
+Version: 1.6.0
 
 ## PENDIENTE
 
@@ -23,10 +23,11 @@ Ninguna.
 
 ## REVISION
 
-- T-004 Descubrimiento de proyecto (implementada; en revision pre-commit; sin commit)
+Ninguna.
 
 ## COMPLETADO
 
 - T-001 Bootstrap del MVP y Assessment inicial
 - T-002 Integracion local con Ollama
 - T-003 Recomendador de modelos
+- T-004 Descubrimiento de proyecto

@@ -1,12 +1,12 @@
 # RELEVO
 
-Version: 1.5.0
+Version: 1.6.0
 Estado: Activo
 
 ## Ultimo trabajo
 
 T-003 - Recomendador de modelos (cerrada e integrada).
-T-004 - Descubrimiento de proyecto (implementada en rama; en revision pre-commit; sin commit).
+T-004 - Descubrimiento de proyecto (completada, congelada e integrada mediante PR #2).
 
 ## Estado
 
@@ -15,10 +15,10 @@ T-003 completada, verificada e integrada en `main` mediante PR #1.
 Merge commit:
 `12a3c5b031da00f36d32a6f66322bcc1392573d9`
 
-T-004 implementada en la rama `feature/T-004-project-discovery`; en revision pre-commit; sin commit.
+T-004 completada, verificada e integrada en `main` mediante PR #2 (merge `a90366338678988ec0a13fdf636bf72dc921dfd8`).
 
 Estado actual de `main`:
-`0f32bd8868922ea79d0249f428569a51bb29915a`
+`a90366338678988ec0a13fdf636bf72dc921dfd8`
 
 ## Evidencia
 
@@ -27,6 +27,7 @@ Estado actual de `main`:
 - `condor recomendar --proposito vision` degrada correctamente.
 - `condor recomendar --proposito raro` rechaza el proposito invalido.
 - 98 pruebas: 9 arquitectura + 40 unitarias + 49 integracion
+- T-004: 174/174 pruebas (10 arquitectura + 85 unitarias + 79 integracion); build sin errores ni advertencias; E2E sobre el repositorio real, proyecto sin Git, proyecto vacio y manifiesto con BOM UTF-8
 - Determinismo: el mismo Assessment produce siempre la misma recomendacion.
 - Condor no requiere internet; Ollama se consume por loopback.
 
@@ -67,7 +68,7 @@ Calibracion de la heuristica de memoria: los factores de ModelMemoryBudget son e
 
 ## Funcionalidades pendientes
 
-- T-005 Context Engine inicial.
+- T-005 Context Engine inicial (pendiente; no iniciada).
 - T-006 Flujo de intencion → plan.
 - T-007 Builder inicial.
 - T-008 Verificacion inicial.
@@ -78,7 +79,7 @@ Calibracion de la heuristica de memoria: los factores de ModelMemoryBudget son e
 
 ## Siguiente tarea exacta
 
-T-004 - Descubrimiento de proyecto (implementada; en revision pre-commit en la rama `feature/T-004-project-discovery`; sin commit).
+T-005 - Context Engine inicial (pendiente; no iniciada).
 
 ## Regla
 
