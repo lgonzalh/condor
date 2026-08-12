@@ -1,6 +1,6 @@
 # RELEVO
 
-Version: 4.0.0
+Version: 4.1.0
 Estado: Activo
 Modo: Evolucion Continua
 
@@ -49,11 +49,11 @@ Cualquier mejora posterior debe registrarse como nueva tarea, decision o deuda s
 
 ## Git
 
-Estado confirmado al cierre:
+Estado confirmado:
 
 - Rama local: `main`
-- `HEAD`: `f7db03190b3a55d3b979d24216b6d4aee4941e9a`
-- `origin/main`: `f7db03190b3a55d3b979d24216b6d4aee4941e9a`
+- `HEAD`: `1d8fe94dff0dd0c23718cfe059107909d96f004a`
+- `origin/main`: `1d8fe94dff0dd0c23718cfe059107909d96f004a`
 - Working tree: limpio
 - Regla vigente: `1 archivo = 1 commit`
 
@@ -61,13 +61,17 @@ Estado confirmado al cierre:
 
 `T-006 - Flujo de intencion a plan`
 
-Estado: Pendiente. No iniciada.
+Estado: Formalizada. Pendiente de diseno tecnico y aprobacion para
+implementacion.
 
-T-006 debe comenzar por reconocimiento y formalizacion.
+El reconocimiento de T-006 fue completado y aprobado. Su contrato quedo
+formalizado en `operacion/TAREAS/T-006.md` (version 1.0.0) y la decision
+registrada como DEC-030 (D-E1 a D-E8).
 
 No existe autorizacion para comenzar codigo directamente.
 
-El siguiente agente debe reconocer T-006, revisar sus dependencias y proponer el contrato antes de implementar.
+El siguiente agente debe elaborar el diseno tecnico de T-006 y, una vez
+aprobado, proceder a implementarlo.
 
 ## Dependencias conocidas
 
@@ -78,6 +82,9 @@ T-005 consume `ProjectProfile` y entrega `ProjectContext`.
 T-006 debe consumir `ProjectContext` para el flujo de intencion a plan.
 
 T-006 no debe reimplementar capacidades congeladas de T-004 ni T-005.
+
+T-006 entrega un `WorkPlan` que T-007 (Builder inicial) consumira para
+implementar cambios.
 
 ## Regla de continuidad
 
