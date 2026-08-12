@@ -4,7 +4,6 @@ Version: 2.0.0 Estado: Activo Modo: Evolucion Continua
 
 ## PENDIENTE
 
--   T-005 Context Engine inicial
 -   T-006 Flujo de intencion a plan
 -   T-007 Builder inicial
 -   T-008 Verificacion inicial
@@ -27,12 +26,10 @@ Ninguna.
 -   T-002 Integracion local con Ollama
 -   T-003 Recomendador de modelos
 -   T-004 Descubrimiento de proyecto
+-   T-005 Context Engine inicial
 
 ## Siguiente
 
-T-005.
+T-006.
 
 Estado: Pendiente. No iniciada.
-
-No iniciar T-005 desde implementacion. Primero realizar reconocimiento y
-formalizacion.
