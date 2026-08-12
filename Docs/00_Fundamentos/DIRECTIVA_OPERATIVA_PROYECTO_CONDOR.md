@@ -1,6 +1,6 @@
 # DIRECTIVA_OPERATIVA_PROYECTO_CONDOR
 
-Version: 2.2.0
+Version: 2.3.0
 Estado: Vigente
 Nivel: Global
 Clasificacion: Directiva Operativa
@@ -101,6 +101,52 @@ La discrepancia debera informarse de forma explicita y no podra resolverse media
 - Toda respuesta debe minimizar el trabajo manual del usuario.
 - La documentacion constituye la memoria permanente del proyecto.
 - Nunca depender de una conversacion como unica fuente de conocimiento.
+
+---
+
+# REGLA DE TRAZABILIDAD GIT
+
+## Regla
+
+1 archivo afectado = 1 commit.
+
+- crear 1 archivo → 1 commit;
+- modificar 1 archivo → 1 commit;
+- actualizar 1 archivo → 1 commit;
+- eliminar 1 archivo → 1 commit.
+
+Un commit no debe contener cambios de multiples archivos.
+
+La finalidad es preservar la trazabilidad individual de cada contribucion realizada por los participantes del desarrollo y que cada una quede representada individualmente en GitHub.
+
+## Alcance
+
+Aplica a todo cambio versionado en el repositorio del Proyecto Condor, incluidos codigo, documentacion y artefactos de operacion.
+
+La regla rige desde su entrada en vigencia. El historial previo no se reescribe ni se consolida a posteriori.
+
+## Excepcion unica
+
+Cambios tecnicamente inseparables.
+
+Cuando dos o mas archivos formen una unica modificacion tecnica que no pueda verificarse por separado (por ejemplo, un renombramiento que exige actualizar referencias en otro archivo, o un cambio interdependiente cuya separacion deja al repositorio en un estado que no compila o no supera las verificaciones), se permite un commit unico con multiples archivos.
+
+Condiciones:
+
+- el reparto no debe ser posible sin dejar el repositorio en un estado no verificable;
+- el mensaje del commit debe declarar la justificacion de la inseparabilidad;
+- la excepcion no autoriza agrupar cambios independientes.
+
+## Registro de trazabilidad documental
+
+REGISTRO_CAMBIOS.md es el registro documental de trazabilidad de los cambios.
+
+Para evitar una dependencia circular entre commits y registro:
+
+- REGISTRO_CAMBIOS.md se actualiza una sola vez por ciclo de trabajo, al cierre del ciclo, registrando los commits del ciclo;
+- su propia actualizacion constituye el ultimo commit del ciclo y no se registra a si misma;
+- nunca se actualiza por commit individual;
+- los hashes se registran en forma abreviada.
 
 ---
 
@@ -573,6 +619,7 @@ En caso de conflicto entre documentos, prevalecera el documento de mayor priorid
 
 | Version | Cambios |
 |---------|---------|
+| 2.3.0 | Se incorpora la REGLA DE TRAZABILIDAD GIT: 1 archivo afectado = 1 commit, con excepcion unica para cambios tecnicamente inseparables y actualizacion de REGISTRO_CAMBIOS.md una sola vez por ciclo de trabajo para evitar dependencia circular. |
 | 2.2.0 | Se corrige el cierre del ultimo nivel estructural: Nivel 09 no activa un Nivel 10, sino Evolucion Continua. Se establece la actualizacion obligatoria de ESTADO_PROYECTO.md e INVENTARIO_PROYECTO.md durante condorcerrar. Se aclara que Entregar, Revisar y Congelar no actualizan formalmente ESTADO_PROYECTO.md. Se define el comportamiento terminal de condorcerrar y la transicion de la documentacion previa a documentacion proporcional al desarrollo. |
 | 2.1.0 | Se formaliza ESTADO_PROYECTO.md como fuente oficial para determinar el nivel activo y se establece el protocolo de deteccion y tratamiento de discrepancias entre chat, estado y documentacion. Se refuerza la transicion formal de niveles mediante condorcerrar. |
 | 2.0.0 | Refactorizacion integral de la Directiva Operativa. |
