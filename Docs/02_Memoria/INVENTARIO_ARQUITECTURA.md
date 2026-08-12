@@ -83,7 +83,7 @@ Actualizar
   ARQ-002   Assessment     Engine            Implementado   ASSESSMENT_ENGINE.md
             Engine                                          
 
-  ARQ-003   Context Engine Engine            Planificado    CONTEXT_ENGINE.md
+  ARQ-003   Context Engine Engine            Implementado   CONTEXT_ENGINE.md
 
   ARQ-004   Planner        Engine            Planificado    KERNEL_CONDOR.md
 
@@ -120,7 +120,7 @@ Actualizar
 Nota: ARQ-002 fue implementado inicialmente mediante T-001. ARQ-012
 cuenta con una CLI inicial (identidad, estado, analizar y consultar) pendiente
 de evolucion con los motores posteriores. ARQ-013 fue implementado
-mediante T-002 (OllamaClient local y comando consultar). ARQ-015 fue implementado mediante T-003 (ModelRecommender, ModelRoleClassifier, ModelMemoryBudget y comando recomendar). ARQ-002 fue extendido mediante T-004 (descubrimiento de proyecto: ProjectDetector, parsers de manifiestos, seccion PROYECTO y campo project). El contrato publico de la CLI fue corregido al espanol por DEC-025.
+mediante T-002 (OllamaClient local y comando consultar). ARQ-015 fue implementado mediante T-003 (ModelRecommender, ModelRoleClassifier, ModelMemoryBudget y comando recomendar). ARQ-002 fue extendido mediante T-004 (descubrimiento de proyecto: ProjectDetector, parsers de manifiestos, seccion PROYECTO y campo project). El contrato publico de la CLI fue corregido al espanol por DEC-025. ARQ-003 fue implementado mediante T-005 (Context Engine inicial: ContextReconstructor en Condor.Core, OperativeArtifactReader y ContextService en Condor.Infrastructure, y comando condor contexto en la CLI; verificacion integral completada con unitarias, integracion, arquitectura, CLI, E2E y determinismo D-D11).
 
 ------------------------------------------------------------------------
 
