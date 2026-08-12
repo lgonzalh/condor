@@ -53,4 +53,35 @@ public class LocalStateStore : IStateStore
             return null;
         }
     }
+
+    public async Task SaveContextAsync(
+        ProjectContext context,
+        CancellationToken cancellationToken = default)
+    {
+        Directory.CreateDirectory(_stateDirectory);
+        var filePath = Path.Combine(_stateDirectory, "context.json");
+        var json = ContextJson.Serialize(context);
+        await File.WriteAllTextAsync(filePath, json, new UTF8Encoding(false), cancellationToken);
+    }
+
+    public async Task<ProjectContext?> LoadContextAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var filePath = Path.Combine(_stateDirectory, "context.json");
+        if (!File.Exists(filePath))
+        {
+            return null;
+        }
+
+        var json = await File.ReadAllTextAsync(filePath, cancellationToken);
+
+        try
+        {
+            return ContextJson.Deserialize(json);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
 }
