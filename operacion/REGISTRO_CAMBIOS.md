@@ -1,6 +1,6 @@
 # REGISTRO_CAMBIOS
 
-Version: 2.2.0 Estado: Activo Modo: Evolucion Continua
+Version: 2.3.0 Estado: Activo Modo: Evolucion Continua
 
   ------------------------------------------------------------------------------
   ID          Fecha        Tarea       Cambio           Resultado    Commit
@@ -70,6 +70,10 @@ Version: 2.2.0 Estado: Activo Modo: Evolucion Continua
                                                                       cd44772,
                                                                       ffc53cb,
                                                                       d6cb98e
+
+  CH-016      2026-08-12   T-005       Cierre y         Completado   76d163d,
+                                       congelacion de                 e77be3b,
+                                       T-005                           c37c691
   ------------------------------------------------------------------------------
 
 ## Estado
@@ -78,6 +82,8 @@ T-001, T-002, T-003, T-004 y T-005 completadas.
 
 T-004 queda formalmente congelada.
 
-T-005 queda VERIFICADA, DOCUMENTADA E INTEGRADA (Context Engine inicial): build Release sin errores, unitarias 102/102, integracion 93/93, arquitectura 11/11, CLI condor contexto y --json, E2E real y determinismo D-D11. D-D1 a D-D12 cumplen.
+T-005 queda cerrada y congelada.
+
+T-006 queda pendiente y no iniciada.
 
 Regla de trazabilidad Git vigente: 1 archivo afectado = 1 commit.
