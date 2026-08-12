@@ -1,55 +1,58 @@
 using Condor.Core.Context;
 using Condor.Core.Contracts;
 using Condor.Core.Models;
+using System;
+using System.Threading.Tasks;
 
-namespace Condor.Infrastructure.Context;
-
-public sealed class ContextService : IContextService
+namespace Condor.Infrastructure.Context
 {
-    private const string ReasonTimeout = "Tiempo excedido al construir el contexto.";
-
-    private readonly IStateStore _stateStore;
-    private readonly OperativeArtifactReader _artifactReader;
-    private readonly ContextLimits _limits;
-
-    public ContextService(
-        IStateStore stateStore,
-        OperativeArtifactReader? artifactReader = null,
-        ContextLimits? limits = null)
+    public sealed class ContextService : IContextService
     {
-        _stateStore = stateStore;
-        _artifactReader = artifactReader ?? new OperativeArtifactReader();
-        _limits = limits ?? ContextLimits.Default;
-    }
+        private const string ReasonTimeout = "Tiempo excedido al construir el contexto.";
 
-    public async Task<ProjectContext> BuildContextAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var timeout = TimeSpan.FromMilliseconds(_limits.ContextTimeoutMilliseconds);
+        private readonly IStateStore _stateStore;
+        private readonly OperativeArtifactReader _artifactReader;
+        private readonly ContextLimits _limits;
 
-        try
+        public ContextService(
+            IStateStore stateStore,
+            OperativeArtifactReader? artifactReader = null,
+            ContextLimits? limits = null)
         {
-            var assessment = await _stateStore
-                .LoadAssessmentAsync(cancellationToken)
-                .WaitAsync(timeout, cancellationToken);
-
-            var workingDirectory = assessment?.WorkingDirectory ?? "";
-
-            var artifacts = await _artifactReader
-                .ReadAsync(workingDirectory, cancellationToken)
-                .WaitAsync(timeout, cancellationToken);
-
-            return ContextReconstructor.Reconstruct(assessment, artifacts, _limits);
+            _stateStore = stateStore;
+            _artifactReader = artifactReader ?? new OperativeArtifactReader();
+            _limits = limits ?? ContextLimits.Default;
         }
-        catch (TimeoutException)
+
+        public async Task<ProjectContext> BuildContextAsync(
+            CancellationToken cancellationToken = default)
         {
-            return new ProjectContext
+            var timeout = TimeSpan.FromMilliseconds(_limits.ContextTimeoutMilliseconds);
+
+            try
             {
-                SchemaVersion = "1.0.0",
-                Status = DetectionStatus.Limited,
-                Reason = ReasonTimeout,
-                GeneratedAtUtc = DateTime.UtcNow
-            };
+                var assessment = await _stateStore
+                    .LoadAssessmentAsync(cancellationToken)
+                    .WaitAsync(timeout, cancellationToken);
+
+                var workingDirectory = assessment?.WorkingDirectory ?? "";
+
+                var artifacts = await _artifactReader
+                    .ReadAsync(workingDirectory, cancellationToken)
+                    .WaitAsync(timeout, cancellationToken);
+
+                return ContextReconstructor.Reconstruct(assessment, artifacts, _limits);
+            }
+            catch (TimeoutException)
+            {
+                return new ProjectContext
+                {
+                    SchemaVersion = "1.0.0",
+                    Status = DetectionStatus.Limited,
+                    Reason = ReasonTimeout,
+                    GeneratedAtUtc = DateTime.UtcNow
+                };
+            }
         }
     }
 }
