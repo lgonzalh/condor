@@ -301,6 +301,57 @@ public class ContextReconstructorTests
     }
 
     [Fact]
+    public void Pendientes_MasDelTope_RespetaMaxPendingTasks()
+    {
+        var lines = new List<string>();
+        for (var i = 0; i < 15; i++)
+        {
+            lines.Add("T-0" + (100 + i).ToString() + " Tarea pendiente " + i);
+        }
+        var backlog = new OperativeArtifact
+        {
+            Kind = OperativeArtifactKind.Backlog,
+            RelativePath = "operacion/BACKLOG.md",
+            Content = string.Join("\n", lines) + "\n",
+            Status = DetectionStatus.Detected
+        };
+
+        var context = ContextReconstructor.Reconstruct(
+            AssessmentConProyecto(),
+            new[] { backlog },
+            ContextLimits.Default);
+
+        Assert.True(context.ContinuationPoint!.PendingWork.Count <= ContextLimits.Default.MaxPendingTasks);
+    }
+
+    [Fact]
+    public void LineasPorArtefacto_SuperaLimite400_DeclaraLimiteYNoEscaneaMasAlla()
+    {
+        var lines = new List<string>();
+        for (var i = 0; i < 450; i++)
+        {
+            lines.Add("linea con contenido de relleno " + i);
+        }
+        lines.Add("T-099 Tarea pendiente mas alla del limite");
+        var backlog = new OperativeArtifact
+        {
+            Kind = OperativeArtifactKind.Backlog,
+            RelativePath = "operacion/BACKLOG.md",
+            Content = string.Join("\n", lines) + "\n",
+            Status = DetectionStatus.Detected
+        };
+
+        var context = ContextReconstructor.Reconstruct(
+            AssessmentConProyecto(),
+            new[] { backlog },
+            ContextLimits.Default);
+
+        Assert.Contains(ContextLimits.LimitLines, context.LimitsApplied);
+        Assert.DoesNotContain(context.ContinuationPoint!.PendingWork,
+            tarea => tarea.Contains("T-099", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Determinismo_DosReconstrucciones_ProducenElMismoContexto()
     {
         var artifacts = new[]
