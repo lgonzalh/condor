@@ -1,30 +1,63 @@
 # REGISTRO_CAMBIOS
 
-Version: 1.8.0
-Estado: Activo
+Version: 2.0.0 Estado: Activo Modo: Evolucion Continua
 
-| ID | Fecha | Tarea | Cambio | Resultado | Commit |
-|---|---|---|---|---|---|
-| CH-001 | 2026-08-10 | T-001 | Sistema de continuidad multi-agente y backlog inicial | Completado | - |
-| CH-002 | 2026-08-10 | T-001 | Assessment Engine y CLI inicial | Completado | 3de8618f4d6f244bbd456226320a4a91d23199ff |
-| CH-003 | 2026-08-10 | T-001 | Integracion en main | Completado | 004f8f594c3f26167af820d4cc99c8053fa66506 |
-| CH-004 | 2026-08-10 | T-002 | Integracion Ollama y correccion C-1 | Completado | dfaa5d6105c682e7b692f85350db22a892fdac11 |
-| CH-005 | 2026-08-10 | T-002 | Integracion en main | Completado | e558efd36f4369cfd69a04887f43cbfef9fb2136 |
-| CH-006 | 2026-08-11 | T-003 | Recomendador de modelos (ModelRecommender, condor recommend, mapeo de /api/tags) | Completado en rama, pendiente de integracion | - |
-| CH-007 | 2026-08-11 | Correccion transversal | Contrato CLI al espanol sin tildes (analizar, consultar, recomendar, ayuda; --modelo, --proposito; DEC-025) | Completado en rama, pendiente de integracion | - |
-| CH-008 | 2026-08-11 | T-003 | Integracion en main mediante PR #1 y cierre documental de la tarea | Completado | 12a3c5b031da00f36d32a6f66322bcc1392573d9 |
-| CH-009 | 2026-08-11 | T-004 | Formalizacion documental del descubrimiento de proyecto (T-004.md v1.0.0, DEC-026, artefactos de planificacion actualizados) | Especificada, sin implementar | - |
-| CH-010 | 2026-08-11 | T-004 | Diseno aprobado (DEC-027, D-D1 a D-D7); T-004.md v1.1.0; tarea preparada para implementacion | Preparada, sin implementar | - |
-| CH-011 | 2026-08-11 | T-004 | Implementacion del descubrimiento de proyecto (ProjectDetector, parsers de manifiestos, seccion PROYECTO, campo project) y revision pre-commit con correccion de BOM UTF-8 en la lectura de manifiestos | Implementada en rama, en revision pre-commit, sin commit | - |
-| CH-012 | 2026-08-11 | T-004 | Integracion mediante PR #2, verificacion (174/174 pruebas, build limpio) y cierre documental con congelacion formal de T-004 | Completada y congelada | a90366338678988ec0a13fdf636bf72dc921dfd8 |
+  ------------------------------------------------------------------------------
+  ID          Fecha        Tarea       Cambio           Resultado    Commit
+  ----------- ------------ ----------- ---------------- ------------ -----------
+  CH-001      2026-08-10   T-001       Sistema de       Completado   \-
+                                       continuidad                   
+                                       multi-agente y                
+                                       backlog inicial               
+
+  CH-002      2026-08-10   T-001       Assessment       Completado   3de8618
+                                       Engine y CLI                  
+                                       inicial                       
+
+  CH-003      2026-08-10   T-001       Integracion en   Completado   004f8f5
+                                       main                          
+
+  CH-004      2026-08-10   T-002       Integracion      Completado   dfaa5d6
+                                       Ollama y                      
+                                       correccion C-1                
+
+  CH-005      2026-08-10   T-002       Integracion en   Completado   e558efd
+                                       main                          
+
+  CH-006      2026-08-11   T-003       Implementacion   Completado   49cd1ad
+                                       del recomendador              
+                                       de modelos                    
+
+  CH-007      2026-08-11   T-003       Correccion del   Completado   49cd1ad
+                                       contrato CLI a                
+                                       espanol sin                   
+                                       tildes                        
+
+  CH-008      2026-08-11   T-003       Integracion      Completado   0f32bd8
+                                       mediante PR #1 y              
+                                       cierre                        
+
+  CH-009      2026-08-11   T-004       Formalizacion de Completado   ea42eec
+                                       la tarea                      
+
+  CH-010      2026-08-11   T-004       Diseno aprobado  Completado   ea42eec
+                                       y DEC-027                     
+
+  CH-011      2026-08-11   T-004       Implementacion y Completado   ea42eec
+                                       correccion BOM                
+                                       UTF-8                         
+
+  CH-012      2026-08-11   T-004       Integracion PR   Completado   a600050
+                                       #2, verificacion              
+                                       y congelacion                 
+  ------------------------------------------------------------------------------
 
 ## Estado
 
-T-001, T-002, T-003 y T-004 completadas, integradas en `main` y publicadas.
+T-001, T-002, T-003 y T-004 completadas.
 
-T-003 fue integrada mediante PR #1 (merge `12a3c5b031da00f36d32a6f66322bcc1392573d9`) y queda cerrada y congelada.
+T-004 queda formalmente congelada.
 
-Correccion del contrato CLI (DEC-025) integrada: `analizar`, `consultar`, `recomendar`, `ayuda`, `--modelo` y `--proposito`.
-T-004 fue integrada mediante PR #2 (merge `a90366338678988ec0a13fdf636bf72dc921dfd8`; commit de implementacion `ea42eec040937521942acab861c0302cf0429595`) y queda cerrada y congelada: su alcance aprobado no se modifica dentro de T-004 y las mejoras futuras se tratan como nueva tarea, decision o deuda.
+Siguiente tarea: `T-005 - Context Engine inicial`
 
-Siguiente tarea: T-005 (pendiente; no iniciada).
+T-005 no iniciada.
