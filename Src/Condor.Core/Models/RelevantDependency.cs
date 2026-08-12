@@ -1,8 +1,11 @@
-namespace Condor.Core.Models;
+using System;
 
-public class RelevantDependency
+namespace Condor.Core.Models
 {
-    public string Name { get; set; } = "";
-    public string Source { get; set; } = "";
-    public string? Detail { get; set; }
+    public class RelevantDependency
+    {
+        public string Name { get; set; } = "";
+        public string Source { get; set; } = "";
+        public string? Detail { get; set; }
+    }
 }
