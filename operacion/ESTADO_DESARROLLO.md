@@ -1,116 +1,119 @@
 # ESTADO_DESARROLLO
 
-Version: 2.0.0 Estado: Activo Modo: Evolucion Continua MVP: Condor 1.0
+Version: 2.1.0
+Estado: Activo
+Modo: Evolucion Continua
+MVP: Condor 1.0
 
 ## Estado actual
 
-Condor 0.1.0 cuenta con T-001, T-002, T-003 y T-004 completadas,
-verificadas, integradas en `main`, publicadas y, en el caso de T-004,
-formalmente congelada.
+Condor cuenta con T-001, T-002, T-003, T-004 y T-005 completadas,
+verificadas e integradas en `main`.
+
+T-004 y T-005 estan formalmente congeladas.
 
 ## Estado funcional
 
 Condor puede:
 
--   ejecutarse localmente en Windows;
--   analizar sistema operativo, CPU, RAM, GPU y almacenamiento;
--   detectar Git, herramientas, Ollama y modelos locales;
--   persistir el Assessment;
--   comunicarse con Ollama mediante loopback;
--   ejecutar inferencia local;
--   recomendar un modelo local;
--   descubrir el proyecto objetivo;
--   identificar lenguajes, frameworks y manifiestos mediante senales
-    objetivas;
--   extraer dependencias de primer nivel de manifiestos soportados;
--   detectar documentacion por presencia;
--   observar estado Git basico;
--   reportar estructura y volumen con limites;
--   degradar ante datos no verificables o limites excedidos;
--   emitir el perfil del proyecto en JSON.
+- ejecutarse localmente en Windows;
+- analizar el entorno local;
+- detectar herramientas y modelos locales;
+- persistir el Assessment;
+- comunicarse con Ollama mediante loopback;
+- ejecutar inferencia local;
+- recomendar un modelo local;
+- descubrir el proyecto objetivo;
+- construir `ProjectProfile`;
+- reconstruir `ProjectContext`;
+- leer artefactos operativos de forma acotada;
+- determinar punto de continuacion con evidencia;
+- detectar riesgos estructurados;
+- producir recomendaciones para Planner;
+- persistir `context.json` como artefacto derivado;
+- emitir `condor contexto`;
+- emitir `condor contexto --json`;
+- degradar de forma controlada;
+- mantener limites deterministas.
 
-## Contrato CLI vigente
+## Contratos CLI vigentes
 
-Los comandos publicos estan en espanol:
+Los comandos publicos permanecen en espanol y sin tildes.
 
--   `condor`
--   `condor analizar`
--   `condor analizar --json`
--   `condor recomendar`
--   `condor recomendar --proposito <tipo>`
--   `condor consultar "<mensaje>"`
--   `condor consultar "<mensaje>" --modelo <modelo>`
--   `condor version`
--   `condor ayuda`
+T-005 agrego:
 
-Alias vigentes:
+- `condor contexto`
+- `condor contexto --json`
 
--   `-h`
--   `--help`
--   `-v`
--   `--version`
-
-Valores de `--proposito`:
-
--   `desarrollo`
--   `general`
--   `vision`
-
-No se debe reintroducir el contrato anterior en ingles.
+No reintroducir contratos anteriores en ingles.
 
 ## Estado Git
 
 Ultimo estado confirmado:
 
-`a60005022399d360672aa43ca053e8156ec03efa`
+`f7db03190b3a55d3b979d24216b6d4aee4941e9a`
 
 `HEAD == origin/main`
 
 Working tree limpio.
 
-Solo existe `main` local y `origin/main` remoto.
+Rama activa: `main`.
 
 ## Evidencia acumulada
 
-T-001 a T-003: - funcionalidades verificadas; - integradas en main; -
-publicadas.
+T-001 a T-004: completadas, verificadas, integradas y publicadas.
 
-T-004: - 174/174 pruebas; - build limpio; - E2E real; - pruebas
-manuales; - PR #2 integrado; - cierre documental publicado; -
-congelacion formal.
+T-004:
+- 174/174 pruebas correctas;
+- build limpio;
+- E2E real;
+- cierre documental;
+- congelacion formal.
+
+T-005:
+- 102/102 pruebas unitarias;
+- 93/93 pruebas de integracion;
+- 11/11 pruebas de arquitectura;
+- CLI verificada;
+- E2E real;
+- determinismo D-D11 verificado;
+- D-D1 a D-D12 cumplidas;
+- 51 commits auditados sin violaciones de `1 archivo = 1 commit`;
+- publicacion completa en `origin/main`;
+- cierre y congelacion formal.
 
 ## Tareas
 
-  ID      Trabajo                                      Estado
-  ------- -------------------------------------------- ------------------------
-  T-001   Bootstrap del MVP y Assessment inicial       Completada
-  T-002   Integracion local con Ollama                 Completada
-  T-003   Recomendador de modelos                      Completada
-  T-004   Descubrimiento de proyecto                   Completada y congelada
-  T-005   Context Engine inicial                       Completada y verificada
-  T-006   Flujo de intencion a plan                    Pendiente
-  T-007   Builder inicial                              Pendiente
-  T-008   Verificacion inicial                         Pendiente
-  T-009   Documentacion y continuidad                  Pendiente
-  T-010   Capacidades avanzadas de desarrollo          Pendiente
-  T-011   Vision local                                 Pendiente
-  T-012   Instalador y puesta en marcha simplificada   Pendiente
+| ID | Trabajo | Estado |
+|---|---|---|
+| T-001 | Bootstrap del MVP y Assessment inicial | Completada |
+| T-002 | Integracion local con Ollama | Completada |
+| T-003 | Recomendador de modelos | Completada |
+| T-004 | Descubrimiento de proyecto | Completada y congelada |
+| T-005 | Context Engine inicial | Completada, verificada y congelada |
+| T-006 | Flujo de intencion a plan | Pendiente |
+| T-007 | Builder inicial | Pendiente |
+| T-008 | Verificacion inicial | Pendiente |
+| T-009 | Documentacion y continuidad | Pendiente |
+| T-010 | Capacidades avanzadas de desarrollo | Pendiente |
+| T-011 | Vision local | Pendiente |
+| T-012 | Instalador y puesta en marcha simplificada | Pendiente |
 
 ## Siguiente tarea
 
 `T-006 - Flujo de intencion a plan`
 
-T-005 quedo completada, verificada e integrada (ver REGISTRO_CAMBIOS.md,
-CH-015). El Context Engine inicial reconstruye el contexto operativo a
-partir del ProjectProfile de T-004 y de los artefactos operativos, sin
-LLM, sin internet y de forma determinista.
+Estado: Pendiente. No iniciada.
+
+Primera etapa: reconocimiento y formalizacion.
+
+No iniciar implementacion hasta disponer de contrato y decisiones aprobadas.
 
 ## Regla de continuidad
 
 El conocimiento permanente debe permanecer en el repositorio.
 
-No reconstruir el contexto desde conversaciones anteriores si el
-repositorio contiene la informacion necesaria.
+No reconstruir el contexto desde conversaciones anteriores si el repositorio contiene la informacion necesaria.
 
 ## Contexto de niveles
 
@@ -118,4 +121,4 @@ No existe nivel activo.
 
 El estado oficial es `Evolucion Continua`.
 
-No crear ni reabrir un nivel numerico para T-005.
+No crear ni reabrir un nivel numerico para T-006.
