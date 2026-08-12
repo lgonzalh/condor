@@ -18,8 +18,8 @@ Version: 2.0.0 Estado: Activo Modo: Evolucion Continua
   T-004             Alta              Descubrimiento de Completada y
                                       proyecto          congelada
 
-  T-005             Alta              Context Engine    Pendiente
-                                      inicial           
+  T-005             Alta              Context Engine    Completada y
+                                      inicial           verificada   
 
   T-006             Alta              Flujo de          Pendiente
                                       intencion a plan  
@@ -45,11 +45,11 @@ Version: 2.0.0 Estado: Activo Modo: Evolucion Continua
 
 ## Siguiente
 
-`T-005 - Context Engine inicial`
+`T-006 - Flujo de intencion a plan`
 
 Estado: Pendiente. No iniciada.
 
-Regla: T-005 debe formalizarse antes de implementar.
-
-No crear `T-005.md` hasta completar su reconocimiento y planificacion
-autorizados.
+T-005 quedo completada y verificada (REGISTRO_CAMBIOS.md, CH-015). La
+siguiente tarea es T-006, que consumira el `ProjectContext` entregado por
+el Context Engine para interpretar la intencion del usuario y producir
+planes.
