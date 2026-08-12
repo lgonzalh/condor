@@ -1,6 +1,6 @@
 # REGISTRO_CAMBIOS
 
-Version: 2.1.0 Estado: Activo Modo: Evolucion Continua
+Version: 2.2.0 Estado: Activo Modo: Evolucion Continua
 
   ------------------------------------------------------------------------------
   ID          Fecha        Tarea       Cambio           Resultado    Commit
@@ -60,14 +60,24 @@ Version: 2.1.0 Estado: Activo Modo: Evolucion Continua
                                        Git: 1 archivo                
                                        afectado = 1                  
                                        commit                        
+
+  CH-015      2026-08-12   T-005       Implementacion   Completado   e71596f,
+                                       Context Engine                1417f4a,
+                                       inicial y                     c1119ac,
+                                       verificacion                  bab200c,
+                                       integral                       72cce1b,
+                                                                      d3e9d59,
+                                                                      cd44772,
+                                                                      ffc53cb,
+                                                                      d6cb98e
   ------------------------------------------------------------------------------
 
 ## Estado
 
-T-001, T-002, T-003 y T-004 completadas.
+T-001, T-002, T-003, T-004 y T-005 completadas.
 
 T-004 queda formalmente congelada.
 
-T-005 formalizada (contrato v1.0.0), pendiente de aprobacion para diseno tecnico e implementacion.
+T-005 queda VERIFICADA, DOCUMENTADA E INTEGRADA (Context Engine inicial): build Release sin errores, unitarias 102/102, integracion 93/93, arquitectura 11/11, CLI condor contexto y --json, E2E real y determinismo D-D11. D-D1 a D-D12 cumplen.
 
 Regla de trazabilidad Git vigente: 1 archivo afectado = 1 commit.
