@@ -1,6 +1,6 @@
 # ESTADO_DESARROLLO
 
-Version: 2.1.0
+Version: 2.2.0
 Estado: Activo
 Modo: Evolucion Continua
 MVP: Condor 1.0
@@ -11,6 +11,9 @@ Condor cuenta con T-001, T-002, T-003, T-004 y T-005 completadas,
 verificadas e integradas en `main`.
 
 T-004 y T-005 estan formalmente congeladas.
+
+T-006 (Flujo de intencion a plan) queda formalizada, pendiente de diseno
+tecnico y aprobacion para implementacion.
 
 ## Estado funcional
 
@@ -51,7 +54,7 @@ No reintroducir contratos anteriores en ingles.
 
 Ultimo estado confirmado:
 
-`f7db03190b3a55d3b979d24216b6d4aee4941e9a`
+`1d8fe94dff0dd0c23718cfe059107909d96f004a`
 
 `HEAD == origin/main`
 
@@ -91,7 +94,7 @@ T-005:
 | T-003 | Recomendador de modelos | Completada |
 | T-004 | Descubrimiento de proyecto | Completada y congelada |
 | T-005 | Context Engine inicial | Completada, verificada y congelada |
-| T-006 | Flujo de intencion a plan | Pendiente |
+| T-006 | Flujo de intencion a plan | Formalizada, pendiente de diseno tecnico |
 | T-007 | Builder inicial | Pendiente |
 | T-008 | Verificacion inicial | Pendiente |
 | T-009 | Documentacion y continuidad | Pendiente |
@@ -103,11 +106,15 @@ T-005:
 
 `T-006 - Flujo de intencion a plan`
 
-Estado: Pendiente. No iniciada.
+Estado: Formalizada. Pendiente de diseno tecnico y aprobacion para
+implementacion.
 
-Primera etapa: reconocimiento y formalizacion.
+Reconocimiento completado y aprobado.
 
-No iniciar implementacion hasta disponer de contrato y decisiones aprobadas.
+Contrato formalizado en `operacion/TAREAS/T-006.md` (version 1.0.0) y
+decision registrada como DEC-030 (D-E1 a D-E8).
+
+No iniciar implementacion hasta disponer de diseno tecnico aprobado.
 
 ## Regla de continuidad
 
