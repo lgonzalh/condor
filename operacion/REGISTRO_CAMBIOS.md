@@ -1,6 +1,6 @@
 # REGISTRO_CAMBIOS
 
-Version: 2.0.0 Estado: Activo Modo: Evolucion Continua
+Version: 2.1.0 Estado: Activo Modo: Evolucion Continua
 
   ------------------------------------------------------------------------------
   ID          Fecha        Tarea       Cambio           Resultado    Commit
@@ -50,6 +50,16 @@ Version: 2.0.0 Estado: Activo Modo: Evolucion Continua
   CH-012      2026-08-11   T-004       Integracion PR   Completado   a600050
                                        #2, verificacion              
                                        y congelacion                 
+
+  CH-013      2026-08-12   T-005       Formalizacion    Completado   ef249eb,
+                                       del contrato de                e0ec429,
+                                       T-005                           acfc3d1
+
+  CH-014      2026-08-12   Regla       Regla de         Completado   9c757c7,
+                                       global          trazabilidad  4e32693
+                                       Git: 1 archivo                
+                                       afectado = 1                  
+                                       commit                        
   ------------------------------------------------------------------------------
 
 ## Estado
@@ -58,6 +68,6 @@ T-001, T-002, T-003 y T-004 completadas.
 
 T-004 queda formalmente congelada.
 
-Siguiente tarea: `T-005 - Context Engine inicial`
+T-005 formalizada (contrato v1.0.0), pendiente de aprobacion para diseno tecnico e implementacion.
 
-T-005 no iniciada.
+Regla de trazabilidad Git vigente: 1 archivo afectado = 1 commit.
