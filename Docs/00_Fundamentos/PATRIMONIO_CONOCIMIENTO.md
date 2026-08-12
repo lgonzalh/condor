@@ -1,6 +1,6 @@
 # PATRIMONIO_CONOCIMIENTO
 
-Version: 1.0.0\
+Version: 1.1.0\
 Estado: Activo\
 Nivel: Global\
 Clasificacion: Inventario de Conocimiento
@@ -119,7 +119,7 @@ Conservar
   CI-006   Assessment      Cuaderno   Arquitectura   Pendiente     ASSESSMENT_ENGINE.md
            Engine          IV                                      
 
-  CI-007   Context Engine  Cuaderno V Arquitectura   Pendiente     CONTEXT_ENGINE.md
+  CI-007   Context Engine  Cuaderno V Arquitectura   Incorporado   CONTEXT_ENGINE.md
 
   CI-008   Sistema Global  Cuaderno   Arquitectura   En evolucion  Inventarios Globales
            de Inventarios  IV                                      
@@ -153,6 +153,12 @@ Conservar
   -----------------------------------------------------------------------
   Version                               Cambios
   ------------------------------------- ---------------------------------
+  1.1.0                                 CI-007 (Context Engine) pasa a
+                                        Incorporado: la especificacion
+                                        vive en CONTEXT_ENGINE.md y T-005
+                                        formaliza su implementacion
+                                        inicial.
+
   1.0.0                                 Creacion del inventario oficial
                                         del patrimonio de conocimiento.
 
