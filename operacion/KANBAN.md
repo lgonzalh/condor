@@ -34,6 +34,6 @@ Ninguna.
 
 `T-006 - Flujo de intencion a plan`
 
-Estado: Pendiente. No iniciada.
+Estado: Formalizada. Pendiente de diseno tecnico y aprobacion para implementacion.
 
-No iniciar T-006 desde implementacion. Primero realizar reconocimiento y formalizacion.
+No iniciar T-006 desde implementacion. Primero diseno tecnico aprobado.
