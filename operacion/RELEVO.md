@@ -1,6 +1,8 @@
 # RELEVO
 
-Version: 3.0.0 Estado: Activo Modo: Evolucion Continua
+Version: 4.0.0
+Estado: Activo
+Modo: Evolucion Continua
 
 ## Ultimo trabajo
 
@@ -8,66 +10,52 @@ T-005 - Context Engine inicial.
 
 ## Estado
 
-T-005 completada, verificada, documentada, integrada en `main`,
-publicada y congelada.
+T-005 completada, verificada, integrada, publicada y formalmente congelada.
 
-Commit documental final del ciclo: `5af9731531f7d94c80b6c564fc87953d3a8290a6`
+Commit final del cierre documental:
+`f7db03190b3a55d3b979d24216b6d4aee4941e9a`
 
-## Evidencia
+HEAD:
+`f7db03190b3a55d3b979d24216b6d4aee4941e9a`
 
--   Build Release `dotnet build`: 0 errores, 0 advertencias.
--   Unitarias (Condor.Core): 102/102 correctas.
--   Integracion (Condor.Infrastructure): 93/93 correctas.
--   Arquitectura: 11/11 correctas.
--   CLI: `condor contexto` y `condor contexto --json` verificadas.
--   E2E real sobre el repositorio Condor y escenarios (sin operacion/, vacio, > 64 KB, > 400 lineas, sin Git).
--   Determinismo D-D11: CUMPLE (dos ejecuciones producen el mismo contexto salvo GeneratedAtUtc).
--   Decisiones D-D1 a D-D12: todas CUMPLEN.
+origin/main:
+`f7db03190b3a55d3b979d24216b6d4aee4941e9a`
 
-## Funcionalidades disponibles
+Working tree: limpio.
 
-Condor puede:
+## Evidencia de T-005
 
--   analizar el entorno local;
--   detectar herramientas y modelos locales;
--   recomendar un modelo;
--   consultar un modelo local;
--   descubrir el proyecto objetivo;
--   identificar Git y su estado basico;
--   identificar lenguajes mediante senales;
--   identificar frameworks mediante senales disponibles;
--   detectar manifiestos y dependencias de primer nivel;
--   detectar documentacion por presencia;
--   reportar estructura y volumen con limites;
--   degradar de forma controlada;
--   emitir el perfil de proyecto en JSON;
--   reconstruir el contexto operativo del proyecto activo;
--   determinar el punto de continuacion con evidencia;
--   detectar riesgos basicos estructurados;
--   extraer dependencias relevantes y herramientas del entorno;
--   generar recomendaciones para Planner;
--   emitir el contexto en JSON y degradar sin assessment.
+- Build Release: 0 errores, 0 advertencias.
+- Pruebas unitarias: 102/102 correctas.
+- Pruebas de integracion: 93/93 correctas.
+- Pruebas de arquitectura: 11/11 correctas.
+- CLI `condor contexto` y `condor contexto --json` verificadas.
+- E2E real ejecutado.
+- Determinismo D-D11 verificado.
+- D-D1 a D-D12: todas cumplen.
+- Limites verificados: 64 KB por artefacto, 5 artefactos, 400 lineas por artefacto, 10 tareas, 8 recomendaciones y 15 segundos.
+- 51 commits auditados: 0 violaciones de la regla `1 archivo = 1 commit`.
+- Todos los commits publicados en `origin/main`.
+- Documentacion operativa actualizada.
+- T-005.md v1.3.0: cerrada y congelada.
 
 ## Congelacion de T-005
 
 T-005 queda cerrada y congelada.
 
-Su alcance aprobado, contrato (DEC-028) y diseno tecnico (DEC-029,
-D-D1 a D-D12) no se modifican.
+Su alcance aprobado no se modifica dentro de T-005.
 
-Cualquier mejora posterior debe registrarse como nueva tarea, decision o
-deuda segun corresponda.
+Cualquier mejora posterior debe registrarse como nueva tarea, decision o deuda segun corresponda.
 
 ## Git
 
 Estado confirmado al cierre:
 
--   Rama local: `main`
--   `HEAD`: `5af9731531f7d94c80b6c564fc87953d3a8290a6`
--   `origin/main`: `5af9731531f7d94c80b6c564fc87953d3a8290a6`
--   Working tree: limpio
--   Unica rama local: `main`
--   Unica rama remota: `origin/main`
+- Rama local: `main`
+- `HEAD`: `f7db03190b3a55d3b979d24216b6d4aee4941e9a`
+- `origin/main`: `f7db03190b3a55d3b979d24216b6d4aee4941e9a`
+- Working tree: limpio
+- Regla vigente: `1 archivo = 1 commit`
 
 ## Siguiente tarea exacta
 
@@ -75,40 +63,38 @@ Estado confirmado al cierre:
 
 Estado: Pendiente. No iniciada.
 
-T-005 (Context Engine inicial) quedo cerrada y congelada
-(REGISTRO_CAMBIOS.md, CH-015). T-006 consumira el `ProjectContext`
-entregado por el Context Engine para interpretar la intencion del usuario.
+T-006 debe comenzar por reconocimiento y formalizacion.
+
+No existe autorizacion para comenzar codigo directamente.
+
+El siguiente agente debe reconocer T-006, revisar sus dependencias y proponer el contrato antes de implementar.
+
+## Dependencias conocidas
+
+T-004 entrega `ProjectProfile`.
+
+T-005 consume `ProjectProfile` y entrega `ProjectContext`.
+
+T-006 debe consumir `ProjectContext` para el flujo de intencion a plan.
+
+T-006 no debe reimplementar capacidades congeladas de T-004 ni T-005.
 
 ## Regla de continuidad
 
-El siguiente agente debe leer primero:
+El conocimiento permanente debe permanecer en el repositorio.
 
--   `AGENTE_CONDOR.md`
--   `ESTADO_PROYECTO.md`
--   `operacion/ESTADO_DESARROLLO.md`
--   `operacion/RELEVO.md`
--   `operacion/BACKLOG.md`
--   `operacion/KANBAN.md`
--   `operacion/REGISTRO_CAMBIOS.md`
-
-Despues debe reconocer el estado de T-006 antes de formalizarla.
-
-No debe comenzar codigo directamente.
+No reconstruir el contexto desde conversaciones anteriores si el repositorio contiene la informacion necesaria.
 
 ## Contexto de niveles
 
-La fuente oficial establece que no existe nivel activo.
+No existe nivel activo.
 
 Condor opera actualmente en `Evolucion Continua`.
 
-La referencia historica de este chat al Nivel 07 se conserva solo como
-historial y no produce ninguna accion.
-
-T-005 pertenece al ciclo actual de Evolucion Continua.
+No crear ni activar un Nivel 10 para T-006.
 
 ## Regla de idioma
 
-Todo texto visible nuevo debe estar en espanol latinoamericano sin
-tildes, sin acentos y sin spanglish.
+Todo texto visible nuevo debe estar en espanol latinoamericano sin tildes, sin acentos y sin spanglish.
 
 Los identificadores tecnicos internos permanecen en su forma original.
