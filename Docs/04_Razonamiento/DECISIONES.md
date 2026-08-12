@@ -1,6 +1,6 @@
 # DECISIONES
 
-Version: 1.6.0
+Version: 1.7.0
 Estado: Activo
 Nivel: 04 - Diseno
 Clasificacion: Decisiones Arquitectonicas
@@ -520,10 +520,62 @@ Revision del diseno de T-004 previa a la implementacion.
 
 ---
 
+# DEC-028
+
+Titulo:
+Formalizacion del contrato de T-005 (Context Engine inicial).
+
+Decision:
+El contrato de T-005 queda formalizado en `operacion/TAREAS/T-005.md` (version 1.0.0):
+
+- T-005 reconstruye el contexto operativo del proyecto activo a partir del ProjectProfile (T-004) y de los artefactos operativos oficiales del proyecto (`operacion/`), sin LLM, sin internet y sin dependencia del historial de conversaciones;
+- la frontera con T-004 es estricta: T-004 observa y estructura; T-005 interpreta, resume y determina el punto de continuacion;
+- la intencion libre del usuario y la generacion de planes pertenecen a T-006; T-005 acota la capacidad "interpretar la intencion" de CONTEXT_ENGINE.md a la intencion implicita de continuar el proyecto activo;
+- la capacidad se expone mediante el comando publico `condor contexto` (texto y `--json`);
+- el contexto se persiste como artefacto derivado y transitorio en el estado local (`context.json`), sin modificar `assessment.json` ni el conocimiento permanente.
+
+Estado:
+Aceptada.
+
+Origen:
+T-005 (fase de formalizacion del contrato).
+
+---
+
+# DEC-029
+
+Titulo:
+Diseno tecnico aprobado de T-005 (Context Engine inicial).
+
+Decision:
+El diseno tecnico de T-005 fue aprobado con las decisiones D-D1 a D-D12:
+
+- D-D1: el modelo principal se denomina tecnicamente `ProjectContext` (concepto de dominio: "contexto operativo") y reside en `Condor.Core.Models`. Los identificadores tecnicos y las claves JSON permanecen en ingles, coherentes con el esquema tecnico del Assessment (DEC-011 permite identificadores en ambas lenguas; se descarta una clase en espanol para preservar la coherencia del esquema tecnico aprobado en T-005.md). El modelo tiene `SchemaVersion` propio.
+- D-D2: se reutiliza el enum existente `DetectionStatus` (Detected, NotDetected, Error, Limited) para el estado del contexto; no se amplia.
+- D-D3: `IContextService` expone un unico metodo `BuildContextAsync(CancellationToken)` en `Condor.Core.Contracts`, siguiendo el patron de `IAssessmentService`; las entradas se cargan internamente desde `IStateStore` y del `WorkingDirectory` del Assessment.
+- D-D4: `IStateStore` se extiende de forma aditiva con `SaveContextAsync` y `LoadContextAsync` (precedente DEC-014); `context.json` vive en el mismo directorio de estado local; serializacion UTF-8 sin BOM (precedente de correccion BOM de T-004).
+- D-D5: `ContextReconstructor` reside en `Condor.Core.Context` como logica pura (patron de `Condor.Core.Project` en T-004 y de `Condor.Core.Evaluation` en T-003): recibe el Assessment, la lista de artefactos operativos ya acotados (`OperativeArtifact`) y `ContextLimits`; no realiza IO. `OperativeArtifactCatalog` en Core define los 5 nombres oficiales y la correspondencia a `OperativeArtifactKind`.
+- D-D6: `OperativeArtifactReader` (Infrastructure) es el unico componente autorizado a abrir archivos; lee solo los 5 artefactos oficiales bajo `operacion/` con limite de 64 KB por archivo y orden fijo del catalogo; un archivo excesivo o inaccesible se omite con su estado y se declara en `LimitsApplied`; nunca lanza excepciones.
+- D-D7: el punto de continuacion se determina con heuristica determinista de patrones textuales acotados: tareas pendientes (lineas con "T-0XX" y "pendiente"), siguiente tarea (proximidad textual de "siguiente" y "T-0XX") y ultima actividad (ultima fila "CH-0XX" de REGISTRO_CAMBIOS o, en su defecto, el ultimo commit Git del ProjectProfile); cada hallazgo registra evidencia textual; sin evidencia, `ContinuationPoint` queda en `NotDetected` con motivo, sin inventar.
+- D-D8: assessment ausente o ilegible se degrada a `NotDetected` con un unico motivo ("no hay assessment disponible o ilegible; ejecuta condor analizar") porque `IStateStore` no distingue la causa; no se modifica el contrato vigente de estado (DEC-003); la alternativa de extender el contrato se descarta por no aportar valor al consumidor.
+- D-D9: la persistencia de `context.json` ocurre tras cada ejecucion de `condor contexto` como artefacto derivado y transitorio (DEC-008): regenerable, sin valor permanente y sin escritura en el repositorio del proyecto.
+- D-D10: la CLI incorpora `condor contexto` y `condor contexto --json` en espanol sin tildes (DEC-025); sin assessment, salida degradada con mensaje instructivo y exit code 1 (patron de T-004); el comando se agrega a la ayuda y al estado inicial.
+- D-D11: determinismo: todas las colecciones se ordenan ordinalmente antes de construir el resultado (lenguajes, frameworks, riesgos por severidad y nombre, dependencias por nombre, evidencias en orden de deteccion), la lectura usa el orden fijo del catalogo y `GeneratedAtUtc` es la unica excepcion; se incluye una prueba de doble ejecucion (patron D-6 de T-004).
+- D-D12: los limites del contexto se centralizan en `ContextLimits` (`Condor.Core.Context`) con valores predeterminados: 64 KB por artefacto, 5 artefactos, 400 lineas escaneadas por artefacto, 10 tareas pendientes, 8 recomendaciones y 15 segundos totales; el modelo es independiente de `DiscoveryLimits` de T-004 (congelado) para evitar acoplamiento entre motores.
+
+Estado:
+Aceptada.
+
+Origen:
+Revision del diseno de T-005 previa a la implementacion.
+
+---
+
 # Historial de Cambios
 
 | Version | Cambio |
 |---------|--------|
+| 1.7.0 | Se incorporan DEC-028 (formalizacion del contrato de T-005) y DEC-029 (diseno tecnico aprobado de T-005, decisiones D-D1 a D-D12). |
 | 1.6.0 | Se incorpora DEC-027 (diseno aprobado de T-004, decisiones D-D1 a D-D7). |
 | 1.5.0 | Se incorpora DEC-026 (descubrimiento de proyecto, T-004). |
 | 1.4.0 | Se incorpora DEC-025 (correccion del contrato CLI al espanol) y se actualizan DEC-013 y DEC-023. |
