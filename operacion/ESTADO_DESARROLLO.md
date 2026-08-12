@@ -87,7 +87,7 @@ congelacion formal.
   T-002   Integracion local con Ollama                 Completada
   T-003   Recomendador de modelos                      Completada
   T-004   Descubrimiento de proyecto                   Completada y congelada
-  T-005   Context Engine inicial                       Pendiente
+  T-005   Context Engine inicial                       Completada y verificada
   T-006   Flujo de intencion a plan                    Pendiente
   T-007   Builder inicial                              Pendiente
   T-008   Verificacion inicial                         Pendiente
@@ -98,14 +98,12 @@ congelacion formal.
 
 ## Siguiente tarea
 
-`T-005 - Context Engine inicial`
+`T-006 - Flujo de intencion a plan`
 
-T-005 no esta iniciada.
-
-Primera etapa: reconocimiento y formalizacion de la tarea.
-
-No iniciar implementacion hasta disponer de contrato y decisiones
-aprobadas.
+T-005 quedo completada, verificada e integrada (ver REGISTRO_CAMBIOS.md,
+CH-015). El Context Engine inicial reconstruye el contexto operativo a
+partir del ProjectProfile de T-004 y de los artefactos operativos, sin
+LLM, sin internet y de forma determinista.
 
 ## Regla de continuidad
 
