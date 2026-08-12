@@ -4,5 +4,6 @@ public enum DetectionStatus
 {
     Detected,
     NotDetected,
-    Error
+    Error,
+    Limited
 }

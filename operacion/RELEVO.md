@@ -1,11 +1,12 @@
 # RELEVO
 
-Version: 1.3.0
+Version: 1.5.0
 Estado: Activo
 
 ## Ultimo trabajo
 
 T-003 - Recomendador de modelos (cerrada e integrada).
+T-004 - Descubrimiento de proyecto (implementada en rama; en revision pre-commit; sin commit).
 
 ## Estado
 
@@ -14,8 +15,10 @@ T-003 completada, verificada e integrada en `main` mediante PR #1.
 Merge commit:
 `12a3c5b031da00f36d32a6f66322bcc1392573d9`
 
+T-004 implementada en la rama `feature/T-004-project-discovery`; en revision pre-commit; sin commit.
+
 Estado actual de `main`:
-`12a3c5b031da00f36d32a6f66322bcc1392573d9`
+`0f32bd8868922ea79d0249f428569a51bb29915a`
 
 ## Evidencia
 
@@ -57,14 +60,13 @@ Calibracion de la heuristica de memoria: los factores de ModelMemoryBudget son e
 
 ## Funcionalidades disponibles
 
-- `condor analizar [--json]`: analiza el entorno y persiste el Assessment.
+- `condor analizar [--json]`: analiza el entorno, persiste el Assessment e incluye el descubrimiento del proyecto local (seccion PROYECTO y campo `project`).
 - `condor consultar "<mensaje>" [--modelo <modelo>]`: inferencia local mediante Ollama.
 - `condor recomendar [--proposito desarrollo|general|vision]`: recomendacion de modelo local.
 - `condor version`, `condor ayuda`, alias `-h/--help/-v/--version`.
 
 ## Funcionalidades pendientes
 
-- T-004 Descubrimiento de proyecto.
 - T-005 Context Engine inicial.
 - T-006 Flujo de intencion → plan.
 - T-007 Builder inicial.
@@ -76,7 +78,7 @@ Calibracion de la heuristica de memoria: los factores de ModelMemoryBudget son e
 
 ## Siguiente tarea exacta
 
-T-004 - Descubrimiento de proyecto (referencia conservada en backlog y kanban; sin definicion formal aun: `operacion/TAREAS/T-004.md` no existe).
+T-004 - Descubrimiento de proyecto (implementada; en revision pre-commit en la rama `feature/T-004-project-discovery`; sin commit).
 
 ## Regla
 

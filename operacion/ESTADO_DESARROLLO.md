@@ -1,6 +1,6 @@
 # ESTADO_DESARROLLO
 
-Version: 1.3.0
+Version: 1.5.0
 Estado: Activo
 Modo: Evolucion Continua
 MVP: Condor 1.0
@@ -10,6 +10,10 @@ MVP: Condor 1.0
 Condor 0.1.0 cuenta con T-001, T-002 y T-003 completadas, verificadas, integradas en `main` y publicadas.
 
 T-003 (Recomendador de modelos) fue integrada mediante PR #1 (merge `12a3c5b031da00f36d32a6f66322bcc1392573d9`) y queda cerrada y congelada.
+
+T-004 (Descubrimiento de proyecto) quedo especificada y preparada para implementacion: definicion formal en `operacion/TAREAS/T-004.md` (v1.0.0), decisiones registradas en DEC-026 y artefactos de planificacion actualizados.
+
+T-004 (Descubrimiento de proyecto) fue implementada en la rama `feature/T-004-project-discovery`: detector de proyecto (ProjectDetector), parsers de manifiestos, seccion PROYECTO en `condor analizar` y campo `project` en `--json`. Queda en revision pre-commit: no tiene commit, no esta integrada en `main`, no esta cerrada ni congelada.
 
 ## Estado funcional
 
@@ -26,7 +30,8 @@ Condor puede:
 - priorizar modelos para desarrollo y distinguir propositos (development, general y vision);
 - explicar motivos, alternativas y limitaciones;
 - degradar ante Assessment ausente, Ollama detenido o inventario vacio;
-- degradar correctamente ante Ollama detenido o Assessment invalido.
+- degradar correctamente ante Ollama detenido o Assessment invalido;
+- descubrir objetivamente el proyecto local con `condor analizar` (identidad, Git basico, lenguajes, frameworks, manifiestos, documentacion, estructura y volumen, con limites y degradaciones);
 
 ## Restricciones vigentes
 
@@ -43,13 +48,13 @@ Condor puede:
 ## Estado Git
 
 Ultimo estado conocido de `main`:
-`12a3c5b031da00f36d32a6f66322bcc1392573d9`
+`0f32bd8868922ea79d0249f428569a51bb29915a`
 
 T-001, T-002 y T-003 estan integradas y publicadas.
 
 ## Siguiente tarea
 
-`T-004 - Descubrimiento de proyecto` (referencia conservada; sin definicion formal aun).
+`T-004 - Descubrimiento de proyecto` (implementada; en revision pre-commit en la rama `feature/T-004-project-discovery`; sin commit).
 
 ## Secuencia prevista
 

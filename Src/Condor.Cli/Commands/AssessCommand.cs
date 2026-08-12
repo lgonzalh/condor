@@ -43,7 +43,7 @@ public static class AssessCommand
             Terminal.WriteDim("Condor quedo preparado para recomendar un modelo compatible (T-003).");
         }
 
-        return 0;
+        return result.Project is { Status: DetectionStatus.NotDetected } ? 1 : 0;
     }
 
     private static void RenderActivity()
@@ -54,6 +54,7 @@ public static class AssessCommand
         Terminal.WriteDim("  Buscando GPU");
         Terminal.WriteDim("  Revisando almacenamiento");
         Terminal.WriteDim("  Verificando Git y herramientas");
+        Terminal.WriteDim("  Descubriendo el proyecto local");
         Terminal.WriteDim("  Verificando Ollama y modelos locales");
     }
 }

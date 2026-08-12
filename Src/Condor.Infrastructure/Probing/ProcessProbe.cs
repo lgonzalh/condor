@@ -5,11 +5,31 @@ namespace Condor.Infrastructure.Probing;
 
 public static class ProcessProbe
 {
-    public static async Task<string?> RunAsync(
+    public static Task<string?> RunAsync(
         string fileName,
         string arguments,
         int timeoutMilliseconds,
         CancellationToken cancellationToken = default)
+    {
+        return RunAsync(fileName, arguments, timeoutMilliseconds, null, cancellationToken);
+    }
+
+    public static Task<string?> RunAsync(
+        string fileName,
+        string arguments,
+        int timeoutMilliseconds,
+        string? workingDirectory,
+        CancellationToken cancellationToken = default)
+    {
+        return RunCoreAsync(fileName, arguments, timeoutMilliseconds, workingDirectory, cancellationToken);
+    }
+
+    private static async Task<string?> RunCoreAsync(
+        string fileName,
+        string arguments,
+        int timeoutMilliseconds,
+        string? workingDirectory,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -24,6 +44,11 @@ public static class ProcessProbe
                 StandardOutputEncoding = Encoding.UTF8,
                 StandardErrorEncoding = Encoding.UTF8
             };
+
+            if (!string.IsNullOrWhiteSpace(workingDirectory))
+            {
+                startInfo.WorkingDirectory = workingDirectory;
+            }
 
             using var process = new Process { StartInfo = startInfo };
             if (!process.Start())

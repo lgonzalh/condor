@@ -1,6 +1,6 @@
 # BACKLOG
 
-Version: 1.3.0
+Version: 1.5.0
 Estado: Activo
 
 | ID | Prioridad | Trabajo | Estado |
@@ -8,7 +8,7 @@ Estado: Activo
 | T-001 | Critica | Bootstrap del MVP y Assessment inicial | Completada |
 | T-002 | Critica | Integracion local con Ollama | Completada |
 | T-003 | Critica | Recomendador de modelos | Completada |
-| T-004 | Alta | Descubrimiento de proyecto | Pendiente |
+| T-004 | Alta | Descubrimiento de proyecto | Implementada (en revision) |
 | T-005 | Alta | Context Engine inicial | Pendiente |
 | T-006 | Alta | Flujo de intencion → plan | Pendiente |
 | T-007 | Alta | Builder inicial | Pendiente |
@@ -20,4 +20,4 @@ Estado: Activo
 
 ## Siguiente
 
-T-004 - Descubrimiento de proyecto.
+T-004 - Descubrimiento de proyecto (implementada; en revision pre-commit en la rama `feature/T-004-project-discovery`; sin commit).

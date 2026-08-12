@@ -1,4 +1,4 @@
-﻿namespace Condor.Architecture.Tests;
+namespace Condor.Architecture.Tests;
 
 public class CoreAgnosticTests
 {
@@ -31,6 +31,26 @@ public class CoreAgnosticTests
         }
     }
 
+    [Fact]
+    public void CondorCore_NoAccedeDirectamenteAlSistemaDeArchivos()
+    {
+        var archivos = ArchivosFuente("Src/Condor.Core");
+
+        foreach (var file in archivos)
+        {
+            var content = File.ReadAllText(file);
+
+            Assert.DoesNotContain("System.IO.File", content);
+            Assert.DoesNotContain("System.IO.Directory", content);
+            Assert.DoesNotContain("FileInfo", content);
+            Assert.DoesNotContain("DirectoryInfo", content);
+            Assert.DoesNotContain("StreamReader", content);
+            Assert.DoesNotContain("StreamWriter", content);
+            Assert.DoesNotContain("FileStream", content);
+            Assert.DoesNotContain("DriveInfo", content);
+        }
+    }
+
     private static string[] ArchivosFuente(string relativePath)
     {
         var directory = RepoRoot(relativePath);
@@ -54,4 +74,3 @@ public class CoreAgnosticTests
         return Path.Combine(directory.FullName, relativePath);
     }
 }
-
