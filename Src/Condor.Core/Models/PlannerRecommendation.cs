@@ -1,7 +1,10 @@
-namespace Condor.Core.Models;
+using System;
 
-public class PlannerRecommendation
+namespace Condor.Core.Models
 {
-    public string Text { get; set; } = "";
-    public string Evidence { get; set; } = "";
+    public class PlannerRecommendation
+    {
+        public string Text { get; set; } = "";
+        public string Evidence { get; set; } = "";
+    }
 }
