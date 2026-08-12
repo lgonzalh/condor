@@ -11,7 +11,7 @@ Modo: Evolucion Continua
 | T-003 | Critica | Recomendador de modelos | Completada |
 | T-004 | Alta | Descubrimiento de proyecto | Completada y congelada |
 | T-005 | Alta | Context Engine inicial | Completada y verificada |
-| T-006 | Alta | Flujo de intencion a plan | Pendiente |
+| T-006 | Alta | Flujo de intencion a plan | Formalizada, pendiente de diseno tecnico |
 | T-007 | Alta | Builder inicial | Pendiente |
 | T-008 | Alta | Verificacion inicial | Pendiente |
 | T-009 | Alta | Documentacion y continuidad | Pendiente |
@@ -23,10 +23,13 @@ Modo: Evolucion Continua
 
 `T-006 - Flujo de intencion a plan`
 
-Estado: Pendiente. No iniciada.
+Estado: Formalizada. Pendiente de diseno tecnico y aprobacion para
+implementacion.
 
 T-005 quedo completada, verificada, integrada y congelada.
 
 T-006 consumira el `ProjectContext` entregado por T-005 para interpretar la intencion del usuario y producir planes.
 
-No iniciar T-006 desde codigo. Primero realizar reconocimiento y formalizacion.
+Contrato formalizado en `operacion/TAREAS/T-006.md` (version 1.0.0) y decision DEC-030 (D-E1 a D-E8).
+
+No iniciar T-006 desde codigo. Primero diseno tecnico aprobado.
