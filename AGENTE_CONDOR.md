@@ -1,6 +1,6 @@
 # AGENTE_CONDOR
 
-Version: 1.1.0
+Version: 1.2.0
 Estado: Base operativa
 Clasificacion: Contrato transversal de agentes
 
@@ -62,6 +62,7 @@ La documentacion debe ser proporcional al cambio. No se debe crear documentacion
 - No modificar archivos no relacionados sin justificacion.
 - No borrar conocimiento permanente.
 - No depender de una conversacion para conservar contexto.
+- Respetar la regla de trazabilidad Git (1 archivo afectado = 1 commit) definida en la seccion REGLA DE TRAZABILIDAD GIT de DIRECTIVA_OPERATIVA_PROYECTO_CONDOR.md, con su unica excepcion de cambios tecnicamente inseparables.
 - Mantener la operacion local.
 - Respetar las restricciones de Condor 1.0.
 - Adaptar la estrategia al hardware y al modelo disponible.
@@ -78,7 +79,7 @@ Antes de entregar el relevo, el agente debe:
 4. Actualizar `operacion/RELEVO.md`.
 5. Actualizar `operacion/BACKLOG.md`.
 6. Actualizar `operacion/KANBAN.md`.
-7. Actualizar `operacion/REGISTRO_CAMBIOS.md` si hubo una decision o cambio relevante.
+7. Actualizar `operacion/REGISTRO_CAMBIOS.md` si hubo una decision o cambio relevante (una sola vez por ciclo de trabajo, nunca por commit; su commit es el ultimo del ciclo y no se registra a si mismo).
 8. Actualizar inventarios afectados.
 9. Indicar la siguiente accion concreta.
 10. Dejar el repositorio en un estado reproducible.
