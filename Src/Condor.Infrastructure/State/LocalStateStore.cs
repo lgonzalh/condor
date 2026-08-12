@@ -56,6 +56,7 @@ namespace Condor.Infrastructure.State
 
             try
             {
+                Directory.CreateDirectory(_stateDirectory);
                 var json = AssessmentJson.Serialize(result);
                 await File.WriteAllTextAsync(filePath, json, new UTF8Encoding(false), cancellationToken);
             }
@@ -90,6 +91,7 @@ namespace Condor.Infrastructure.State
 
             try
             {
+                Directory.CreateDirectory(_stateDirectory);
                 var json = ContextJson.Serialize(context);
                 await File.WriteAllTextAsync(filePath, json, new UTF8Encoding(false), cancellationToken);
             }
