@@ -1,87 +1,101 @@
+using System;
 using System.Text;
-using System.Text.Json;
+using System.Threading.Tasks;
 using Condor.Core.Contracts;
 using Condor.Core.Models;
 using Condor.Core.Serialization;
 
-namespace Condor.Infrastructure.State;
-
-public class LocalStateStore : IStateStore
+namespace Condor.Infrastructure.State
 {
-    private readonly string _stateDirectory;
-
-    public LocalStateStore()
-        : this(Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Condor",
-            "state"))
+    public sealed class LocalStateStore : IStateStore
     {
-    }
+        private const string AssessmentFileName = "assessment.json";
+        private const string ContextFileName = "context.json";
+        private readonly string _stateDirectory;
 
-    public LocalStateStore(string stateDirectory)
-    {
-        _stateDirectory = stateDirectory;
-    }
-
-    public async Task SaveAssessmentAsync(
-        AssessmentResult result,
-        CancellationToken cancellationToken = default)
-    {
-        Directory.CreateDirectory(_stateDirectory);
-        var filePath = Path.Combine(_stateDirectory, "assessment.json");
-        var json = AssessmentJson.Serialize(result);
-        await File.WriteAllTextAsync(filePath, json, new UTF8Encoding(false), cancellationToken);
-    }
-
-    public async Task<AssessmentResult?> LoadAssessmentAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var filePath = Path.Combine(_stateDirectory, "assessment.json");
-        if (!File.Exists(filePath))
+        public LocalStateStore()
         {
-            return null;
+            _stateDirectory = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Condor", "state");
+
+            if (!Directory.Exists(_stateDirectory))
+            {
+                Directory.CreateDirectory(_stateDirectory);
+            }
         }
 
-        var json = await File.ReadAllTextAsync(filePath, cancellationToken);
-
-        try
+        public LocalStateStore(string stateDirectory)
         {
-            return AssessmentJson.Deserialize(json);
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-    }
-
-    public async Task SaveContextAsync(
-        ProjectContext context,
-        CancellationToken cancellationToken = default)
-    {
-        Directory.CreateDirectory(_stateDirectory);
-        var filePath = Path.Combine(_stateDirectory, "context.json");
-        var json = ContextJson.Serialize(context);
-        await File.WriteAllTextAsync(filePath, json, new UTF8Encoding(false), cancellationToken);
-    }
-
-    public async Task<ProjectContext?> LoadContextAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var filePath = Path.Combine(_stateDirectory, "context.json");
-        if (!File.Exists(filePath))
-        {
-            return null;
+            _stateDirectory = stateDirectory;
         }
 
-        var json = await File.ReadAllTextAsync(filePath, cancellationToken);
+        public async Task<AssessmentResult?> LoadAssessmentAsync(CancellationToken cancellationToken = default)
+        {
+            var filePath = Path.Combine(_stateDirectory, AssessmentFileName);
 
-        try
-        {
-            return ContextJson.Deserialize(json);
+            if (!File.Exists(filePath))
+            {
+                return null;
+            }
+
+            try
+            {
+                var json = await File.ReadAllTextAsync(filePath, cancellationToken);
+                return AssessmentJson.Deserialize(json);
+            }
+            catch
+            {
+                return null;
+            }
         }
-        catch (JsonException)
+
+        public async Task SaveAssessmentAsync(AssessmentResult result, CancellationToken cancellationToken = default)
         {
-            return null;
+            var filePath = Path.Combine(_stateDirectory, AssessmentFileName);
+
+            try
+            {
+                var json = AssessmentJson.Serialize(result);
+                await File.WriteAllTextAsync(filePath, json, new UTF8Encoding(false), cancellationToken);
+            }
+            catch
+            {
+            }
+        }
+
+        public async Task<ProjectContext?> LoadContextAsync(CancellationToken cancellationToken = default)
+        {
+            var filePath = Path.Combine(_stateDirectory, ContextFileName);
+
+            if (!File.Exists(filePath))
+            {
+                return null;
+            }
+
+            try
+            {
+                var json = await File.ReadAllTextAsync(filePath, cancellationToken);
+                return ContextJson.Deserialize(json);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public async Task SaveContextAsync(ProjectContext context, CancellationToken cancellationToken = default)
+        {
+            var filePath = Path.Combine(_stateDirectory, ContextFileName);
+
+            try
+            {
+                var json = ContextJson.Serialize(context);
+                await File.WriteAllTextAsync(filePath, json, new UTF8Encoding(false), cancellationToken);
+            }
+            catch
+            {
+            }
         }
     }
 }
