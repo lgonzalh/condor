@@ -179,6 +179,8 @@ public class ContextReconstructorTests
         assessment.Project.TotalSizeExceeded = true;
         assessment.Project.DirectoriesCount = 4;
         assessment.Project.FilesCount = 10;
+        assessment.Project.Languages = new List<LanguageEvidence>();
+        assessment.Project.Documentation = new List<DocumentationInfo>();
 
         var context = ContextReconstructor.Reconstruct(
             assessment,
@@ -230,7 +232,7 @@ public class ContextReconstructorTests
         Assert.Contains(dependencias, dependency =>
             dependency.Name == "System.Text.Json" && dependency.Source == "Manifest");
         Assert.Contains(dependencias, dependency =>
-            dependency.Name == "Git" && dependency.Source == "Tools");
+            dependency.Name == "git" && dependency.Source == "Tools");
         Assert.Contains(dependencias, dependency =>
             dependency.Name == "Ollama" && dependency.Source == "Tools");
     }
