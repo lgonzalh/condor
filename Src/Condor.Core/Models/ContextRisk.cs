@@ -1,8 +1,11 @@
-namespace Condor.Core.Models;
+using System;
 
-public class ContextRisk
+namespace Condor.Core.Models
 {
-    public string Kind { get; set; } = "";
-    public string Severity { get; set; } = "media";
-    public string Evidence { get; set; } = "";
+    public class ContextRisk
+    {
+        public string Kind { get; set; } = "";
+        public string Severity { get; set; } = "media";
+        public string Evidence { get; set; } = "";
+    }
 }
