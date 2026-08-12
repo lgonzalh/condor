@@ -2,6 +2,7 @@ using Condor.Cli.Commands;
 using Condor.Cli.Presentation;
 using Condor.Core.Contracts;
 using Condor.Infrastructure;
+using Condor.Infrastructure.Context;
 using Condor.Infrastructure.Llm;
 using Condor.Infrastructure.State;
 
@@ -57,6 +58,13 @@ public static class Program
                     args.Skip(1).ToArray(),
                     CancellationToken.None);
 
+            case "contexto":
+                return await ContextCommand.ExecuteAsync(
+                    new ContextService(stateStore),
+                    stateStore,
+                    args.Skip(1).ToArray(),
+                    CancellationToken.None);
+
             default:
                 Terminal.WriteError("Comando desconocido: " + args[0]);
                 RenderHelp();
@@ -73,6 +81,7 @@ public static class Program
         Terminal.WriteLine("Que quieres construir?");
         Terminal.WriteLine();
         Terminal.WriteDim("Usa 'condor analizar' para analizar el entorno.");
+        Terminal.WriteDim("Usa 'condor contexto' para reconstruir el contexto del proyecto.");
         Terminal.WriteDim("Usa 'condor recomendar' para elegir un modelo local.");
         Terminal.WriteDim("Usa 'condor consultar' para consultar al modelo local.");
         Terminal.WriteDim("Usa 'condor ayuda' para ver los comandos disponibles.");
@@ -88,6 +97,8 @@ public static class Program
         Terminal.WriteLine("  condor                     Muestra el estado inicial.");
         Terminal.WriteLine("  condor analizar            Analiza el entorno y muestra el resumen.");
         Terminal.WriteLine("  condor analizar --json     Genera el resultado en formato JSON.");
+        Terminal.WriteLine("  condor contexto            Reconstruye el contexto del proyecto.");
+        Terminal.WriteLine("  condor contexto --json     Genera el contexto en formato JSON.");
         Terminal.WriteLine("  condor recomendar          Recomienda un modelo para el equipo.");
         Terminal.WriteLine("  condor recomendar --proposito <tipo>");
         Terminal.WriteLine("                             tipo: desarrollo, general o vision.");
