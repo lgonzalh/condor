@@ -92,7 +92,7 @@ Actualizar
   FN-004   Evaluar proyecto  Motor             Planificada    ASSESSMENT_ENGINE.md
            y entorno                                          
 
-  FN-005   Planificar tareas Desarrollo        Planificada    KERNEL_CONDOR.md
+  FN-005   Planificar tareas Desarrollo        Implementada   KERNEL_CONDOR.md
            de ingenieria                                      
 
   FN-006   Disenar           Desarrollo        Planificada    SISTEMA_DESARROLLO_CONDOR.md
