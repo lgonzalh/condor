@@ -611,7 +611,7 @@ Titulo:
 Diseno tecnico completo de T-006 (Flujo de intencion a plan).
 
 Estado:
-PROPUESTA.
+Aprobada.
 
 Decision:
 El diseno tecnico de T-006 se completa en `operacion/TAREAS/T-006.md` (version 1.1.0), siguiendo los patrones de T-004 y T-005. D-E1 a D-E8 quedan ratificados sin cambios. Se incorporan las siguientes resoluciones tecnicas del diseno, marcadas como PROPUESTA y pendientes de aprobacion humana por no estar fijadas explicitamente por el contrato:
@@ -634,7 +634,7 @@ Diseno tecnico de T-006 (Flujo de intencion a plan).
 
 | Version | Cambio |
 |---------|--------|
-| 1.9.0 | Se incorpora DEC-031 (diseno tecnico completo de T-006, PROPUESTA, D-DE1 a D-DE6, pendiente de aprobacion humana). |
+| 1.9.0 | Se incorpora DEC-031 (diseno tecnico completo de T-006, D-DE1 a D-DE6, aprobada para implementacion). |
 | 1.8.0 | Se incorpora DEC-030 (formalizacion del contrato de T-006, decisiones D-E1 a D-E8). |
 | 1.7.0 | Se incorporan DEC-028 (formalizacion del contrato de T-005) y DEC-029 (diseno tecnico aprobado de T-005, decisiones D-D1 a D-D12). |
 | 1.6.0 | Se incorpora DEC-027 (diseno aprobado de T-004, decisiones D-D1 a D-D7). |
