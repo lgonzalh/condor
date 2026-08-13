@@ -1,6 +1,6 @@
 # RELEVO
 
-Version: 4.1.0
+Version: 4.2.0
 Estado: Activo
 Modo: Evolucion Continua
 
@@ -61,17 +61,20 @@ Estado confirmado:
 
 `T-006 - Flujo de intencion a plan`
 
-Estado: Formalizada. Pendiente de diseno tecnico y aprobacion para
-implementacion.
+Estado: Diseno tecnico completado. Pendiente de revision formal y
+aprobacion para implementacion.
 
 El reconocimiento de T-006 fue completado y aprobado. Su contrato quedo
 formalizado en `operacion/TAREAS/T-006.md` (version 1.0.0) y la decision
 registrada como DEC-030 (D-E1 a D-E8).
 
+El diseno tecnico de T-006 quedo completado en `operacion/TAREAS/T-006.md`
+(version 1.1.0) y registrado como DEC-031 (PROPUESTA, D-DE1 a D-DE6).
+
 No existe autorizacion para comenzar codigo directamente.
 
-El siguiente agente debe elaborar el diseno tecnico de T-006 y, una vez
-aprobado, proceder a implementarlo.
+El siguiente agente debe revisar formalmente el diseno tecnico de T-006 y,
+una vez aprobado, proceder a implementarlo.
 
 ## Dependencias conocidas
 
