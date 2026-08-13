@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Condor - Mockups Nivel 07 Actualizados</title>
+<style>
+body{margin:0;background:#080808;color:#e8e8e8;font:13px Consolas,"Courier New",monospace}
+.wrap{padding:24px}
+h1{font-size:20px;font-weight:400}
+.note{color:#888;margin-bottom:22px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(420px,1fr));gap:18px}
+.screen{background:#0d0d0d;border:1px solid #333;padding:18px;min-height:280px}
+.title{color:#fff;margin-bottom:6px}
+.line{color:#777}
+.orange{color:#e07b63}
+.green{color:#59c9a2}
+.white{color:#f2f2f2}
+.gray{color:#8e8e8e}
+.bird{white-space:pre;line-height:.85;font-size:10px;color:#222;text-align:center;margin:20px 0}
+.smallbird{white-space:pre;line-height:.85;font-size:7px;color:#777;margin:10px 0}
+.box{border:1px solid #333;padding:10px;margin-top:12px}
+.prompt{margin-top:14px;color:#ddd}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>CÓNDOR CLI - MOCKUPS NIVEL 07</h1>
+<div class="note">Revision de experiencia: Condor Grande en inicio / Condor Ave durante el trabajo.</div>
+<div class="grid">
+<script>
+const screens=[
+["01. INICIO","Condor Grande da la bienvenida.","¿Que quieres construir?","Inicio de experiencia"],
+["02. ASSESSMENT","Condor Ave acompana el analisis.","Analizando entorno...","Detectando capacidades locales"],
+["03. ENTORNO LISTO","Condor Ave permanece discreto.","Modelo sugerido: qwen2.5-coder:7b","Sistema listo"],
+["04. DESCUBRIMIENTO","Condor Ave acompana el descubrimiento.","Descubriendo proyecto actual...","Proyecto y estructura detectados"],
+["05. COMPRENSION","Condor Ave acompana la comprension.","Comprendiendo el proyecto...","Punto de continuacion identificado"],
+["06. INTENCION","Condor Ave espera la intencion.","Que quieres lograr?","Entrada textual del usuario"],
+["07. PLAN PROPUESTO","Condor Ave acompana el plan.","Esto es lo que comprendi y propongo hacer:","Plan pendiente de confirmacion"],
+["08. CONFIRMACION","Condor Ave permanece junto al flujo.","¿Confirmas este plan?","[Y] Confirmar  [E] Editar  [N] Cancelar"],
+["09. IMPLEMENTACION","Condor Ave acompana la ejecucion.","Implementando plan...","Actividad y progreso visibles"],
+["10. VERIFICACION","Condor Ave acompana la validacion.","Verificando cambios...","Pruebas y resultados visibles"],
+["11. ENTREGA","Condor Ave acompana la entrega.","Trabajo completado.","Resumen y evidencia"],
+["12. CONTINUIDAD","Condor Ave permanece hasta el cierre.","Hasta pronto.","Contexto preservado para continuar"]
+];
+document.write(screens.map((s,i)=>`
+<section class="screen">
+  <div class="title">CÓNDOR | ${s[0]}</div>
+  <div class="line">Modo Local 100%</div>
+  <div class="${i===0?'bird':'smallbird'}">${i===0?'        ██████████████████\\n     █████████████████████████\\n   █████████████████████████████\\n        █████████████████\\n          ███████████': '      ███\\n    ███████\\n   █████████\\n    ███████'}</div>
+  <div class="orange">${s[1]}</div>
+  <div class="box">
+    <div class="white">${s[2]}</div>
+    <div class="gray">${s[3]}</div>
+    <div class="prompt">&gt; _</div>
+  </div>
+</section>`).join(""));
+</script>
+</div>
+</div>
+</body>
+</html>
