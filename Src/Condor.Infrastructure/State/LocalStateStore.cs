@@ -11,6 +11,7 @@ namespace Condor.Infrastructure.State
     {
         private const string AssessmentFileName = "assessment.json";
         private const string ContextFileName = "context.json";
+        private const string PlanFileName = "plan.json";
         private readonly string _stateDirectory;
 
         public LocalStateStore()
@@ -93,6 +94,41 @@ namespace Condor.Infrastructure.State
             {
                 Directory.CreateDirectory(_stateDirectory);
                 var json = ContextJson.Serialize(context);
+                await File.WriteAllTextAsync(filePath, json, new UTF8Encoding(false), cancellationToken);
+            }
+            catch
+            {
+            }
+        }
+
+        public async Task<WorkPlan?> LoadPlanAsync(CancellationToken cancellationToken = default)
+        {
+            var filePath = Path.Combine(_stateDirectory, PlanFileName);
+
+            if (!File.Exists(filePath))
+            {
+                return null;
+            }
+
+            try
+            {
+                var json = await File.ReadAllTextAsync(filePath, cancellationToken);
+                return PlanJson.Deserialize(json);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public async Task SavePlanAsync(WorkPlan plan, CancellationToken cancellationToken = default)
+        {
+            var filePath = Path.Combine(_stateDirectory, PlanFileName);
+
+            try
+            {
+                Directory.CreateDirectory(_stateDirectory);
+                var json = PlanJson.Serialize(plan);
                 await File.WriteAllTextAsync(filePath, json, new UTF8Encoding(false), cancellationToken);
             }
             catch
