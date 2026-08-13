@@ -1,20 +1,18 @@
 # ESTADO_DESARROLLO
 
-Version: 2.3.0
+Version: 2.4.0
 Estado: Activo
 Modo: Evolucion Continua
 MVP: Condor 1.0
 
 ## Estado actual
 
-Condor cuenta con T-001, T-002, T-003, T-004 y T-005 completadas,
+Condor cuenta con T-001, T-002, T-003, T-004, T-005 y T-006 completadas,
 verificadas e integradas en `main`.
 
-T-004 y T-005 estan formalmente congeladas.
+T-004, T-005 y T-006 estan formalmente congeladas.
 
-T-006 (Flujo de intencion a plan) queda con diseno tecnico completado
-(T-006.md v1.1.0, DEC-031 PROPUESTA), pendiente de revision formal y
-aprobacion para implementacion.
+T-007 (Builder inicial) queda pendiente y no iniciada.
 
 ## Estado funcional
 
@@ -37,6 +35,12 @@ Condor puede:
 - persistir `context.json` como artefacto derivado;
 - emitir `condor contexto`;
 - emitir `condor contexto --json`;
+- generar un `WorkPlan` desde la intencion del usuario;
+- interpretar la intencion (nueva / continuar / modificar / indefinida);
+- descomponer el objetivo en tareas con dependencias y prioridad;
+- persistir `plan.json` como artefacto derivado;
+- emitir `condor planear`;
+- emitir `condor planear --json`;
 - degradar de forma controlada;
 - mantener limites deterministas.
 
@@ -49,13 +53,18 @@ T-005 agrego:
 - `condor contexto`
 - `condor contexto --json`
 
+T-006 agrego:
+
+- `condor planear "<solicitud>"`
+- `condor planear "<solicitud>" --json`
+
 No reintroducir contratos anteriores en ingles.
 
 ## Estado Git
 
-Ultimo estado confirmado:
+Ultimo estado confirmado al cierre de la implementacion de T-006:
 
-`1d8fe94dff0dd0c23718cfe059107909d96f004a`
+`07707ba1e4d911ecc7df4a6366db8dae47733e7e`
 
 `HEAD == origin/main`
 
@@ -95,7 +104,7 @@ T-005:
 | T-003 | Recomendador de modelos | Completada |
 | T-004 | Descubrimiento de proyecto | Completada y congelada |
 | T-005 | Context Engine inicial | Completada, verificada y congelada |
-| T-006 | Flujo de intencion a plan | Diseno completado, pendiente de aprobacion |
+| T-006 | Flujo de intencion a plan | Completada, verificada y congelada |
 | T-007 | Builder inicial | Pendiente |
 | T-008 | Verificacion inicial | Pendiente |
 | T-009 | Documentacion y continuidad | Pendiente |
@@ -105,21 +114,17 @@ T-005:
 
 ## Siguiente tarea
 
-`T-006 - Flujo de intencion a plan`
+`T-007 - Builder inicial`
 
-Estado: Diseno tecnico completado. Pendiente de revision formal y
-aprobacion para implementacion.
+Estado: Pendiente. No iniciada.
 
-Reconocimiento completado y aprobado.
+T-006 (Flujo de intencion a plan) quedo completada, verificada, integrada,
+publicada y congelada (T-006.md v1.2.0).
 
-Contrato formalizado en `operacion/TAREAS/T-006.md` (version 1.0.0) y
-decision DEC-030 (D-E1 a D-E8).
+T-007 consumira el `WorkPlan` entregado por T-006 para implementar cambios
+en el proyecto objetivo.
 
-Diseno tecnico completado en `operacion/TAREAS/T-006.md` (version 1.1.0)
-y registrado como DEC-031 (PROPUESTA, D-DE1 a D-DE6).
-
-No iniciar implementacion hasta disponer de revision formal del diseno
-aprobada.
+No iniciar T-007 desde codigo. Primero reconocimiento y formalizacion.
 
 ## Regla de continuidad
 
@@ -133,4 +138,4 @@ No existe nivel activo.
 
 El estado oficial es `Evolucion Continua`.
 
-No crear ni reabrir un nivel numerico para T-006.
+No crear ni reabrir un nivel numerico para T-007.
