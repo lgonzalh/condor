@@ -11,4 +11,8 @@ public interface IStateStore
     Task SaveContextAsync(ProjectContext context, CancellationToken cancellationToken = default);
 
     Task<ProjectContext?> LoadContextAsync(CancellationToken cancellationToken = default);
+
+    Task SavePlanAsync(WorkPlan plan, CancellationToken cancellationToken = default);
+
+    Task<WorkPlan?> LoadPlanAsync(CancellationToken cancellationToken = default);
 }
