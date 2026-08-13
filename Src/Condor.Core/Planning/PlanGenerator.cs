@@ -51,7 +51,7 @@ namespace Condor.Core.Planning
             var objective = BuildObjective(request, context, limits, intention);
             var tasks = BuildTasks(intention, context, objective, limits);
 
-            var status = intention == PlanIntent.Indefinida && tasks.Count == 0
+            var status = intention == PlanIntent.Indefinida
                 ? DetectionStatus.Limited
                 : context.Status == DetectionStatus.Limited
                     ? DetectionStatus.Limited
@@ -61,7 +61,7 @@ namespace Condor.Core.Planning
             {
                 SchemaVersion = "1.0.0",
                 Status = status,
-                Reason = intention == PlanIntent.Indefinida && tasks.Count == 0
+                Reason = intention == PlanIntent.Indefinida
                     ? ReasonIndefiniteIntent
                     : context.Reason,
                 RootName = context.RootName,
@@ -93,7 +93,10 @@ namespace Condor.Core.Planning
 
             applied.AddRange(context.LimitsApplied);
 
-            return applied.Distinct(StringComparer.Ordinal).ToList();
+            return applied
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(value => value, StringComparer.Ordinal)
+                .ToList();
         }
 
         private static List<string> BuildEvidence(ProjectContext context)
@@ -105,7 +108,10 @@ namespace Condor.Core.Planning
                 values.Add("Recomendacion: " + recommendation.Text);
             }
 
-            return values.Distinct(StringComparer.Ordinal).ToList();
+            return values
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(value => value, StringComparer.Ordinal)
+                .ToList();
         }
 
         private static List<string> BuildRisksConsidered(ProjectContext context)
@@ -122,7 +128,10 @@ namespace Condor.Core.Planning
                 values.Add("Dependencia: " + dependency.Name + " [" + dependency.Source + "]");
             }
 
-            return values.Distinct(StringComparer.Ordinal).ToList();
+            return values
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(value => value, StringComparer.Ordinal)
+                .ToList();
         }
 
         private static string BuildObjective(
