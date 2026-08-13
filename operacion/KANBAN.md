@@ -6,7 +6,6 @@ Modo: Evolucion Continua
 
 ## PENDIENTE
 
-- T-006 Flujo de intencion a plan
 - T-007 Builder inicial
 - T-008 Verificacion inicial
 - T-009 Documentacion y continuidad
@@ -29,11 +28,12 @@ Ninguna.
 - T-003 Recomendador de modelos
 - T-004 Descubrimiento de proyecto
 - T-005 Context Engine inicial
+- T-006 Flujo de intencion a plan
 
 ## Siguiente
 
-`T-006 - Flujo de intencion a plan`
+`T-007 - Builder inicial`
 
-Estado: Diseno tecnico completado. Pendiente de revision formal y aprobacion para implementacion.
+Estado: Pendiente. No iniciada.
 
-No iniciar T-006 desde implementacion. Primero revision formal del diseno aprobada.
+No iniciar T-007 desde implementacion. Primero reconocimiento y formalizacion.
