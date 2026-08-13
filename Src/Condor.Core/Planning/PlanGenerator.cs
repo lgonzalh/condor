@@ -20,7 +20,7 @@ namespace Condor.Core.Planning
             string request,
             PlanLimits limits)
         {
-            if (context is null)
+            if (context is null || context.Status == DetectionStatus.NotDetected)
             {
                 return Degraded(new WorkPlan
                 {
