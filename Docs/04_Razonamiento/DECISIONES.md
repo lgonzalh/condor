@@ -1,6 +1,6 @@
 # DECISIONES
 
-Version: 1.8.0
+Version: 1.9.0
 Estado: Activo
 Nivel: 04 - Diseno
 Clasificacion: Decisiones Arquitectonicas
@@ -605,10 +605,36 @@ Reconocimiento y formalizacion de T-006 (Flujo de intencion a plan).
 
 ---
 
+# DEC-031
+
+Titulo:
+Diseno tecnico completo de T-006 (Flujo de intencion a plan).
+
+Estado:
+PROPUESTA.
+
+Decision:
+El diseno tecnico de T-006 se completa en `operacion/TAREAS/T-006.md` (version 1.1.0), siguiendo los patrones de T-004 y T-005. D-E1 a D-E8 quedan ratificados sin cambios. Se incorporan las siguientes resoluciones tecnicas del diseno, marcadas como PROPUESTA y pendientes de aprobacion humana por no estar fijadas explicitamente por el contrato:
+
+- D-DE1: `PlanGenerator` se ubica en `Condor.Core.Planning` como logica pura (patron D-D5) y `PlanIntent` clasifica la intencion de forma determinista por heuristica textual ordinal en espanol sin tildes (orden nueva → continuar → modificar → indefinida).
+- D-DE2: `PlanJson` en `Condor.Core.Serialization` sigue el patron de `ContextJson`/`AssessmentJson` (camelCase, `WriteIndented`, ignorar nulls).
+- D-DE3: `PlanLimits` centralizado (patron D-D12) con valores de referencia propuestos: `MaxTasks = 12`, `MaxObjectiveLength = 240`, `MaxTaskDetailLength = 320`, `MaxEvidenceItems = 30`, `PlanTimeoutMilliseconds = 15_000`.
+- D-DE4: el `WorkPlan` se construye tomando tareas base segun la intencion, una tarea por cada `PlannerRecommendation` de T-005 y tareas derivadas de riesgos (`ContextRisk`), con prioridad segun severidad, truncadas a `MaxTasks` y con `DependsOn` sobre tareas previas.
+- D-DE5: `plan.json` se persiste por cada ejecucion de `condor planear`, UTF-8 sin BOM (patrones D-D4 y D-D9), sin modificar `assessment.json` ni `context.json`.
+- D-DE6: la CLI `condor planear "<solicitud>"` y `condor planear "<solicitud>" --json` en espanol sin tildes; sin contexto, `NotDetected` con motivo instructivo y exit code 1.
+
+Estas decisiones se presentan a revision formal. Su ratificacion convierte el diseno de T-006 en aprobado y habilita la implementacion autorizada.
+
+Origen:
+Diseno tecnico de T-006 (Flujo de intencion a plan).
+
+---
+
 # Historial de Cambios
 
 | Version | Cambio |
 |---------|--------|
+| 1.9.0 | Se incorpora DEC-031 (diseno tecnico completo de T-006, PROPUESTA, D-DE1 a D-DE6, pendiente de aprobacion humana). |
 | 1.8.0 | Se incorpora DEC-030 (formalizacion del contrato de T-006, decisiones D-E1 a D-E8). |
 | 1.7.0 | Se incorporan DEC-028 (formalizacion del contrato de T-005) y DEC-029 (diseno tecnico aprobado de T-005, decisiones D-D1 a D-D12). |
 | 1.6.0 | Se incorpora DEC-027 (diseno aprobado de T-004, decisiones D-D1 a D-D7). |
