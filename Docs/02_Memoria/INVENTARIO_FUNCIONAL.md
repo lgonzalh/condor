@@ -1,6 +1,6 @@
 # INVENTARIO_FUNCIONAL
 
-Version: 1.2.0\
+Version: 1.3.0\
 Estado: Activo\
 Nivel: Global\
 Clasificacion: Inventario Funcional
@@ -104,8 +104,8 @@ Actualizar
   FN-008   Verificar         Desarrollo        Implementada    SISTEMA_DESARROLLO_CONDOR.md
             resultados                                         
 
-  FN-009   Documentar        Documentacion     Planificada    DOCUMENTADOR.md
-           automaticamente                                    
+  FN-009   Documentar        Documentacion     Especificada   DOCUMENTADOR.md
+            automaticamente                                    
 
   FN-010   Mantener          Gobernanza        Especificada   DIRECTIVA_GLOBAL.md
            coherencia                                         
@@ -154,6 +154,9 @@ Actualizar
 
   Version   Cambios
   --------- --------------------------------------------------------
+  1.3.0     Se registra FN-009 (Documentar automaticamente) como Especificada tras
+            T-009 con la creacion de DOCUMENTADOR.md que define el rol de
+            Documenter. T-009 queda formalmente congelada.
   1.2.0     Se registra FN-008 (Verificar resultados) como Implementada tras
             la ejecucion de T-008 (Verifier inicial): comando condor verificar
             que comprueba la integridad y acotacion de los cambios aplicados por
