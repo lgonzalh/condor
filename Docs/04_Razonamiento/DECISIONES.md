@@ -1,6 +1,6 @@
 # DECISIONES
 
-Version: 3.7.0
+Version: 3.8.0
 Estado: Activo
 Nivel: 04 - Diseno
 Clasificacion: Decisiones Arquitectonicas
@@ -1146,10 +1146,64 @@ Diseno tecnico de T-012 (Instalador y puesta en marcha simplificada).
 
 ---
 
+# DEC-043
+
+Titulo:
+Formalizacion del contrato de T-013 (Verificacion semantica y de calidad,
+primera concrecion SD-02 / DE-002).
+
+Decision:
+El contrato de T-013 queda formalizado en `operacion/TAREAS/T-013.md`
+(version 1.0.0):
+
+- T-013 evoluciona el Verifier hacia la primera verificacion semantica y de
+  calidad concreta: compilar el proyecto objetivo y ejecutar sus pruebas, como
+  capacidades independientes con resultados y degradaciones diferenciadas;
+- reutiliza Verifier (ARQ-007) y Assessment; opera sobre el `WorkingDirectory`
+  del objetivo; detecta herramientas antes de ejecutar; registra resultados
+  verificables y mantiene limites no destructivos;
+- la primera concrecion de herramienta es .NET (`dotnet build` / `dotnet test`),
+  detectada por Assessment; otras plataformas degradan estructuradamente como
+  evolucion posterior;
+- T-013 NO modifica T-008 de forma destructiva, no reescribe T-001 a T-012, no
+  crea Architect/Guardian, no integra vision en el ciclo, no usa LLM para evaluar
+  calidad, no repara codigo, no instala herramientas ni descarga dependencias ni
+  ejecuta comandos fuera del objetivo;
+- no implementa cobertura, linting generico, analisis subjetivo, ni evaluacion
+  automatica de arquitectura/coherencia funcional (evolucion posterior);
+- se autoriza un runner controlado: timeout, captura de stdout/stderr/exit code,
+  sin traversal, sin comandos libres del usuario y no destructivo;
+- la disponibilidad de herramientas y la clasificacion de estados son
+  deterministas; los resultados de build/test son resultados del entorno y no
+  garantia abstracta de determinismo.
+
+Las decisiones D-SD1 a D-SD5 que definen el alcance son:
+
+- D-SD1: las capacidades de T-013 son COMPILAR y EJECUTAR PRUEBAS del objetivo,
+  independientes y con degradaciones diferenciadas.
+- D-SD2: la herramienta concreta de primera concrecion es .NET (`dotnet build` /
+  `dotnet test`), reconocida por Assessment; el resto degrada.
+- D-SD3: se autoriza un `ProcessRunner` controlado no destructivo (timeout,
+  captura, sin traversal, sin comandos libres).
+- D-SD4: la verificacion semantica adicional (calidad, arquitectura, coherencia)
+  queda como evolucion posterior y no se incorpora en T-013.
+- D-SD5: determinismo en disponibilidad/clasificacion; build/test son resultados
+  del entorno (GeneratedAtUtc no compara semanticamente).
+
+Estado:
+Aceptada (contrato aprobado para diseno). La implementacion aguarda el diseno
+tecnico (DEC-044).
+
+Origen:
+Reconocimiento y formalizacion de T-013 (Verificacion semantica y de calidad).
+
+---
+
 # Historial de Cambios
 
 | Version | Cambio |
 |---------|--------|
+| 3.8.0 | Se incorpora DEC-043 (formalizacion del contrato de T-013, decisiones D-SD1 a D-SD5). |
 | 3.7.0 | Se incorpora DEC-042 (diseno tecnico de T-012, decisiones D-DS1 a D-DS9, aprobada). |
 | 3.6.0 | Se incorpora DEC-041 (formalizacion del contrato de T-012, decisiones D-P1 a D-P5). |
 | 3.5.0 | Se incorpora DEC-040 (diseno tecnico de T-011, decisiones D-DW1 a D-DW8, aprobada). |
