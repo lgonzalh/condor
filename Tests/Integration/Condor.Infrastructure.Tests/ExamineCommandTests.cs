@@ -21,6 +21,7 @@ public class ExamineCommandTests
 
         var exitCode = await ExamineCommand.ExecuteAsync(
             service,
+            store,
             new[] { image, "--json" },
             CancellationToken.None);
 
@@ -40,6 +41,7 @@ public class ExamineCommandTests
 
         var exitCode = await ExamineCommand.ExecuteAsync(
             service,
+            store,
             new[] { image, "--json" },
             CancellationToken.None);
 
