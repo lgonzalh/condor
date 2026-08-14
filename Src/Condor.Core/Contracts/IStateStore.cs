@@ -19,4 +19,8 @@ public interface IStateStore
     Task SaveBuildAsync(BuildResult result, CancellationToken cancellationToken = default);
 
     Task<BuildResult?> LoadBuildAsync(CancellationToken cancellationToken = default);
+
+    Task SaveVerificationAsync(VerificationResult result, CancellationToken cancellationToken = default);
+
+    Task<VerificationResult?> LoadVerificationAsync(CancellationToken cancellationToken = default);
 }
