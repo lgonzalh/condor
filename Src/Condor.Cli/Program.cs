@@ -99,7 +99,8 @@ public static class Program
                         new PlanService(stateStore),
                         new BuildService(stateStore),
                         new VerificationService(stateStore),
-                        stateStore),
+                        stateStore,
+                        semanticService: new SemanticVerificationService(stateStore)),
                     stateStore,
                     args.Skip(1).ToArray(),
                     CancellationToken.None);
