@@ -1,6 +1,6 @@
 # DECISIONES
 
-Version: 3.2.0
+Version: 3.3.0
 Estado: Activo
 Nivel: 04 - Diseno
 Clasificacion: Decisiones Arquitectonicas
@@ -914,10 +914,54 @@ Reconocimiento y formalizacion de T-010 (Capacidades avanzadas de desarrollo).
 
 ---
 
+# DEC-038
+
+Titulo:
+Diseno tecnico de T-010 (Capacidades avanzadas de desarrollo / ciclo de ingenieria parcial).
+
+Estado:
+Aprobada (ratificada para implementacion).
+
+Decision:
+El diseno tecnico de T-010 se consolida en `operacion/TAREAS/T-010.md` (con
+D-C1 a D-C5 ratificados). Se incorporan las siguientes resoluciones tecnicas
+aprobadas:
+
+- D-DY1: `CycleEngine` reside en `Condor.Core.Cycle` como logica pura de
+  decision/estados (patron D-D5): recibe los resultados de Planner, Builder y
+  Verifier y determina Completado / Regenerar / Detenido, sin IO.
+- D-DY2: `CycleService` (Infrastructure) orquesta los servicios existentes
+  `IPlanService`, `IBuildService` y `IVerificationService` sin modificarlos,
+  encadenando Planificar -> Construir -> Verificar.
+- D-DY3: `CycleLimits` centralizado con valores de referencia:
+  `MaxIterations = 3`, `MaxStages = 3`, `CycleTimeoutMilliseconds = 20_000`.
+- D-DY4: `cycle.json` se persiste como artefacto derivado de checkpoint/estado
+  del ciclo, sin sustituir plan.json, build.json ni verification.json.
+- D-DY5: la regeneracion es exclusivamente interna al ciclo (transicion de
+  control, no una etapa operativa) y no se crea el comando `condor regenerar`.
+- D-DY6: se expone un unico comando `condor avanzar` (texto y `--json`); no se
+  crean `condor ciclo` ni `condor regenerar`.
+- D-DY7: determinismo (patron D-E7): mismo estado producido produce el mismo
+  resultado, con la unica excepcion de `GeneratedAtUtc`; el `CycleId` se deriva
+  de forma determinista de la solicitud para no romper determinismo.
+- D-DY8: proteccion activa contra iteraciones infinitas (MaxIterations),
+  regeneraciones ilimitadas, transiciones invalidas (rechazo), resultados
+  faltantes y degradaciones; el ciclo se detiene con motivo sin entrar en bucle.
+
+Estas decisiones son ratificadas por el usuario y habilitan la implementacion de
+T-010 dentro del alcance aprobado (sin Architect, sin SD-02, sin compilar ni
+ejecutar el proyecto objetivo).
+
+Origen:
+Diseno tecnico de T-010 (Capacidades avanzadas de desarrollo).
+
+---
+
 # Historial de Cambios
 
 | Version | Cambio |
 |---------|--------|
+| 3.3.0 | Se incorpora DEC-038 (diseno tecnico de T-010, decisiones D-DY1 a D-DY8, aprobada). |
 | 3.2.0 | Se incorpora DEC-037 (formalizacion del contrato de T-010, decisiones D-C1 a D-C5). |
 | 3.1.0 | Se incorpora DEC-036 (formalizacion del contrato de T-009, Documentacion y continuidad). |
 | 3.0.0 | Se incorporan DEC-034 (formalizacion del contrato de T-008, decisiones D-V1 a D-V5) y DEC-035 (diseno tecnico de T-008, D-DV1 a D-DV7, propuesta pendiente de ratificacion). |
