@@ -1,6 +1,6 @@
 # REGISTRO_CAMBIOS
 
-Version: 3.3.0
+Version: 3.4.0
 Estado: Activo
 
 ## Proposito
@@ -28,28 +28,31 @@ Registrar cambios de implementacion y decisiones relevantes que necesiten contex
 | CH-029 | 2026-08-14 | T-011 | Implementacion, verificacion, integracion, publicacion y congelacion de T-011 | Completado | Serie de commits T-011 |
 | CH-030 | 2026-08-14 | T-012 | Formalizacion del contrato y diseno de T-012 (T-012.md, DEC-041 y DEC-042) | Completado | Serie de commits T-012 |
 | CH-031 | 2026-08-14 | T-012 | Implementacion, verificacion, integracion, publicacion y congelacion de T-012 y cierre del backlog MVP 1.0 | Completado | Serie de commits T-012 |
+| CH-032 | 2026-08-14 | T-013 | Formalizacion del contrato y diseno de T-013 (T-013.md, DEC-043 y DEC-044) | Completado | Serie de commits T-013 |
+| CH-033 | 2026-08-14 | T-013 | Implementacion, verificacion, integracion, publicacion y congelacion de T-013 | Completado | Serie de commits T-013 |
 
 ## Estado
 
-T-001 a T-012 completadas y publicadas.
+T-001 a T-013 completadas y publicadas.
 
-T-004 a T-012 estan formalmente congeladas.
+T-004 a T-013 estan formalmente congeladas.
 
-T-012 queda cerrada y congelada (Instalador y puesta en marcha simplificada):
-condor preparar; build Release sin errores; unitarias 166/166; integracion
-154/154; arquitectura 18/18; E2E real; comportamiento no destructivo; guia
-INSTALACION_PUESTA_EN_MARCHA.md; D-P1 a D-P5 (DEC-041) y D-DS1 a D-DS9 (DEC-042)
-cumplen.
+T-013 queda cerrada y congelada (Verificacion semantica y de calidad, SD-02):
+condor verificar-semantico (compilar y probar con --no-restore); build Release
+sin errores ni advertencias; unitarias 180/180; integracion 161/162
+(la unica fallida es una prueba de entorno de T-002 dependiente de Ollama);
+arquitectura 19/19; E2E real sobre proyecto .NET temporal; D-SD1 a D-SD5
+(DEC-043) y D-ST1 a D-ST9 (DEC-044) cumplen.
 
-Con T-012 se completa el backlog del MVP 1.0 (T-001 a T-012).
+Con T-013 se implementa la primera concrecion de la verificacion semantica
+(SD-02); las capacidades de calidad/arquitectura/coherencia quedan como
+evolucion posterior.
 
-La evolucion posterior se define mediante Evolucion Continua.
-
-## Estado Git al cierre de T-012
+## Estado Git al cierre de T-013
 
 - Rama: `main`
-- HEAD: `844b151`
-- origin/main: `844b151`
+- HEAD: `94d270e`
+- origin/main: `94d270e`
 - Working tree: limpio
 
 Regla vigente:
