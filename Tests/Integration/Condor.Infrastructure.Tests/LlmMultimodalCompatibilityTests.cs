@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Net;
 using System.Text;
 using System.Text.Json;
@@ -9,12 +10,12 @@ namespace Condor.Infrastructure.Tests;
 public class LlmMultimodalCompatibilityTests
 {
     [Fact]
-    public async Task SinImagenes_EnviaContenidoTextual ( ) 
+    public async Task SinImagenes_EnviaContenidoTextual()
     {
         string? body = null;
         var handler = new CapturingHandler(r =>
         {
-            body = r.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+            body = r.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent("{\"model\":\"m\",\"message\":{\"content\":\"ok\"}}", Encoding.UTF8, "application/json")
@@ -36,7 +37,7 @@ public class LlmMultimodalCompatibilityTests
         string? body = null;
         var handler = new CapturingHandler(r =>
         {
-            body = r.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+            body = r.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent("{\"model\":\"m\",\"message\":{\"content\":\"ok\"}}", Encoding.UTF8, "application/json")
@@ -67,7 +68,7 @@ public class LlmMultimodalCompatibilityTests
         string? body = null;
         var handler = new CapturingHandler(r =>
         {
-            body = r.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+            body = r.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent("{\"model\":\"m\",\"message\":{\"content\":\"ok\"}}", Encoding.UTF8, "application/json")
