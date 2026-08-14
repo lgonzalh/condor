@@ -1,6 +1,6 @@
 # ROADMAP_EVOLUCION
 
-Version: 1.1.0
+Version: 1.2.0
 Estado: Activo
 Nivel: 09 - Evolucion
 Clasificacion: Roadmap
@@ -319,11 +319,12 @@ Documenter ya consolidados.
 
 Prioridad: Alta
 
-Estado: Pendiente
+Estado: Implementada (linea base T-010)
 
 Referencia:
 
-`SISTEMA_DESARROLLO_CONDOR.md` y el backlog operativo (T-010 y posteriores).
+`SISTEMA_DESARROLLO_CONDOR.md`, el backlog operativo y T-010 (ciclo de
+ingenieria parcial con `condor avanzar`).
 
 ## SD-02 - Verificacion semantica y de calidad
 
@@ -334,7 +335,7 @@ del proyecto objetivo.
 
 Prioridad: Media
 
-Estado: En analisis (deuda registrada)
+Estado: Pendiente (deuda registrada)
 
 Referencia:
 
@@ -357,5 +358,6 @@ Cada nueva linea base podra generar una revision del roadmap.
 
 | Version | Cambios |
 |---------|---------|
+| 1.2.0 | Se marca SD-01 (Capacidades avanzadas de desarrollo) como Implementada tras T-010 (ciclo de ingenieria parcial con condor avanzar). SD-02 permanece pendiente como deuda. |
 | 1.1.0 | Se incorpora la seccion SIGUIENTE LINEA DE DESARROLLO tras T-001 a T-009: SD-01 (Capacidades avanzadas de desarrollo, T-010) y SD-02 (verificacion semantica, referenciada a DEUDA_EVOLUTIVA DE-002). T-009 queda formalmente congelada. |
 | 1.0.0 | Creacion de la hoja de ruta evolutiva del Proyecto Condor para el Nivel 09. |
