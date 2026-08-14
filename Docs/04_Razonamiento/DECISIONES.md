@@ -1,6 +1,6 @@
 # DECISIONES
 
-Version: 3.1.0
+Version: 3.2.0
 Estado: Activo
 Nivel: 04 - Diseno
 Clasificacion: Decisiones Arquitectonicas
@@ -863,10 +863,62 @@ Reconocimiento y formalizacion de T-009 (Documentacion y continuidad).
 
 ---
 
+# DEC-037
+
+Titulo:
+Formalizacion del contrato de T-010 (Capacidades avanzadas de desarrollo).
+
+Decision:
+El contrato de T-010 queda formalizado en `operacion/TAREAS/T-010.md`
+(version 1.0.0), conforme al alcance SD-01 ratificado:
+
+- T-010 implementa el nucleo SD-01 como orquestacion determinista del ciclo
+  parcial `intencion -> Planner -> WorkPlan -> Builder -> Verifier`, reutilizando
+  los motores congelados (solo lectura de sus modelos) sin reimplementarlos;
+- el loop es parcial porque Architect no esta implementado; T-010 no crea,
+  simula ni incorpora responsabilidades de Architect;
+- se aprueba la regeneracion controlada interna al ciclo (determinista, acotada
+  por limites centralizados, con motivo registrado y sin ciclos infinitos),
+  sin crear inicialmente el comando `condor regenerar`;
+- se incluyen checkpoints de continuidad como artefacto derivado
+  (`cycle.json`), sin sustituir plan.json, build.json ni verification.json y sin
+  reemplazar responsabilidades de Documenter;
+- se aprueba un harness de orquestacion que controla etapas, iteraciones y
+  limites, y facilita evidencia reproducible y pruebas E2E; NO es un nuevo
+  Verifier;
+- se expone un unico comando publico `condor avanzar` (texto y `--json`); no se
+  crean `condor ciclo` ni `condor regenerar`;
+- quedan FUERA de alcance: Architect, Guardian, verificacion semantica y de
+  calidad (linea SD-02/DE-002), compilacion/ejecucion de pruebas/analisis
+  arquitectonico del proyecto objetivo, nuevas capacidades de Context Engine o
+  Documenter, y modificaciones de T-001 a T-009.
+
+Las decisiones D-C1 a D-C5 que definen el alcance son:
+
+- D-C1: el ciclo de ingenieria de T-010 es parcial (Planner -> Builder ->
+  Verifier) y no introduce Architect.
+- D-C2: la regeneracion es interna al ciclo, determinista, acotada y con motivo
+  registrado; no existe inicialmente como comando publico.
+- D-C3: los checkpoints son artefactos derivados de continuidad
+  (`cycle.json`) y no sustituyen los artefactos de Planner/Builder/Verifier.
+- D-C4: el harness de orquestacion controla etapas/iteraciones/limites; no es un
+  nuevo Verifier ni compila/ejecuta el proyecto objetivo.
+- D-C5: se expone un unico comando `condor avanzar` (+ `--json`); no se crean
+  `condor ciclo` ni `condor regenerar`.
+
+Estado:
+Aceptada (contrato aprobado para formalizacion; pendiente de diseno en DEC-038).
+
+Origen:
+Reconocimiento y formalizacion de T-010 (Capacidades avanzadas de desarrollo).
+
+---
+
 # Historial de Cambios
 
 | Version | Cambio |
 |---------|--------|
+| 3.2.0 | Se incorpora DEC-037 (formalizacion del contrato de T-010, decisiones D-C1 a D-C5). |
 | 3.1.0 | Se incorpora DEC-036 (formalizacion del contrato de T-009, Documentacion y continuidad). |
 | 3.0.0 | Se incorporan DEC-034 (formalizacion del contrato de T-008, decisiones D-V1 a D-V5) y DEC-035 (diseno tecnico de T-008, D-DV1 a D-DV7, propuesta pendiente de ratificacion). |
 | 2.0.0 | Se incorporan DEC-032 (formalizacion del contrato de T-007, decisiones D-B1 a D-B5) y DEC-033 (diseno tecnico de T-007, D-DB1 a D-DB7, propuesta pendiente de ratificacion). |
