@@ -6,7 +6,6 @@ Modo: Evolucion Continua
 
 ## PENDIENTE
 
-- T-010 Capacidades avanzadas de desarrollo
 - T-011 Vision local
 - T-012 Instalador y puesta en marcha simplificada
 
@@ -29,11 +28,12 @@ Ninguna.
 - T-007 Builder inicial
 - T-008 Verificacion inicial
 - T-009 Documentacion y continuidad
+- T-010 Capacidades avanzadas de desarrollo
 
 ## Siguiente
 
-`T-010 - Capacidades avanzadas de desarrollo`
+`T-011 - Vision local`
 
 Estado: Pendiente. No iniciada.
 
-No iniciar T-010 desde implementacion. Primero reconocimiento y formalizacion.
+No iniciar T-011 desde implementacion. Primero reconocimiento y formalizacion.
