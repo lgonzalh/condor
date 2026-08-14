@@ -1,20 +1,21 @@
 # ESTADO_DESARROLLO
 
-Version: 3.1.0
+Version: 3.2.0
 Estado: Activo
 Modo: Evolucion Continua
 MVP: Condor 1.0
 
 ## Estado actual
 
-Condor cuenta con T-001 a T-013 completadas, verificadas e integradas en
+Condor cuenta con T-001 a T-014 completadas, verificadas e integradas en
 `main`.
 
-T-004 a T-013 estan formalmente congeladas.
+T-004 a T-014 estan formalmente congeladas.
 
-El backlog del MVP 1.0 (T-001 a T-012) queda completado. T-013 incorpora la
-primera concrecion de la verificacion semantica (SD-02). La evolucion posterior
-se define mediante el ciclo de Evolucion Continua.
+El backlog del MVP 1.0 (T-001 a T-012) queda completado. T-013 y T-014 incorporan
+la verificacion semantica (SD-02) y su integracion al ciclo de ingenieria
+respectivamente. La evolucion posterior se define mediante el ciclo de Evolucion
+Continua.
 
 ## Estado funcional
 
@@ -69,6 +70,9 @@ Condor puede:
 - compilar el proyecto objetivo con --no-restore (condor verificar-semantico);
 - ejecutar las pruebas del proyecto objetivo con --no-restore;
 - diferenciar compilacion/pruebas correctas, fallidas y capacidades no disponibles;
+- integrar la verificacion semantica como etapa del ciclo de ingenieria
+  (condor avanzar);
+- distinguir semantica correcta, no_disponible, incompleta y fallida en el ciclo;
 - degradar de forma controlada;
 - mantener limites deterministas.
 
@@ -123,9 +127,9 @@ No reintroducir contratos anteriores en ingles.
 
 ## Estado Git
 
-Ultimo estado confirmado al cierre de la implementacion de T-013:
+Ultimo estado confirmado al cierre de la implementacion de T-014:
 
-`d8ff1d3`
+`cc93938`
 
 `HEAD == origin/main`
 
@@ -264,6 +268,24 @@ T-013:
 - publicacion completa en `origin/main`;
 - cierre y congelacion formal.
 
+T-014:
+- build Release sin errores ni advertencias;
+- 180/180 pruebas unitarias (Core); 167/168 de integracion (la unica fallida es
+  una prueba de entorno de T-002 dependiente de Ollama, ajena a T-014);
+  19/19 de arquitectura;
+- ciclo `condor avanzar` integra la verificacion semantica (T-013) como etapa,
+  de forma aditiva y reutilizando SemanticVerificationService;
+- distingue semantica correcta / no_disponible / incompleta / fallida;
+- `cycle.json` guarda resumen y referencia a `verificacion_semantica.json` sin
+  duplicar su contenido;
+- E2E real sobre proyecto .NET temporal: semantica correcta y compilacion
+  fallida reflejadas en el ciclo; no falso exito;
+- compatibilidad con `condor verificar` y `condor verificar-semantico`;
+- D-IN1 a D-IN5 (DEC-045) y D-IC1 a D-IC6 (DEC-046) cumplidas;
+- commits auditados sin violaciones de `1 archivo = 1 commit`;
+- publicacion completa en `origin/main`;
+- cierre y congelacion formal.
+
 ## Tareas
 
 | ID | Trabajo | Estado |
@@ -281,13 +303,14 @@ T-013:
 | T-011 | Vision local | Completada, verificada y congelada |
 | T-012 | Instalador y puesta en marcha simplificada | Completada, verificada y congelada |
 | T-013 | Verificacion semantica y de calidad (SD-02) | Completada, verificada y congelada |
+| T-014 | Integracion de la verificacion semantica en el ciclo | Completada, verificada y congelada |
 
 ## Siguiente evolucion
 
 El backlog del MVP 1.0 (T-001 a T-012) queda completado y congelado.
 
-T-013 incorpora la primera concrecion de la verificacion semantica (SD-02):
-compilar y ejecutar pruebas del objetivo.
+T-013 y T-014 incorporan la verificacion semantica (SD-02, compilar/probar) y su
+integracion al ciclo de ingenieria.
 
 La evolucion posterior se define mediante el ciclo de Evolucion Continua,
 continuando la linea SD-02 hacia capacidades de calidad/arquitectura/coherencia.
