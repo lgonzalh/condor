@@ -31,4 +31,8 @@ public interface IStateStore
     Task SaveVisionAsync(VisionResult result, CancellationToken cancellationToken = default);
 
     Task<VisionResult?> LoadVisionAsync(CancellationToken cancellationToken = default);
+
+    Task SaveSemanticVerificationAsync(SemanticVerificationResult result, CancellationToken cancellationToken = default);
+
+    Task<SemanticVerificationResult?> LoadSemanticVerificationAsync(CancellationToken cancellationToken = default);
 }
