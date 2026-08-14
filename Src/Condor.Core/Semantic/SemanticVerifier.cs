@@ -11,7 +11,7 @@ public static class SemanticVerifier
         "No se detecto la herramienta dotnet. Usa 'condor preparar' para revisar el entorno.";
 
     public const string ReasonNoManifest =
-        "No se encontro un manifiesto .NET (.sln o .csproj) dentro del WorkingDirectory.";
+        "No se encontro un manifiesto .NET (.sln o .csproj) en el directorio del proyecto.";
 
     public const string ReasonNotSupported =
         "El proyecto no es de un tipo .NET soportado o no tiene un manifiesto aplicable.";
