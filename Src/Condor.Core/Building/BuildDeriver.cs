@@ -128,11 +128,10 @@ public static class BuildDeriver
     private static string? ExtractRelativePath(PlanTask task)
     {
         var text = (task.Detail ?? "") + " " + task.Title;
-        var normalized = Normalize(text);
 
         foreach (var marker in PathMarkers)
         {
-            var index = normalized.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+            var index = text.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
 
             if (index < 0)
             {
@@ -140,14 +139,14 @@ public static class BuildDeriver
             }
 
             var start = index + marker.Length;
-            var end = normalized.IndexOf(']', start);
+            var end = text.IndexOf(']', start);
 
             if (end < 0)
             {
-                end = normalized.Length;
+                end = text.Length;
             }
 
-            var path = normalized.Substring(start, end - start).Trim();
+            var path = text.Substring(start, end - start).Trim();
 
             if (IsValidRelativePath(path))
             {
@@ -228,8 +227,6 @@ public static class BuildDeriver
     {
         return string.IsNullOrEmpty(value)
             ? value
-            : value.ToLowerInvariant()
-                .Replace("[", string.Empty, StringComparison.Ordinal)
-                .Replace("]", string.Empty, StringComparison.Ordinal);
+            : value.ToLowerInvariant();
     }
 }
