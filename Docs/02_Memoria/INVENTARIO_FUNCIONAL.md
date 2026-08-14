@@ -1,6 +1,6 @@
 # INVENTARIO_FUNCIONAL
 
-Version: 1.5.0\
+Version: 1.6.0\
 Estado: Activo\
 Nivel: Global\
 Clasificacion: Inventario Funcional
@@ -146,6 +146,11 @@ Actualizar
             imagen con un                                     
             VLM local                                        
             (condor examinar)                              
+
+  FN-018   Verificar la      Infraestructura   Implementada   DECISIONES.md
+            puesta en                                         
+            marcha                                          
+            (condor preparar)                              
   ----------------------------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
@@ -165,6 +170,10 @@ Actualizar
 
   Version   Cambios
   --------- --------------------------------------------------------
+  1.6.0     Se registra FN-018 (Verificar la puesta en marcha, condor preparar)
+            como Implementada tras T-012, con diagnostico no destructivo y
+            separacion de dependencias obligatorias/opcionales. T-012 queda
+            formalmente congelada.
   1.5.0     Se registra FN-017 (Analizar una imagen con un VLM local, condor
             examinar) como Implementada tras T-011, condicionada a VisionCapable
             y a un modelo de vision disponible, con degradacion controlada.
