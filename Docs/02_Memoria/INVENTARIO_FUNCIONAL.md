@@ -1,6 +1,6 @@
 # INVENTARIO_FUNCIONAL
 
-Version: 1.3.0\
+Version: 1.4.0\
 Estado: Activo\
 Nivel: Global\
 Clasificacion: Inventario Funcional
@@ -127,14 +127,20 @@ Actualizar
            sobre Windows                                      
 
   FN-015   Ejecutar el ciclo Desarrollo        Especificada   DIRECTIVA_OPERATIVA_PROYECTO_CONDOR.md
-           Comprender →                                       
-           Planificar →                                       
-           Disenar →                                          
-           Implementar →                                      
-           Verificar →                                        
-           Documentar →                                       
-           Congelar →                                         
-           Continuar                                          
+            Comprender →                                       
+            Planificar →                                       
+            Disenar →                                          
+            Implementar →                                      
+            Verificar →                                        
+            Documentar →                                       
+            Congelar →                                         
+            Continuar                                          
+
+  FN-016   Ejecutar el       Desarrollo        Implementada   KERNEL_CONDOR.md
+            ciclo de                                          
+            ingenieria                                        
+            parcial                                        
+            (condor avanzar)                               
   ----------------------------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
@@ -154,6 +160,10 @@ Actualizar
 
   Version   Cambios
   --------- --------------------------------------------------------
+  1.4.0     Se registra FN-016 (Ejecutar el ciclo de ingenieria parcial,
+            condor avanzar) como Implementada tras T-010, que orquesta Planner,
+            Builder y Verifier sin modificar los motores congelados. T-010 queda
+            formalmente congelada.
   1.3.0     Se registra FN-009 (Documentar automaticamente) como Especificada tras
             T-009 con la creacion de DOCUMENTADOR.md que define el rol de
             Documenter. T-009 queda formalmente congelada.
