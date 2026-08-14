@@ -1,6 +1,6 @@
 # DECISIONES
 
-Version: 3.8.0
+Version: 3.9.0
 Estado: Activo
 Nivel: 04 - Diseno
 Clasificacion: Decisiones Arquitectonicas
@@ -1199,10 +1199,74 @@ Reconocimiento y formalizacion de T-013 (Verificacion semantica y de calidad).
 
 ---
 
+# DEC-044
+
+Titulo:
+Diseno tecnico de T-013 (Verificacion semantica y de calidad).
+
+Estado:
+Aprobada (ratificada para implementacion).
+
+Decision:
+El diseno tecnico de T-013 se consolida en `operacion/TAREAS/T-013.md` (con
+D-SD1 a D-SD5 ratificados). Se incorporan las siguientes resoluciones tecnicas
+aprobadas:
+
+- D-ST1: `SemanticVerifier` reside en `Condor.Core.Semantic` como logica pura
+  (patron D-D5): selecciona la herramienta/manifiesto .NET y clasifica los
+  estados de forma determinista sin IO.
+- D-ST2: `ProcessRunner` (Infrastructure) es la unica IO de ejecucion, no
+  destructiva, con timeout real y contención (sin traversal, sin comandos
+  arbitrarios, sin rutas absolutas fuera del objetivo).
+- D-ST3: `ToolProbe` reutiliza el Assessment (sin re-deteccion).
+- D-ST4: primera implementacion exclusivamente .NET: `dotnet build <manifiesto> --no-restore`
+  y `dotnet test <manifiesto> --no-restore`, sin restore implicito, sin
+  descargar dependencias ni acceder a Internet.
+- D-ST5: limites `ProcessTimeoutMilliseconds = 60_000`,
+  `MaxOutputLength = 8_000`, `MaxChecks = 2`; el limite de salida se aplica de
+  forma determinista y el timeout termina realmente el proceso registrando
+  `TimeoutExpired`.
+- D-ST6: degradaciones estructuradas (dotnet no disponible, manifiesto ausente,
+  proyecto no soportado, dependencias no restauradas, compilacion fallida,
+  pruebas fallidas, timeout, proceso no ejecutable, resultado incompleto,
+  WorkingDirectory invalido), sin excepciones no controladas.
+- D-ST7: determinismo en seleccion/clasificacion (no LLM); los resultados de
+  build/test son resultados del entorno y `GeneratedAtUtc` no se usa en la
+  comparacion semantica.
+- D-ST8: `condor verificar-semantico` (+ `--compilar`, `--probar`, `--json`), en
+  espanol sin tildes.
+- D-ST9: persistencia `verificacion_semantica.json` derivada (resumen y
+  metadatos, sin logs completos fuera de `MaxOutputLength`), sin modificar
+  `build.json` ni `verification.json`.
+
+Precisiones ratificadas:
+
+- NO restore: compilacion/pruebas con `--no-restore`; si las dependencias no estan
+  restauradas, se registra la condicion y se degrada estructuradamente.
+- NO destructivo: no modificar codigo fuente ni archivos funcionales; los
+  artefactos tecnicos de .NET (bin/, obj/, resultados de pruebas) son efectos
+  normales de la verificacion, no se borran automaticamente ni se modifican
+  preexistentes.
+- Seleccion de proyecto determinista por manifiesto .NET (`.csproj`/`.sln`)
+  dentro del WorkingDirectory; argumentos construidos por Condor (no shell libre).
+- Contencion: validar WorkingDirectory, herramienta permitida, manifiesto dentro
+  del objetivo, ausencia de traversal y de rutas absolutas fuera del objetivo.
+- Cancelacion: respetar CancellationToken ademas del timeout interno; una
+  cancelacion no debe registrarse como compilacion fallida normal.
+
+Estas decisiones son ratificadas por el usuario y habilitan la implementacion de
+T-013 dentro del alcance aprobado.
+
+Origen:
+Diseno tecnico de T-013 (Verificacion semantica y de calidad).
+
+---
+
 # Historial de Cambios
 
 | Version | Cambio |
 |---------|--------|
+| 3.9.0 | Se incorpora DEC-044 (diseno tecnico de T-013, decisiones D-ST1 a D-ST9, aprobada). |
 | 3.8.0 | Se incorpora DEC-043 (formalizacion del contrato de T-013, decisiones D-SD1 a D-SD5). |
 | 3.7.0 | Se incorpora DEC-042 (diseno tecnico de T-012, decisiones D-DS1 a D-DS9, aprobada). |
 | 3.6.0 | Se incorpora DEC-041 (formalizacion del contrato de T-012, decisiones D-P1 a D-P5). |
