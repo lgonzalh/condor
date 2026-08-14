@@ -1,6 +1,6 @@
 # DECISIONES
 
-Version: 3.9.0
+Version: 4.0.0
 Estado: Activo
 Nivel: 04 - Diseno
 Clasificacion: Decisiones Arquitectonicas
@@ -1262,10 +1262,64 @@ Diseno tecnico de T-013 (Verificacion semantica y de calidad).
 
 ---
 
+# DEC-045
+
+Titulo:
+Formalizacion del contrato de T-014 (Integracion de la verificacion semantica en
+el ciclo de ingenieria).
+
+Decision:
+El contrato de T-014 queda formalizado en `operacion/TAREAS/T-014.md`
+(version 1.0.0):
+
+- T-014 integra la verificacion semantica (compilar y ejecutar pruebas) ya
+  implementada por T-013 dentro de `condor avanzar`, de forma aditiva;
+- la secuencia del ciclo pasa a Planificar -> Construir -> Verificar integridad
+  -> Verificar semantica -> resultado final;
+- T-014 reutiliza SemanticVerificationService, SemanticVerifier y ProcessRunner
+  (sin duplicar logica) e incorpora SemanticVerificationResult al
+  CycleResult/checkpoint conservando trazabilidad;
+- se mantienen ambos comandos: `condor verificar-semantico` (independiente) y
+  `condor avanzar` (lo reutiliza como capacidad interna);
+- la etapa semantica es degradable respecto de disponibilidad (no-.NET, sin dotnet,
+  sin manifiesto, no ejecutable) y NUNCA trata la no-disponibilidad como falla de
+  codigo; pero compilacion fallida, pruebas fallidas, timeout o resultado
+  negativo NO se ignoran: se conservan como evidencia de verificacion fallida y
+  el ciclo lo refleja;
+- se distinguen explicitamente los cuatro estados: verificacion no disponible,
+  incompleta/degradada, ejecutada y fallida, y ejecutada y correcta, cada uno con
+  efecto distinto sobre el estado final del ciclo;
+- T-014 NO implementa calidad/arquitectura/coherencia funcional (evolucion
+  posterior de SD-02), no cierra DE-002 completamente, no crea Architect/Guardian,
+  no integra Vision, no usa LLM, no modifica destructivamente T-010/T-013, no
+  reabre T-008 y no crea un segundo mecanismo de loop.
+
+Las decisiones D-IN1 a D-IN5 que definen el alcance son:
+
+- D-IN1: el ciclo `condor avanzar` incorpora la verificacion semantica de T-013
+  como etapa aditiva.
+- D-IN2: se reutilizan los servicios/contratos de T-013 sin reimplementarlos ni
+  duplicar su logica.
+- D-IN3: la verificacion semantica es degradable respecto de disponibilidad; no es
+  falla de codigo, pero los resultados negativos no se descartan.
+- D-IN4: se distinguen los cuatro estados semanticos y cada uno impacta el ciclo.
+- D-IN5: la parte restante de SD-02 (calidad/arquitectura/coherencia) queda
+  reservada para evolucion posterior.
+
+Estado:
+Aceptada (contrato aprobado para diseno). La implementacion aguarda el diseno
+tecnico (DEC-046).
+
+Origen:
+Formalizacion de T-014 (Integracion de la verificacion semantica en el ciclo).
+
+---
+
 # Historial de Cambios
 
 | Version | Cambio |
 |---------|--------|
+| 4.0.0 | Se incorpora DEC-045 (formalizacion del contrato de T-014, decisiones D-IN1 a D-IN5). |
 | 3.9.0 | Se incorpora DEC-044 (diseno tecnico de T-013, decisiones D-ST1 a D-ST9, aprobada). |
 | 3.8.0 | Se incorpora DEC-043 (formalizacion del contrato de T-013, decisiones D-SD1 a D-SD5). |
 | 3.7.0 | Se incorpora DEC-042 (diseno tecnico de T-012, decisiones D-DS1 a D-DS9, aprobada). |
