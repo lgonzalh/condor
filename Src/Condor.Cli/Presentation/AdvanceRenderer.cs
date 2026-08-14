@@ -17,6 +17,8 @@ public static class AdvanceRenderer
         Terminal.WriteLine("  Cambios aplicados : " + result.Applied);
         Terminal.WriteLine("  Cambios verificados: " + result.Verified);
 
+        RenderSemantic(result);
+
         RenderCheckpoint(result.Checkpoint);
 
         Terminal.WriteLine(
@@ -26,6 +28,23 @@ public static class AdvanceRenderer
         if (result.Status != DetectionStatus.Detected && !string.IsNullOrWhiteSpace(result.Reason))
         {
             Terminal.WriteWarning("  - Avance: " + result.Reason);
+        }
+    }
+
+    private static void RenderSemantic(CycleResult result)
+    {
+        if (result.SemanticAvailable != true)
+        {
+            Terminal.WriteLine("  Verif. semantica  : (no ejecutada)");
+            return;
+        }
+
+        var status = result.SemanticStatus ?? "desconocido";
+        Terminal.WriteLine("  Verif. semantica  : " + status);
+
+        if (!string.IsNullOrWhiteSpace(result.SemanticSummary))
+        {
+            Terminal.WriteDim("    resumen: " + result.SemanticSummary);
         }
     }
 
