@@ -1,6 +1,6 @@
 # DEUDA_EVOLUTIVA
 
-Version: 1.2.0
+Version: 1.3.0
 Estado: Activo
 Nivel: 09 - Evolucion
 Clasificacion: Deuda Evolutiva
@@ -135,9 +135,10 @@ Cuando sea necesario tambien debera registrar:
 - Razon: Preservar la frontera inicial del Verifier (T-008 = comprobar que lo construido fue aplicado correctamente) sin contaminar su responsabilidad.
 - Impacto: La v1.0 solo verifica integridad y acotacion; las capacidades semanticas quedan pendientes.
 - Prioridad: Media.
-- Estado: En analisis.
-- Version objetivo: Una evolucion posterior de Verifier (ver ROADMAP_EVOLUCION.md, siguiente linea de desarrollo).
-- Relacion: Se referencia en ROADMAP_EVOLUCION.md como evolucion planificada; no se implementa dentro de T-008 ni T-009.
+- Estado: Parcialmente atendida (T-013).
+- Version objetivo: Una evolucion posterior de Verifier; ya implementada en su primera parte (T-013).
+- Avance: T-013 implemento la primera concrecion de la verificacion semantica: compilar y ejecutar pruebas del proyecto objetivo (`condor verificar-semantico`). Las capacidades de calidad, arquitectura y coherencia funcional permanecen como evolucion posterior (roadmap SD-02).
+- Relacion: Se referencia en ROADMAP_EVOLUCION.md; la primera concrecion se implemento en T-013 (DEC-043/DEC-044).
 
 ---
 
@@ -259,6 +260,7 @@ Este documento se relaciona principalmente con:
 
 | Version | Cambios |
 |---------|---------|
+| 1.3.0 | Se actualiza DE-002 a Parcialmente atendida tras T-013 (primera concrecion de la verificacion semantica: compilar y ejecutar pruebas). |
 | 1.2.0 | Se incorpora DE-002 como deuda pendiente derivada del cierre de T-008: verificacion semantica y de calidad del Verifier reservada para una evolucion posterior (ver ROADMAP_EVOLUCION.md). T-009 queda formalmente congelada. |
 | 1.1.0 | Se incorpora DE-001 como deuda documental resuelta durante la ejecucion de T-001 (correccion de ESTRUCTURA_REPOSITORIO.md). |
 | 1.0.1 | Se elimina DE-001 por no corresponder a una deuda evolutiva real identificada. Se establece que el registro puede permanecer vacio y no deben crearse entradas artificiales. |
