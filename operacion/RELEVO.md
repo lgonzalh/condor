@@ -1,83 +1,84 @@
 # RELEVO
 
-Version: 6.0.0
+Version: 7.0.0
 Estado: Activo
 Modo: Evolucion Continua
 
 ## Ultimo trabajo
 
-T-007 - Builder inicial.
+T-008 - Verificacion inicial.
 
 ## Estado
 
-T-007 completada, verificada, integrada, publicada y formalmente congelada.
+T-008 completada, verificada, integrada, publicada y formalmente congelada.
 
-Commit final de la implementacion y cierre de T-007:
-`7e1fcba` (KANBAN -> sigue de T-007 a T-008)
+Commit del cierre documental de T-008:
+`18fd151` (KANBAN -> sigue de T-008 a T-009)
 
 HEAD:
-`7e1fcba`
+`18fd151`
 
 Working tree: limpio.
 
-## Evidencia de T-007
+## Evidencia de T-008
 
 - Build Release: 0 errores, 0 advertencias.
-- Pruebas unitarias (Condor.Core): 128/128 correctas.
-- Pruebas de integracion (Condor.Infrastructure): 115/115 correctas
-  (incluye 13 nuevas de Builder y la habilitacion de la suite completa al
-  desactivar la ejecucion paralela que provocaba races de Console.Out).
-- Pruebas de arquitectura: 14/14 correctas.
-- CLI `condor construir` y `condor construir --json` verificadas.
-- E2E real sobre un proyecto objetivo temporal: creacion de archivos con
-  contenido derivado, persistencia de `build.json`, degradacion sin plan,
-  determinismo (doble ejecucion) y rechazo de rutas fuera de objetivo.
-- D-B1 a D-B5 cumplidas (DEC-032). D-DB1 a D-DB7 cumplidas (DEC-033).
-- Limites verificados: MaxActions 24, MaxContentLength 64000,
-  MaxRelativePathLength 260, timeout 15 s.
+- Pruebas unitarias (Condor.Core): 143/143 correctas.
+- Pruebas de integracion (Condor.Infrastructure): 127/127 correctas.
+- Pruebas de arquitectura: 15/15 correctas.
+- CLI `condor verificar` y `condor verificar --json` verificadas.
+- E2E real sobre un proyecto objetivo temporal: verificacion de acciones
+  aplicadas (archivo existe + contenido coincide), caso de integridad fallida
+  (contenido manipulado), persistencia de `verification.json`, degradacion sin
+  build y determinismo (doble ejecucion).
+- D-V1 a D-V5 cumplidas (DEC-034). D-DV1 a D-DV7 cumplidas (DEC-035).
+- Limites verificados: MaxChecks 24, MaxContentLength 64000, timeout 15 s.
 - Commits auditados: 0 violaciones de la regla `1 archivo = 1 commit`.
 - Todos los commits publicados en `origin/main`.
 - Documentacion operativa actualizada.
-- T-007.md v1.0.0: cerrada y congelada.
+- T-008.md v1.0.0: cerrada y congelada.
 
-## Congelacion de T-007
+## Congelacion de T-008
 
-T-007 queda cerrada y congelada.
+T-008 queda cerrada y congelada.
 
-Su alcance aprobado, contrato (DEC-032, D-B1 a D-B5) y diseno tecnico
-(DEC-033, D-DB1 a D-DB7) no se modifican.
+Su alcance aprobado, contrato (DEC-034, D-V1 a D-V5) y diseno tecnico
+(DEC-035, D-DV1 a D-DV7) no se modifican.
 
-Cualquier mejora posterior del Builder debe registrarse como nueva tarea,
+La verificacion semantica y de calidad queda reservada para evoluciones
+posteriores y no contamina la responsabilidad inicial del Verifier.
+
+Cualquier mejora posterior del Verifier debe registrarse como nueva tarea,
 decision o deuda segun corresponda.
 
 ## Git
 
-Estado confirmado al cierre de la implementacion de T-007:
+Estado confirmado al cierre de la implementacion de T-008:
 
 - Rama local: `main`
-- `HEAD`: `7e1fcba`
-- `origin/main`: `7e1fcba`
+- `HEAD`: `18fd151`
+- `origin/main`: `18fd151`
 - Working tree: limpio
 - Regla vigente: `1 archivo = 1 commit`
 
 ## Siguiente tarea exacta
 
-`T-008 - Verificacion inicial`
+`T-009 - Documentacion y continuidad`
 
 Estado: Pendiente. No iniciada.
 
-T-007 (Builder inicial) quedo completada, verificada, integrada, publicada y
-congelada. Aplica cambios acotados sobre el proyecto objetivo a partir del
-`WorkPlan` de T-006.
+T-008 (Verificacion inicial) quedo completada, verificada, integrada, publicada
+y congelada. Consume el `BuildResult` de T-007 y comprueba la integridad y
+acotacion de los cambios aplicados.
 
-T-008 (Verifier, ARQ-007 / FN-008) verificara los resultados de los cambios
-aplicados por T-007.
+T-009 (Documentacion y continuidad) actualizara y consolidara la documentacion
+permanente para preservar la continuidad del proyecto.
 
-T-008 debe comenzar por reconocimiento y formalizacion.
+T-009 debe comenzar por reconocimiento y formalizacion.
 
 No existe autorizacion para comenzar codigo directamente.
 
-El siguiente agente debe reconocer T-008, revisar sus dependencias y
+El siguiente agente debe reconocer T-009, revisar sus dependencias y
 proponer el contrato antes de implementar.
 
 ## Dependencias conocidas
@@ -90,11 +91,12 @@ T-006 consume `ProjectContext` y entrega `WorkPlan`.
 
 T-007 consume `WorkPlan` y aplica `BuildResult` sobre el proyecto objetivo.
 
-T-008 consumira los cambios aplicados (posiblemente `build.json`) para
-verificar resultados.
+T-008 consume `BuildResult` y entrega `VerificationResult`.
 
-T-008 no debe reimplementar capacidades congeladas de T-004, T-005, T-006 ni
-T-007.
+T-009 consumira la documentacion permanente acumulada (T-001 a T-008) para
+actualizarla y consolidar la continuidad.
+
+T-009 no debe reimplementar capacidades congeladas de T-004 a T-008.
 
 ## Regla de continuidad
 
@@ -108,7 +110,7 @@ No existe nivel activo.
 
 Condor opera actualmente en `Evolucion Continua`.
 
-No crear ni activar un Nivel 10 para T-008.
+No crear ni activar un Nivel 10 para T-009.
 
 ## Regla de idioma
 
