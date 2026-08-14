@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Condor.Core.Contracts;
 using Condor.Core.Cycle;
@@ -14,6 +15,7 @@ public sealed class CycleService : ICycleService
     private readonly IPlanService _planService;
     private readonly IBuildService _buildService;
     private readonly IVerificationService _verificationService;
+    private readonly ISemanticVerificationService? _semanticService;
     private readonly IStateStore _stateStore;
     private readonly CycleLimits _limits;
 
@@ -22,13 +24,15 @@ public sealed class CycleService : ICycleService
         IBuildService buildService,
         IVerificationService verificationService,
         IStateStore stateStore,
-        CycleLimits? limits = null)
+        CycleLimits? limits = null,
+        ISemanticVerificationService? semanticService = null)
     {
         _planService = planService;
         _buildService = buildService;
         _verificationService = verificationService;
         _stateStore = stateStore;
         _limits = limits ?? CycleLimits.Default;
+        _semanticService = semanticService;
     }
 
     public async Task<CycleResult> AdvanceAsync(string userRequest, CancellationToken cancellationToken = default)
@@ -43,6 +47,7 @@ public sealed class CycleService : ICycleService
             WorkPlan? plan = null;
             BuildResult? build = null;
             VerificationResult? verification = null;
+            SemanticVerificationResult? semantic = null;
 
             while (true)
             {
@@ -64,18 +69,44 @@ public sealed class CycleService : ICycleService
 
                 await _stateStore.SaveVerificationAsync(verification, cancellationToken);
 
+                semantic = await RunSemanticAsync(cancellationToken);
+
+                var semanticInfo = ClassifySemantic(semantic);
+
                 var decision = CycleEngine.EvaluateDecision(
                     plan, build, verification, iteration, _limits);
 
+                var blocked = semanticInfo.Status == "fallida";
+
+                if (blocked && decision.Complete)
+                {
+                    // La integridad estaba completa pero la semantica fallo: no puede ser Completado.
+                    if (iteration < _limits.MaxIterations)
+                    {
+                        limitsApplied.Add(CycleLimits.LimitIterations);
+                        iteration++;
+                        continue;
+                    }
+
+                    return Result(plan, build, verification, semanticInfo, cycleId, iteration,
+                        CycleStage.Detenido, "La verificacion semantica del proyecto fallo de forma no recuperable.", limitsApplied);
+                }
+
                 if (decision.Complete)
                 {
-                    return Result(plan, build, verification, cycleId, iteration,
+                    if (semanticInfo.Status == "no_disponible" || semanticInfo.Status == "incompleta")
+                    {
+                        return Result(plan, build, verification, semanticInfo, cycleId, iteration,
+                            CycleStage.Degradado, semanticInfo.Reason, limitsApplied);
+                    }
+
+                    return Result(plan, build, verification, semanticInfo, cycleId, iteration,
                         CycleStage.Completado, null, limitsApplied);
                 }
 
                 if (decision.Stopped)
                 {
-                    return Result(plan, build, verification, cycleId, iteration,
+                    return Result(plan, build, verification, semanticInfo, cycleId, iteration,
                         decision.Stage, decision.Reason, limitsApplied);
                 }
 
@@ -98,10 +129,63 @@ public sealed class CycleService : ICycleService
         }
     }
 
+    private async Task<SemanticVerificationResult?> RunSemanticAsync(CancellationToken cancellationToken)
+    {
+        if (_semanticService is null)
+        {
+            return null;
+        }
+
+        return await _semanticService
+            .VerifySemanticAsync(true, true, cancellationToken)
+            .WaitAsync(TimeSpan.FromMilliseconds(_limits.CycleTimeoutMilliseconds), cancellationToken);
+    }
+
+    private static SemanticInfo ClassifySemantic(SemanticVerificationResult? semantic)
+    {
+        if (semantic is null)
+        {
+            return SemanticInfo.Omitted();
+        }
+
+        if (semantic.Checks.Count == 0)
+        {
+            return SemanticInfo.Omitted();
+        }
+
+        var statuses = semantic.Checks.Select(c => c.Status).ToList();
+
+        if (statuses.Contains(SemanticCheck.StatusFailed))
+        {
+            return SemanticInfo.Failed(BuildSummary(statuses));
+        }
+
+        if (statuses.Contains(SemanticCheck.StatusNotAvailable) ||
+            statuses.Contains(SemanticCheck.StatusNotSupported) ||
+            statuses.Contains(SemanticCheck.StatusNotExecutable))
+        {
+            return SemanticInfo.NotAvailable(BuildSummary(statuses));
+        }
+
+        if (statuses.Contains(SemanticCheck.StatusTimeout) ||
+            statuses.Contains(SemanticCheck.StatusIncomplete))
+        {
+            return SemanticInfo.Incomplete(BuildSummary(statuses));
+        }
+
+        return SemanticInfo.Correct(BuildSummary(statuses));
+    }
+
+    private static string BuildSummary(List<string> statuses)
+    {
+        return string.Join(", ", statuses);
+    }
+
     private static CycleResult Result(
         WorkPlan plan,
         BuildResult build,
         VerificationResult verification,
+        SemanticInfo semantic,
         string cycleId,
         int iteration,
         CycleStage stage,
@@ -131,6 +215,10 @@ public sealed class CycleService : ICycleService
             Stages = 3,
             Applied = build.Applied,
             Verified = verification.Passed,
+            SemanticAvailable = semantic.Available,
+            SemanticStatus = semantic.Status,
+            SemanticSummary = semantic.Summary,
+            SemanticReference = semantic.Reference,
             Checkpoint = new CycleCheckpoint
             {
                 SchemaVersion = "1.0.0",
@@ -159,8 +247,7 @@ public sealed class CycleService : ICycleService
             .Replace(" ", string.Empty)
             .Replace("á", "a").Replace("é", "e").Replace("í", "i")
             .Replace("ó", "o").Replace("ú", "u").Replace("ñ", "n");
-        var id = "C" + StableHash(normalized).ToString("X8");
-        return id;
+        return "C" + StableHash(normalized).ToString("X8");
     }
 
     private static int StableHash(string value)
@@ -175,5 +262,30 @@ public sealed class CycleService : ICycleService
 
             return hash;
         }
+    }
+
+    private readonly record struct SemanticInfo(
+        bool Available,
+        string? Status,
+        string? Summary,
+        string? Reference,
+        string? Reason)
+    {
+        public static SemanticInfo Omitted() => new(false, null, null, null, null);
+
+        public static SemanticInfo Correct(string summary) =>
+            new(true, "correcta", summary, "verificacion_semantica.json", null);
+
+        public static SemanticInfo NotAvailable(string summary) =>
+            new(true, "no_disponible", summary, "verificacion_semantica.json",
+                "La verificacion semantica no estuvo disponible para el objetivo.");
+
+        public static SemanticInfo Incomplete(string summary) =>
+            new(true, "incompleta", summary, "verificacion_semantica.json",
+                "La verificacion semantica quedo incompleta o degradada.");
+
+        public static SemanticInfo Failed(string summary) =>
+            new(true, "fallida", summary, "verificacion_semantica.json",
+                "La verificacion semantica se ejecuto y produjo resultados negativos.");
     }
 }
