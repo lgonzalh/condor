@@ -116,6 +116,21 @@ public class VisionServiceTests
         Assert.Equal(VisionJson.Serialize(first), VisionJson.Serialize(second));
     }
 
+    [Fact]
+    public async Task ExamineAsync_Timeout_DevuelveLimited()
+    {
+        var store = new LocalStateStore(DirectorioTemporal());
+        await store.SaveAssessmentAsync(AssessmentConVision());
+        var image = CrearImagen(50);
+        var limits = new VisionLimits { VisionTimeoutMilliseconds = 50 };
+        var service = new VisionService(store, new SlowLlm(TimeSpan.FromMilliseconds(1000)), limits);
+
+        var result = await service.ExamineAsync(image, CancellationToken.None);
+
+        Assert.Equal(DetectionStatus.Limited, result.Status);
+        Assert.Contains("tiempo", result.Reason!, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static AssessmentResult AssessmentConVision()
     {
         return new AssessmentResult
@@ -175,6 +190,19 @@ public class VisionServiceTests
         public Task<LlmResponse> CompleteAsync(LlmRequest request, CancellationToken ct = default)
         {
             return Task.FromResult(new LlmResponse { Success = true, Content = _content, Model = request.Model });
+        }
+    }
+
+    private sealed class SlowLlm : ILlmClient
+    {
+        private readonly TimeSpan _delay;
+
+        public SlowLlm(TimeSpan delay) => _delay = delay;
+
+        public async Task<LlmResponse> CompleteAsync(LlmRequest request, CancellationToken ct = default)
+        {
+            await Task.Delay(_delay, CancellationToken.None);
+            return new LlmResponse { Success = true, Content = "lento", Model = request.Model };
         }
     }
 }
