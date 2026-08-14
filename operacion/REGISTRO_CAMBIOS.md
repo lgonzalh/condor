@@ -1,6 +1,6 @@
 # REGISTRO_CAMBIOS
 
-Version: 3.1.0
+Version: 3.2.0
 Estado: Activo
 
 ## Proposito
@@ -24,29 +24,30 @@ Registrar cambios de implementacion y decisiones relevantes que necesiten contex
 | CH-025 | 2026-08-14 | T-009 | Ejecucion documental, revision, publicacion y congelacion de T-009 | Completado | Serie de commits T-009 |
 | CH-026 | 2026-08-14 | T-010 | Formalizacion del contrato y diseno de T-010 (T-010.md, DEC-037 y DEC-038) | Completado | Serie de commits T-010 |
 | CH-027 | 2026-08-14 | T-010 | Implementacion, verificacion, integracion, publicacion y congelacion de T-010 | Completado | Serie de commits T-010 |
+| CH-028 | 2026-08-14 | T-011 | Formalizacion del contrato y diseno de T-011 (T-011.md, DEC-039 y DEC-040) | Completado | Serie de commits T-011 |
+| CH-029 | 2026-08-14 | T-011 | Implementacion, verificacion, integracion, publicacion y congelacion de T-011 | Completado | Serie de commits T-011 |
 
 ## Estado
 
-T-001 a T-010 completadas y publicadas.
+T-001 a T-011 completadas y publicadas.
 
-T-004 a T-010 estan formalmente congeladas.
+T-004 a T-011 estan formalmente congeladas.
 
-T-010 queda cerrada y congelada (Capacidades avanzadas de desarrollo): ciclo de
-ingenieria parcial (Planner -> Builder -> Verifier) con condor avanzar; build
-Release sin errores; unitarias 152/152; integracion 133/134 (la unica fallida es
-una prueba de entorno de T-002 dependiente de Ollama, ajena a T-010);
-arquitectura 16/16; E2E real; determinismo; checkpoint cycle.json; D-C1 a D-C5
-(DEC-037) y D-DY1 a D-DY8 (DEC-038) cumplen.
+T-011 queda cerrada y congelada (Vision local): condor examinar; build Release
+sin errores; unitarias 157/157; integracion 147/147 (incluye compatibilidad
+textual de T-002); arquitectura 17/17; E2E de degradacion documentada (sin
+modelo de vision instalado); vision.json solo con metadatos; D-N1 a D-N5
+(DEC-039) y D-DW1 a D-DW8 (DEC-040) cumplen.
 
-Siguiente tarea: `T-011 - Vision local`.
+Siguiente tarea: `T-012 - Instalador y puesta en marcha simplificada`.
 
 Estado: Pendiente. No iniciada.
 
-## Estado Git al cierre de T-010
+## Estado Git al cierre de T-011
 
 - Rama: `main`
-- HEAD: `e63ba4b`
-- origin/main: `e63ba4b`
+- HEAD: `f3c7617`
+- origin/main: `f3c7617`
 - Working tree: limpio
 
 Regla vigente:
