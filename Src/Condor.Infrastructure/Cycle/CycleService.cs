@@ -136,9 +136,13 @@ public sealed class CycleService : ICycleService
             return null;
         }
 
-        return await _semanticService
+        var timeout = TimeSpan.FromMilliseconds(_limits.CycleTimeoutMilliseconds);
+        var result = await _semanticService
             .VerifySemanticAsync(true, true, cancellationToken)
-            .WaitAsync(TimeSpan.FromMilliseconds(_limits.CycleTimeoutMilliseconds), cancellationToken);
+            .WaitAsync(timeout, cancellationToken);
+
+        await _stateStore.SaveSemanticVerificationAsync(result, cancellationToken);
+        return result;
     }
 
     private static SemanticInfo ClassifySemantic(SemanticVerificationResult? semantic)
