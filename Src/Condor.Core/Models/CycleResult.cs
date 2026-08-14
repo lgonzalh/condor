@@ -17,6 +17,10 @@ public class CycleResult
     public int Applied { get; set; }
     public int Verified { get; set; }
     public CycleCheckpoint Checkpoint { get; set; } = new();
+    public bool? SemanticAvailable { get; set; }
+    public string? SemanticStatus { get; set; }
+    public string? SemanticSummary { get; set; }
+    public string? SemanticReference { get; set; }
     public List<string> LimitsApplied { get; set; } = new();
     public DateTime GeneratedAtUtc { get; set; }
 }
