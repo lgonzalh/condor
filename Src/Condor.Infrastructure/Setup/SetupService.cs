@@ -15,16 +15,19 @@ public sealed class SetupService : ISetupService
     private readonly IAssessmentService? _assessmentService;
     private readonly SetupLimits _limits;
     private readonly StateDirectoryProbe _probe;
+    private readonly string _stateDirectory;
 
     public SetupService(
         IStateStore stateStore,
         IAssessmentService? assessmentService = null,
-        SetupLimits? limits = null)
+        SetupLimits? limits = null,
+        string? stateDirectory = null)
     {
         _stateStore = stateStore;
         _assessmentService = assessmentService;
         _limits = limits ?? SetupLimits.Default;
         _probe = new StateDirectoryProbe();
+        _stateDirectory = stateDirectory ?? DefaultStateDirectory();
     }
 
     public async Task<SetupResult> PrepareAsync(
@@ -47,7 +50,7 @@ public sealed class SetupService : ISetupService
                 await _stateStore.SaveAssessmentAsync(assessment, cancellationToken);
             }
 
-            var stateDirectory = StateDirectory();
+            var stateDirectory = _stateDirectory;
             var state = _probe.Probe(stateDirectory);
 
             return SetupEvaluator.Evaluate(
@@ -64,7 +67,7 @@ public sealed class SetupService : ISetupService
         }
     }
 
-    private static string StateDirectory()
+    private static string DefaultStateDirectory()
     {
         return Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
