@@ -31,6 +31,7 @@ Ninguna.
 - T-011 Vision local
 - T-012 Instalador y puesta en marcha simplificada
 - T-013 Verificacion semantica y de calidad (SD-02)
+- T-014 Integracion de la verificacion semantica en el ciclo
 
 ## Siguiente
 
