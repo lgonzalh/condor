@@ -1,18 +1,18 @@
 # ESTADO_DESARROLLO
 
-Version: 2.6.0
+Version: 2.7.0
 Estado: Activo
 Modo: Evolucion Continua
 MVP: Condor 1.0
 
 ## Estado actual
 
-Condor cuenta con T-001 a T-008 completadas, verificadas e integradas en
+Condor cuenta con T-001 a T-009 completadas, verificadas e integradas en
 `main`.
 
-T-004, T-005, T-006, T-007 y T-008 estan formalmente congeladas.
+T-004, T-005, T-006, T-007, T-008 y T-009 estan formalmente congeladas.
 
-T-009 (Documentacion y continuidad) queda pendiente y no iniciada.
+T-010 (Capacidades avanzadas de desarrollo) queda pendiente y no iniciada.
 
 ## Estado funcional
 
@@ -53,6 +53,9 @@ Condor puede:
 - persistir `verification.json` como artefacto derivado;
 - emitir `condor verificar`;
 - emitir `condor verificar --json`;
+- mantener la documentacion permanente sincronizada con el estado real;
+- especificar el rol de Documenter (DOCUMENTADOR.md);
+- distinguir deuda pendiente (DEUDA_EVOLUTIVA.md) y siguiente linea (ROADMAP_EVOLUCION.md);
 - degradar de forma controlada;
 - mantener limites deterministas.
 
@@ -84,9 +87,9 @@ No reintroducir contratos anteriores en ingles.
 
 ## Estado Git
 
-Ultimo estado confirmado al cierre de la implementacion de T-008:
+Ultimo estado confirmado al cierre de la implementacion de T-009:
 
-`e3d2056`
+`ea11649`
 
 `HEAD == origin/main`
 
@@ -156,6 +159,17 @@ T-008:
 - publicacion completa en `origin/main`;
 - cierre y congelacion formal.
 
+T-009:
+- tarea exclusivamente documental (sin codigo);
+- DOCUMENTADOR.md creado e integrado en los inventarios (FN-009/ARQ-008 Especificado);
+- trazabilidad T-001 a T-008 preservada sin reescritura de historia;
+- deuda pendiente (DEUDA_EVOLUTIVA DE-002) y siguiente linea (ROADMAP SD-01/SD-02) consolidados sin duplicidad;
+- PATRIMONIO_CONOCIMIENTO actualizado (CI-011);
+- revision documental satisfactoria;
+- commits auditados sin violaciones de `1 archivo = 1 commit`;
+- publicacion completa en `origin/main`;
+- cierre y congelacion formal.
+
 ## Tareas
 
 | ID | Trabajo | Estado |
@@ -168,25 +182,25 @@ T-008:
 | T-006 | Flujo de intencion a plan | Completada, verificada y congelada |
 | T-007 | Builder inicial | Completada, verificada y congelada |
 | T-008 | Verificacion inicial | Completada, verificada y congelada |
-| T-009 | Documentacion y continuidad | Pendiente |
+| T-009 | Documentacion y continuidad | Completada, verificada y congelada |
 | T-010 | Capacidades avanzadas de desarrollo | Pendiente |
 | T-011 | Vision local | Pendiente |
 | T-012 | Instalador y puesta en marcha simplificada | Pendiente |
 
 ## Siguiente tarea
 
-`T-009 - Documentacion y continuidad`
+`T-010 - Capacidades avanzadas de desarrollo`
 
 Estado: Pendiente. No iniciada.
 
-T-008 (Verificacion inicial) quedo completada, verificada, integrada, publicada
-y congelada (T-008.md v1.0.0, DEC-034 y DEC-035). Consume el `BuildResult` de
-T-007 y comprueba la integridad y acotacion de los cambios aplicados.
+T-009 (Documentacion y continuidad) quedo completada, verificada, integrada,
+publicada y congelada (T-009.md v1.0.0, DEC-036). Consolido la documentacion
+permanente tras T-001 a T-008 y formalizo el rol de Documenter.
 
-T-009 (Documentacion y continuidad) actualizara y consolidara la documentacion
-permanente para preservar la continuidad del proyecto.
+T-010 (Capacidades avanzadas de desarrollo) evolucionara las capacidades de
+desarrollo sobre la base de Planner, Builder, Verifier y Documenter.
 
-No iniciar T-009 desde codigo. Primero reconocimiento y formalizacion.
+No iniciar T-010 desde codigo. Primero reconocimiento y formalizacion.
 
 ## Regla de continuidad
 
@@ -200,4 +214,4 @@ No existe nivel activo.
 
 El estado oficial es `Evolucion Continua`.
 
-No crear ni reabrir un nivel numerico para T-009.
+No crear ni reabrir un nivel numerico para T-010.
