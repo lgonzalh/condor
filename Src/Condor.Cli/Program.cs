@@ -9,6 +9,7 @@ using Condor.Infrastructure.Llm;
 using Condor.Infrastructure.Planning;
 using Condor.Infrastructure.State;
 using Condor.Infrastructure.Verification;
+using Condor.Infrastructure.Vision;
 
 namespace Condor.Cli;
 
@@ -101,6 +102,12 @@ public static class Program
                     args.Skip(1).ToArray(),
                     CancellationToken.None);
 
+            case "examinar":
+                return await ExamineCommand.ExecuteAsync(
+                    new VisionService(stateStore),
+                    args.Skip(1).ToArray(),
+                    CancellationToken.None);
+
             default:
                 Terminal.WriteError("Comando desconocido: " + args[0]);
                 RenderHelp();
@@ -122,6 +129,7 @@ public static class Program
         Terminal.WriteDim("Usa 'condor construir' para aplicar los cambios del plan.");
         Terminal.WriteDim("Usa 'condor verificar' para comprobar los cambios aplicados.");
         Terminal.WriteDim("Usa 'condor avanzar \"<solicitud>\"' para ejecutar el ciclo de ingenieria.");
+        Terminal.WriteDim("Usa 'condor examinar \"<imagen>\"' para analizar una imagen localmente.");
         Terminal.WriteDim("Usa 'condor recomendar' para elegir un modelo local.");
         Terminal.WriteDim("Usa 'condor consultar' para consultar al modelo local.");
         Terminal.WriteDim("Usa 'condor ayuda' para ver los comandos disponibles.");
@@ -148,6 +156,8 @@ public static class Program
         Terminal.WriteLine("  condor verificar --json    Genera el resultado en formato JSON.");
         Terminal.WriteLine("  condor avanzar \"<solicitud>\"  Ejecuta el ciclo de ingenieria.");
         Terminal.WriteLine("  condor avanzar \"<solicitud>\" --json");
+        Terminal.WriteLine("  condor examinar \"<imagen>\"      Analiza una imagen localmente.");
+        Terminal.WriteLine("  condor examinar \"<imagen>\" --json");
         Terminal.WriteLine("  condor recomendar          Recomienda un modelo para el equipo.");
         Terminal.WriteLine("  condor recomendar --proposito <tipo>");
         Terminal.WriteLine("                             tipo: desarrollo, general o vision.");
