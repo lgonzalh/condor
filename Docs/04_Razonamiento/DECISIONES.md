@@ -1,6 +1,6 @@
 # DECISIONES
 
-Version: 4.0.0
+Version: 4.1.0
 Estado: Activo
 Nivel: 04 - Diseno
 Clasificacion: Decisiones Arquitectonicas
@@ -1315,10 +1315,65 @@ Formalizacion de T-014 (Integracion de la verificacion semantica en el ciclo).
 
 ---
 
+# DEC-046
+
+Titulo:
+Diseno tecnico de T-014 (Integracion de la verificacion semantica en el ciclo).
+
+Estado:
+Aprobada (ratificada para implementacion).
+
+Decision:
+El diseno tecnico de T-014 se consolida en `operacion/TAREAS/T-014.md` (con
+D-IN1 a D-IN5 ratificados). Se incorporan las siguientes resoluciones tecnicas
+aprobadas:
+
+- D-IC1: `CycleResult` se extiende aditivamente con `SemanticAvailable`,
+  `SemanticStatus`, `SemanticSummary` y `SemanticReference`, preservando la
+  compatibilidad de serializacion.
+- D-IC2: `CycleService` inyecta `ISemanticVerificationService` de forma opcional
+  (retrocompatible); sin `ISemanticVerificationService` la etapa semantica se
+  omite y el ciclo conserva su comportamiento de T-010.
+- D-IC3: la etapa semantica se ejecuta despues de la verificacion de integridad;
+  los cuatro estados (correcta, no_disponible, incompleta/degradada, fallida) se
+  mapean a efectos del ciclo: correcta permite Completado; no_disponible degrada
+  sin falsa falla; incompleta/degradada degrada conservando evidencia sin exito
+  completo; fallida no permite Completado y aplica la politica de recuperacion/
+  detencion de T-010.
+- D-IC4: el resumen semantico se persiste en `cycle.json` (sumario + estado +
+  referencia a `verificacion_semantica.json`), sin duplicar el JSON completo de
+  T-013.
+- D-IC5: determinismo de orquestacion y protecciones de T-010 (MaxIterations,
+  MaxStages, timeout, transiciones validas, resultados faltantes, ausencia de
+  herramientas) conservadas; no se crea un segundo loop ni runner.
+- D-IC6: `condor avanzar` muestra la etapa semantica; `condor verificar` y
+  `condor verificar-semantico` permanecen funcionalmente intactos.
+
+Precisiones ratificadas:
+
+- NO reimplementar ni duplicar la logica semantica (se reutilizan
+  ISemanticVerificationService, SemanticVerificationService, SemanticVerifier y
+  ProcessRunner de T-013).
+- No ejecutar la semantica dos veces en la misma etapa.
+- No declarar falsa falla de compilacion/pruebas cuando solo es no-disponibilidad.
+- No convertir silenciosamente una fallida en un Limited exitoso.
+- T-014 NO implementa calidad/arquitectura/coherencia funcional, Architect,
+  Guardian, vision, LLM ni reparacion automatica; SD-02 permanece parcialmente
+  implementada y DE-002 abierta/parcialmente atendida.
+
+Estas decisiones son ratificadas por el usuario y habilitan la implementacion de
+T-014 dentro del alcance aprobado.
+
+Origen:
+Diseno tecnico de T-014 (Integracion de la verificacion semantica en el ciclo).
+
+---
+
 # Historial de Cambios
 
 | Version | Cambio |
 |---------|--------|
+| 4.1.0 | Se incorpora DEC-046 (diseno tecnico de T-014, decisiones D-IC1 a D-IC6, aprobada). |
 | 4.0.0 | Se incorpora DEC-045 (formalizacion del contrato de T-014, decisiones D-IN1 a D-IN5). |
 | 3.9.0 | Se incorpora DEC-044 (diseno tecnico de T-013, decisiones D-ST1 a D-ST9, aprobada). |
 | 3.8.0 | Se incorpora DEC-043 (formalizacion del contrato de T-013, decisiones D-SD1 a D-SD5). |
