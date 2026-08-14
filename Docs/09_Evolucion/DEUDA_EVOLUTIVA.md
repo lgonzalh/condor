@@ -1,6 +1,6 @@
 # DEUDA_EVOLUTIVA
 
-Version: 1.1.0
+Version: 1.2.0
 Estado: Activo
 Nivel: 09 - Evolucion
 Clasificacion: Deuda Evolutiva
@@ -127,6 +127,18 @@ Cuando sea necesario tambien debera registrar:
 - Resolucion: ESTRUCTURA_REPOSITORIO.md fue corregido a la version 2.0.0 describiendo la estructura vigente real. La correccion quedo registrada en el historial del propio documento y en DECISIONES.md (DEC-012).
 - Fecha de resolucion: 2026-08-10, durante la ejecucion de T-001.
 
+## DE-002
+
+- Origen: Cierre de T-008 (Verificacion inicial).
+- Componente o documento afectado: Verifier (T-008) y evoluciones posteriores.
+- Descripcion: La verificacion semantica y de calidad (compilacion, ejecucion de pruebas, calidad del codigo, validacion arquitectonica y coherencia funcional del proyecto objetivo) quedo fuera del alcance v1.0 del Verifier y se reservo para evoluciones posteriores.
+- Razon: Preservar la frontera inicial del Verifier (T-008 = comprobar que lo construido fue aplicado correctamente) sin contaminar su responsabilidad.
+- Impacto: La v1.0 solo verifica integridad y acotacion; las capacidades semanticas quedan pendientes.
+- Prioridad: Media.
+- Estado: En analisis.
+- Version objetivo: Una evolucion posterior de Verifier (ver ROADMAP_EVOLUCION.md, siguiente linea de desarrollo).
+- Relacion: Se referencia en ROADMAP_EVOLUCION.md como evolucion planificada; no se implementa dentro de T-008 ni T-009.
+
 ---
 
 # GESTION
@@ -247,6 +259,7 @@ Este documento se relaciona principalmente con:
 
 | Version | Cambios |
 |---------|---------|
+| 1.2.0 | Se incorpora DE-002 como deuda pendiente derivada del cierre de T-008: verificacion semantica y de calidad del Verifier reservada para una evolucion posterior (ver ROADMAP_EVOLUCION.md). T-009 queda formalmente congelada. |
 | 1.1.0 | Se incorpora DE-001 como deuda documental resuelta durante la ejecucion de T-001 (correccion de ESTRUCTURA_REPOSITORIO.md). |
 | 1.0.1 | Se elimina DE-001 por no corresponder a una deuda evolutiva real identificada. Se establece que el registro puede permanecer vacio y no deben crearse entradas artificiales. |
 | 1.0.0 | Creacion del registro de deuda evolutiva del Proyecto Condor para el Nivel 09. |
