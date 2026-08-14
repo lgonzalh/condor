@@ -1,19 +1,19 @@
 # ESTADO_DESARROLLO
 
-Version: 2.9.0
+Version: 3.0.0
 Estado: Activo
 Modo: Evolucion Continua
 MVP: Condor 1.0
 
 ## Estado actual
 
-Condor cuenta con T-001 a T-011 completadas, verificadas e integradas en
+Condor cuenta con T-001 a T-012 completadas, verificadas e integradas en
 `main`.
 
-T-004 a T-011 estan formalmente congeladas.
+T-004 a T-012 estan formalmente congeladas.
 
-T-012 (Instalador y puesta en marcha simplificada) queda pendiente y no
-iniciada.
+El backlog del MVP 1.0 (T-001 a T-012) queda completado. La evolucion posterior
+se define mediante el ciclo de Evolucion Continua.
 
 ## Estado funcional
 
@@ -62,6 +62,9 @@ Condor puede:
 - persistir el checkpoint del ciclo (`cycle.json`) como artefacto derivado;
 - analizar una imagen local con un VLM local (si hay GPU y modelo de vision);
 - degradar de forma estructurada cuando la vision no esta disponible;
+- verificar la puesta en marcha y el estado del entorno (condor preparar);
+- distinguir dependencias obligatorias de opcionales sin descargar nada;
+- preservar el estado local de forma no destructiva;
 - degradar de forma controlada;
 - mantener limites deterministas.
 
@@ -99,13 +102,19 @@ T-011 agrego:
 - `condor examinar "<imagen>"`
 - `condor examinar "<imagen>" --json`
 
+T-012 agrego:
+
+- `condor preparar`
+- `condor preparar --json`
+- `condor preparar --actualizar`
+
 No reintroducir contratos anteriores en ingles.
 
 ## Estado Git
 
-Ultimo estado confirmado al cierre de la implementacion de T-011:
+Ultimo estado confirmado al cierre de la implementacion de T-012:
 
-`e1b2e30`
+`87aca9d`
 
 `HEAD == origin/main`
 
@@ -214,6 +223,21 @@ T-011:
 - publicacion completa en `origin/main`;
 - cierre y congelacion formal.
 
+T-012:
+- 166/166 pruebas unitarias (Core);
+- 154/154 pruebas de integracion (Infrastructure);
+- 18/18 pruebas de arquitectura;
+- CLI preparar y preparar --json verificadas;
+- E2E real: diagnostico `Detected` en el entorno real con dependencias
+  obligatorias/opcionales diferenciadas;
+- comportamiento no destructivo y preservacion del estado local verificados;
+- determinismo del diagnostico verificado (doble ejecucion);
+- INSTALACION_PUESTA_EN_MARCHA.md creada (guia de puesta en marcha);
+- D-P1 a D-P5 (DEC-041) y D-DS1 a D-DS9 (DEC-042) cumplidas;
+- commits auditados sin violaciones de `1 archivo = 1 commit`;
+- publicacion completa en `origin/main`;
+- cierre y congelacion formal.
+
 ## Tareas
 
 | ID | Trabajo | Estado |
@@ -229,22 +253,15 @@ T-011:
 | T-009 | Documentacion y continuidad | Completada, verificada y congelada |
 | T-010 | Capacidades avanzadas de desarrollo | Completada, verificada y congelada |
 | T-011 | Vision local | Completada, verificada y congelada |
-| T-012 | Instalador y puesta en marcha simplificada | Pendiente |
+| T-012 | Instalador y puesta en marcha simplificada | Completada, verificada y congelada |
 
-## Siguiente tarea
+## Siguiente evolucion
 
-`T-012 - Instalador y puesta en marcha simplificada`
+El backlog del MVP 1.0 (T-001 a T-012) queda completado y congelado.
 
-Estado: Pendiente. No iniciada.
-
-T-011 (Vision local) quedo completada, verificada, integrada, publicada y
-congelada (T-011.md, DEC-039 y DEC-040). Implemento `condor examinar`, capaz de
-analizar una imagen con un VLM local condicionado a GPU y modelo de vision.
-
-T-012 (Instalador y puesta en marcha simplificada) simplificara la instalacion y
-el arranque de Condor.
-
-No iniciar T-012 desde codigo. Primero reconocimiento y formalizacion.
+La evolucion posterior se define mediante el ciclo de Evolucion Continua,
+priorizando la consolidacion del MVP (roadmap SD-01/SD-02), la continuidad del
+proyecto y futuras capacidades.
 
 ## Regla de continuidad
 
@@ -258,4 +275,4 @@ No existe nivel activo.
 
 El estado oficial es `Evolucion Continua`.
 
-No crear ni reabrir un nivel numerico para T-012.
+El backlog operativo del MVP queda completado; la evolucion no crea un Nivel 10.
