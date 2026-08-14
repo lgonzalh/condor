@@ -1,6 +1,6 @@
 # DECISIONES
 
-Version: 1.9.0
+Version: 2.0.0
 Estado: Activo
 Nivel: 04 - Diseno
 Clasificacion: Decisiones Arquitectonicas
@@ -630,11 +630,108 @@ Diseno tecnico de T-006 (Flujo de intencion a plan).
 
 ---
 
+# DEC-032
+
+Titulo:
+Formalizacion del contrato de T-007 (Builder inicial).
+
+Decision:
+El contrato de T-007 queda formalizado en `operacion/TAREAS/T-007.md`
+(version 0.1.0, propuesta):
+
+- T-007 implementa la version inicial del Builder (ARQ-006 / FN-007): consume el
+  `WorkPlan` entregado por T-006 y ejecuta un conjunto acotado y determinista de
+  cambios sobre el proyecto objetivo, dentro del flujo del Kernel
+  (Planner -> Builder -> Verifier);
+- la frontera con T-006 es estricta: T-007 consume `WorkPlan` de solo lectura y
+  no amplia ni modifica los modelos congelados de T-006 (`WorkPlan`, `PlanTask`,
+  `PlanLimits`);
+- la frontera con T-008 (Verificacion inicial) es estricta: T-007 aplica y
+  registra cambios; la verificacion de calidad pertenece a T-008;
+- la version inicial opera sin LLM (Ollama) y deriva las acciones de forma
+  determinista a partir de las tareas del plan por heuristica textual (patron
+  D-E3), sin inventar rutas ni contenidos sin base;
+- las operaciones soportadas son crear y actualizar archivos bajo la raiz del
+  proyecto objetivo (`WorkingDirectory` del plan), con validacion de rutas (sin
+  `..` ni absolutas) y sin escrituras fuera del objetivo;
+- la escritura se realiza dentro del repositorio objetivo mediante un comando
+  publico nuevo `condor construir` (texto y `--json`), en espanol sin tildes;
+- el resultado se persiste como artefacto derivado y transitorio en el estado
+  local (`build.json`), sin escribir conocimiento permanente en el objetivo ni
+  modificar `assessment.json`, `context.json` ni `plan.json`.
+
+Las decisiones D-B1 a D-B5 que definen el alcance son:
+
+- D-B1: el Builder ejecuta acciones archivo-acotadas y deterministas sobre el
+  proyecto objetivo, derivadas de las tareas del plan, sin LLM.
+- D-B2: la escritura se realiza dentro del repositorio objetivo mediante un CLI
+  dedicado (`condor construir`).
+- D-B3: las operaciones soportadas en la version inicial son crear y actualizar
+  archivos (mas la creacion implicita de directorios); la eliminacion queda fuera
+  de alcance.
+- D-B4: `build.json` se persiste como artefacto derivado y transitorio en el
+  estado local (`%LOCALAPPDATA%\Condor\state\`), sin tocar el objetivo ni otros
+  artefactos derivados.
+- D-B5: el contenido de los cambios se deriva directamente del plan, sin usar el
+  LLM local en esta version, preservando determinismo y operacion local.
+
+Estado:
+Aceptada (para formalizacion contractual). Su alcance queda sujeto a la
+ratificacion del diseno tecnico (DEC-033) antes de implementar.
+
+Origen:
+Reconocimiento y formalizacion de T-007 (Builder inicial).
+
+---
+
+# DEC-033
+
+Titulo:
+Diseno tecnico de T-007 (Builder inicial).
+
+Estado:
+Propuesta (Pendiente de ratificacion para implementacion).
+
+Decision:
+El diseno tecnico de T-007 se consolida en `operacion/TAREAS/T-007.md`
+(con D-B1 a D-B5 ratificados). Se incorporan las siguientes resoluciones
+tecnicas, pendientes de aprobacion formal:
+
+- D-DB1: `BuildDeriver` reside en `Condor.Core.Building` como logica pura
+  (patron D-D5): recibe el `WorkPlan` y `BuildLimits`; no realiza IO.
+  `BuildService` (Infrastructure) orquesta la carga y delega la derivacion;
+  `ProjectFileWriter` es el unico componente con IO de archivos sobre el
+  objetivo.
+- D-DB2: `BuildJson` en `Condor.Core.Serialization` sigue el patron de
+  `ContextJson`/`AssessmentJson`/`PlanJson` (camelCase, `WriteIndented`, ignorar
+  nulls).
+- D-DB3: `BuildLimits` centralizado (patron D-D12) con valores de referencia
+  propuestos: `MaxActions = 24`, `MaxContentLength = 64_000`,
+  `MaxRelativePathLength = 260`, `BuildTimeoutMilliseconds = 15_000`.
+- D-DB4: las acciones se derivan por heuristica textual determinista (patron
+  D-E3) desde `Title`/`Detail` de cada `PlanTask`, en orden ordinal, con tipos
+  `Crear`/`Actualizar` y validacion de rutas; se truncan a `MaxActions`.
+- D-DB5: `build.json` se persiste tras cada ejecucion de `condor construir`,
+  UTF-8 sin BOM (patrones D-D4 y D-D9), sin modificar otros artefactos derivados.
+- D-DB6: la CLI `condor construir` (texto y `--json`) en espanol sin tildes; sin
+  plan, `NotDetected` con motivo instructivo y exit code 1.
+- D-DB7: determinismo (patron D-E7): mismo plan produce el mismo resultado, con
+  la unica excepcion de `GeneratedAtUtc`; se incluye una prueba de doble
+  ejecucion.
+
+Estas decisiones se presentan a revision formal. Su ratificacion convierte el
+diseno de T-007 en aprobado y habilita la implementacion autorizada.
+
+Origen:
+Diseno tecnico de T-007 (Builder inicial).
+
+---
+
 # Historial de Cambios
 
 | Version | Cambio |
 |---------|--------|
-| 1.9.0 | Se incorpora DEC-031 (diseno tecnico completo de T-006, D-DE1 a D-DE6, aprobada para implementacion). |
+| 2.0.0 | Se incorporan DEC-032 (formalizacion del contrato de T-007, decisiones D-B1 a D-B5) y DEC-033 (diseno tecnico de T-007, D-DB1 a D-DB7, propuesta pendiente de ratificacion). |
 | 1.8.0 | Se incorpora DEC-030 (formalizacion del contrato de T-006, decisiones D-E1 a D-E8). |
 | 1.7.0 | Se incorporan DEC-028 (formalizacion del contrato de T-005) y DEC-029 (diseno tecnico aprobado de T-005, decisiones D-D1 a D-D12). |
 | 1.6.0 | Se incorpora DEC-027 (diseno aprobado de T-004, decisiones D-D1 a D-D7). |
