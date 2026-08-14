@@ -1,6 +1,6 @@
 # REGISTRO_CAMBIOS
 
-Version: 3.2.0
+Version: 3.3.0
 Estado: Activo
 
 ## Proposito
@@ -26,28 +26,30 @@ Registrar cambios de implementacion y decisiones relevantes que necesiten contex
 | CH-027 | 2026-08-14 | T-010 | Implementacion, verificacion, integracion, publicacion y congelacion de T-010 | Completado | Serie de commits T-010 |
 | CH-028 | 2026-08-14 | T-011 | Formalizacion del contrato y diseno de T-011 (T-011.md, DEC-039 y DEC-040) | Completado | Serie de commits T-011 |
 | CH-029 | 2026-08-14 | T-011 | Implementacion, verificacion, integracion, publicacion y congelacion de T-011 | Completado | Serie de commits T-011 |
+| CH-030 | 2026-08-14 | T-012 | Formalizacion del contrato y diseno de T-012 (T-012.md, DEC-041 y DEC-042) | Completado | Serie de commits T-012 |
+| CH-031 | 2026-08-14 | T-012 | Implementacion, verificacion, integracion, publicacion y congelacion de T-012 y cierre del backlog MVP 1.0 | Completado | Serie de commits T-012 |
 
 ## Estado
 
-T-001 a T-011 completadas y publicadas.
+T-001 a T-012 completadas y publicadas.
 
-T-004 a T-011 estan formalmente congeladas.
+T-004 a T-012 estan formalmente congeladas.
 
-T-011 queda cerrada y congelada (Vision local): condor examinar; build Release
-sin errores; unitarias 157/157; integracion 147/147 (incluye compatibilidad
-textual de T-002); arquitectura 17/17; E2E de degradacion documentada (sin
-modelo de vision instalado); vision.json solo con metadatos; D-N1 a D-N5
-(DEC-039) y D-DW1 a D-DW8 (DEC-040) cumplen.
+T-012 queda cerrada y congelada (Instalador y puesta en marcha simplificada):
+condor preparar; build Release sin errores; unitarias 166/166; integracion
+154/154; arquitectura 18/18; E2E real; comportamiento no destructivo; guia
+INSTALACION_PUESTA_EN_MARCHA.md; D-P1 a D-P5 (DEC-041) y D-DS1 a D-DS9 (DEC-042)
+cumplen.
 
-Siguiente tarea: `T-012 - Instalador y puesta en marcha simplificada`.
+Con T-012 se completa el backlog del MVP 1.0 (T-001 a T-012).
 
-Estado: Pendiente. No iniciada.
+La evolucion posterior se define mediante Evolucion Continua.
 
-## Estado Git al cierre de T-011
+## Estado Git al cierre de T-012
 
 - Rama: `main`
-- HEAD: `f3c7617`
-- origin/main: `f3c7617`
+- HEAD: `844b151`
+- origin/main: `844b151`
 - Working tree: limpio
 
 Regla vigente:
