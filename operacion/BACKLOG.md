@@ -1,6 +1,6 @@
 # BACKLOG
 
-Version: 2.2.0
+Version: 2.3.0
 Estado: Activo
 Modo: Evolucion Continua
 
@@ -15,21 +15,21 @@ Modo: Evolucion Continua
 | T-007 | Alta | Builder inicial | Completada y congelada |
 | T-008 | Alta | Verificacion inicial | Completada y congelada |
 | T-009 | Alta | Documentacion y continuidad | Completada y congelada |
-| T-010 | Media | Capacidades avanzadas de desarrollo | Pendiente |
+| T-010 | Media | Capacidades avanzadas de desarrollo | Completada y congelada |
 | T-011 | Media | Vision local | Pendiente |
 | T-012 | Media | Instalador y puesta en marcha simplificada | Pendiente |
 
 ## Siguiente
 
-`T-010 - Capacidades avanzadas de desarrollo`
+`T-011 - Vision local`
 
 Estado: Pendiente. No iniciada.
 
-T-009 (Documentacion y continuidad) quedo completada, verificada, integrada,
-publicada y congelada (T-009.md, DEC-036). Consolido la documentacion permanente
-tras T-001 a T-008.
+T-010 (Capacidades avanzadas de desarrollo) quedo completada, verificada,
+integrada, publicada y congelada (T-010.md, DEC-037 y DEC-038). Implemento el
+ciclo de ingenieria parcial (Planner -> Builder -> Verifier) con `condor avanzar`.
 
-T-010 evolucionara las capacidades de desarrollo sobre la base de Planner,
-Builder, Verifier y Documenter.
+T-011 (Vision local) habilitara la capacidad de vision con modelos locales,
+condicionada al hardware y modelos disponibles.
 
-No iniciar T-010 desde codigo. Primero reconocimiento y formalizacion.
+No iniciar T-011 desde codigo. Primero reconocimiento y formalizacion.
