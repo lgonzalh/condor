@@ -1,6 +1,6 @@
 # DECISIONES
 
-Version: 3.0.0
+Version: 3.1.0
 Estado: Activo
 Nivel: 04 - Diseno
 Clasificacion: Decisiones Arquitectonicas
@@ -826,10 +826,48 @@ Diseno tecnico de T-008 (Verificacion inicial).
 
 ---
 
+# DEC-036
+
+Titulo:
+Formalizacion del contrato de T-009 (Documentacion y continuidad).
+
+Decision:
+El contrato de T-009 queda formalizado en `operacion/TAREAS/T-009.md`
+(version 1.0.0):
+
+- T-009 es una tarea exclusivamente documental: consolida y sincroniza la
+  documentacion permanente del Proyecto Condor tras el cierre de T-001 a T-008,
+  preservando la trazabilidad de la cadena completa y distinguiendo documentacion
+  historica, estado actual, decisiones permanentes, deuda pendiente y siguiente
+  linea de desarrollo;
+- T-009 crea `Docs/01_Arquitectura_Ejecutable/DOCUMENTADOR.md`, que define el rol
+  y responsabilidad de Documenter (FN-009 / ARQ-008) sin duplicar ni reemplazar
+  el flujo definido por `SISTEMA_DESARROLLO_CONDOR.md`;
+- T-009 actualiza de forma aditiva INVENTARIO_ARQUITECTURA.md,
+  INVENTARIO_FUNCIONAL.md, PATRIMONIO_CONOCIMIENTO.md, DEUDA_EVOLUTIVA.md,
+  ROADMAP_EVOLUCION.md, ESTADO_PROYECTO.md y los artefactos operativos
+  (ESTADO_DESARROLLO, BACKLOG, KANBAN, RELEVO, REGISTRO_CAMBIOS);
+- DEUDA_EVOLUTIVA.md representa la deuda pendiente y ROADMAP_EVOLUCION.md la
+  siguiente linea de desarrollo; ambos no duplican contenido y usan referencias;
+- T-009 NO modifica el historial congelado de T-001 a T-008 (commits, hashes,
+  evidencias) ni reescribe decisiones congeladas; solo actualiza el estado
+  vigente;
+- T-009 no escribe codigo ni implementa motores; apunta la continuidad hacia
+  T-010 sin crear un Nivel 10.
+
+Estado:
+Aceptada (contrato aprobado para ejecucion documental).
+
+Origen:
+Reconocimiento y formalizacion de T-009 (Documentacion y continuidad).
+
+---
+
 # Historial de Cambios
 
 | Version | Cambio |
 |---------|--------|
+| 3.1.0 | Se incorpora DEC-036 (formalizacion del contrato de T-009, Documentacion y continuidad). |
 | 3.0.0 | Se incorporan DEC-034 (formalizacion del contrato de T-008, decisiones D-V1 a D-V5) y DEC-035 (diseno tecnico de T-008, D-DV1 a D-DV7, propuesta pendiente de ratificacion). |
 | 2.0.0 | Se incorporan DEC-032 (formalizacion del contrato de T-007, decisiones D-B1 a D-B5) y DEC-033 (diseno tecnico de T-007, D-DB1 a D-DB7, propuesta pendiente de ratificacion). |
 | 1.8.0 | Se incorpora DEC-030 (formalizacion del contrato de T-006, decisiones D-E1 a D-E8). |
