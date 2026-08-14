@@ -15,6 +15,7 @@ namespace Condor.Infrastructure.State
         private const string BuildFileName = "build.json";
         private const string VerificationFileName = "verification.json";
         private const string CycleFileName = "cycle.json";
+        private const string VisionFileName = "vision.json";
         private readonly string _stateDirectory;
 
         public LocalStateStore()
@@ -237,6 +238,41 @@ namespace Condor.Infrastructure.State
             {
                 Directory.CreateDirectory(_stateDirectory);
                 var json = CycleJson.Serialize(result);
+                await File.WriteAllTextAsync(filePath, json, new UTF8Encoding(false), cancellationToken);
+            }
+            catch
+            {
+            }
+        }
+
+        public async Task<VisionResult?> LoadVisionAsync(CancellationToken cancellationToken = default)
+        {
+            var filePath = Path.Combine(_stateDirectory, VisionFileName);
+
+            if (!File.Exists(filePath))
+            {
+                return null;
+            }
+
+            try
+            {
+                var json = await File.ReadAllTextAsync(filePath, cancellationToken);
+                return VisionJson.Deserialize(json);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public async Task SaveVisionAsync(VisionResult result, CancellationToken cancellationToken = default)
+        {
+            var filePath = Path.Combine(_stateDirectory, VisionFileName);
+
+            try
+            {
+                Directory.CreateDirectory(_stateDirectory);
+                var json = VisionJson.Serialize(result);
                 await File.WriteAllTextAsync(filePath, json, new UTF8Encoding(false), cancellationToken);
             }
             catch
