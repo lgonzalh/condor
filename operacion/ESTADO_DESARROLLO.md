@@ -1,18 +1,18 @@
 # ESTADO_DESARROLLO
 
-Version: 2.4.0
+Version: 2.5.0
 Estado: Activo
 Modo: Evolucion Continua
 MVP: Condor 1.0
 
 ## Estado actual
 
-Condor cuenta con T-001, T-002, T-003, T-004, T-005 y T-006 completadas,
+Condor cuenta con T-001, T-002, T-003, T-004, T-005, T-006 y T-007 completadas,
 verificadas e integradas en `main`.
 
-T-004, T-005 y T-006 estan formalmente congeladas.
+T-004, T-005, T-006 y T-007 estan formalmente congeladas.
 
-T-007 (Builder inicial) queda pendiente y no iniciada.
+T-008 (Verificacion inicial) queda pendiente y no iniciada.
 
 ## Estado funcional
 
@@ -41,6 +41,12 @@ Condor puede:
 - persistir `plan.json` como artefacto derivado;
 - emitir `condor planear`;
 - emitir `condor planear --json`;
+- consumir el `WorkPlan` para derivar acciones de implementacion;
+- aplicar cambios acotados de archivos sobre el proyecto objetivo (crear/actualizar);
+- rechazar rutas absolutas y traversal fuera del objetivo;
+- persistir `build.json` como artefacto derivado;
+- emitir `condor construir`;
+- emitir `condor construir --json`;
 - degradar de forma controlada;
 - mantener limites deterministas.
 
@@ -58,13 +64,18 @@ T-006 agrego:
 - `condor planear "<solicitud>"`
 - `condor planear "<solicitud>" --json`
 
+T-007 agrego:
+
+- `condor construir`
+- `condor construir --json`
+
 No reintroducir contratos anteriores en ingles.
 
 ## Estado Git
 
-Ultimo estado confirmado al cierre de la implementacion de T-006:
+Ultimo estado confirmado al cierre de la implementacion de T-007:
 
-`07707ba1e4d911ecc7df4a6366db8dae47733e7e`
+`2acf3f4`
 
 `HEAD == origin/main`
 
@@ -95,6 +106,31 @@ T-005:
 - publicacion completa en `origin/main`;
 - cierre y congelacion formal.
 
+T-006:
+- 113/113 pruebas unitarias;
+- 102/102 pruebas de integracion;
+- 13/13 pruebas de arquitectura;
+- CLI planear y planear --json verificadas;
+- E2E real;
+- determinismo D-E7 verificado;
+- D-E1 a D-E8 (DEC-030) y D-DE1 a D-DE6 (DEC-031) cumplidas;
+- publicacion completa en `origin/main`;
+- cierre y congelacion formal.
+
+T-007:
+- 128/128 pruebas unitarias (Core);
+- 115/115 pruebas de integracion (Infrastructure);
+- 14/14 pruebas de arquitectura;
+- build Release sin errores ni advertencias;
+- CLI construir y construir --json verificadas;
+- E2E real sobre un proyecto objetivo temporal;
+- determinismo del Builder verificado (doble ejecucion);
+- degradaciones y rechazo de rutas fuera de objetivo verificados;
+- D-B1 a D-B5 (DEC-032) y D-DB1 a D-DB7 (DEC-033) cumplidas;
+- commits auditados sin violaciones de `1 archivo = 1 commit`;
+- publicacion completa en `origin/main`;
+- cierre y congelacion formal.
+
 ## Tareas
 
 | ID | Trabajo | Estado |
@@ -105,7 +141,7 @@ T-005:
 | T-004 | Descubrimiento de proyecto | Completada y congelada |
 | T-005 | Context Engine inicial | Completada, verificada y congelada |
 | T-006 | Flujo de intencion a plan | Completada, verificada y congelada |
-| T-007 | Builder inicial | Pendiente |
+| T-007 | Builder inicial | Completada, verificada y congelada |
 | T-008 | Verificacion inicial | Pendiente |
 | T-009 | Documentacion y continuidad | Pendiente |
 | T-010 | Capacidades avanzadas de desarrollo | Pendiente |
@@ -114,17 +150,18 @@ T-005:
 
 ## Siguiente tarea
 
-`T-007 - Builder inicial`
+`T-008 - Verificacion inicial`
 
 Estado: Pendiente. No iniciada.
 
-T-006 (Flujo de intencion a plan) quedo completada, verificada, integrada,
-publicada y congelada (T-006.md v1.2.0).
+T-007 (Builder inicial) quedo completada, verificada, integrada, publicada y
+congelada (T-007.md v1.0.0, DEC-032 y DEC-033). Consume el `WorkPlan` de T-006
+y aplica cambios acotados sobre el proyecto objetivo.
 
-T-007 consumira el `WorkPlan` entregado por T-006 para implementar cambios
-en el proyecto objetivo.
+T-008 (Verifier, ARQ-007 / FN-008) verificara los resultados de los cambios
+aplicados por T-007.
 
-No iniciar T-007 desde codigo. Primero reconocimiento y formalizacion.
+No iniciar T-008 desde codigo. Primero reconocimiento y formalizacion.
 
 ## Regla de continuidad
 
@@ -138,4 +175,4 @@ No existe nivel activo.
 
 El estado oficial es `Evolucion Continua`.
 
-No crear ni reabrir un nivel numerico para T-007.
+No crear ni reabrir un nivel numerico para T-008.
