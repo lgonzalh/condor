@@ -10,6 +10,7 @@ using Condor.Infrastructure.Planning;
 using Condor.Infrastructure.State;
 using Condor.Infrastructure.Verification;
 using Condor.Infrastructure.Vision;
+using Condor.Infrastructure.Setup;
 
 namespace Condor.Cli;
 
@@ -109,6 +110,12 @@ public static class Program
                     args.Skip(1).ToArray(),
                     CancellationToken.None);
 
+            case "preparar":
+                return await PrepareCommand.ExecuteAsync(
+                    new SetupService(stateStore, assessmentService),
+                    args.Skip(1).ToArray(),
+                    CancellationToken.None);
+
             default:
                 Terminal.WriteError("Comando desconocido: " + args[0]);
                 RenderHelp();
@@ -131,6 +138,7 @@ public static class Program
         Terminal.WriteDim("Usa 'condor verificar' para comprobar los cambios aplicados.");
         Terminal.WriteDim("Usa 'condor avanzar \"<solicitud>\"' para ejecutar el ciclo de ingenieria.");
         Terminal.WriteDim("Usa 'condor examinar \"<imagen>\"' para analizar una imagen localmente.");
+        Terminal.WriteDim("Usa 'condor preparar' para verificar la puesta en marcha.");
         Terminal.WriteDim("Usa 'condor recomendar' para elegir un modelo local.");
         Terminal.WriteDim("Usa 'condor consultar' para consultar al modelo local.");
         Terminal.WriteDim("Usa 'condor ayuda' para ver los comandos disponibles.");
@@ -159,6 +167,9 @@ public static class Program
         Terminal.WriteLine("  condor avanzar \"<solicitud>\" --json");
         Terminal.WriteLine("  condor examinar \"<imagen>\"      Analiza una imagen localmente.");
         Terminal.WriteLine("  condor examinar \"<imagen>\" --json");
+        Terminal.WriteLine("  condor preparar                Verifica la puesta en marcha.");
+        Terminal.WriteLine("  condor preparar --json");
+        Terminal.WriteLine("  condor preparar --actualizar   Refresca el Assessment antes de preparar.");
         Terminal.WriteLine("  condor recomendar          Recomienda un modelo para el equipo.");
         Terminal.WriteLine("  condor recomendar --proposito <tipo>");
         Terminal.WriteLine("                             tipo: desarrollo, general o vision.");
