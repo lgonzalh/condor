@@ -105,6 +105,7 @@ public static class Program
             case "examinar":
                 return await ExamineCommand.ExecuteAsync(
                     new VisionService(stateStore),
+                    stateStore,
                     args.Skip(1).ToArray(),
                     CancellationToken.None);
 

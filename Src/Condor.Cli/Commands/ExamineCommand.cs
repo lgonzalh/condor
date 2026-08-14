@@ -9,6 +9,7 @@ public static class ExamineCommand
 {
     public static async Task<int> ExecuteAsync(
         IVisionService visionService,
+        IStateStore stateStore,
         string[] args,
         CancellationToken cancellationToken = default)
     {
@@ -21,6 +22,8 @@ public static class ExamineCommand
         }
 
         var result = await visionService.ExamineAsync(imagePath, cancellationToken);
+
+        await stateStore.SaveVisionAsync(result, cancellationToken);
 
         if (outputJson)
         {
