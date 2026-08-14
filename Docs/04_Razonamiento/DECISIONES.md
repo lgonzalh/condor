@@ -1,6 +1,6 @@
 # DECISIONES
 
-Version: 3.3.0
+Version: 3.4.0
 Estado: Activo
 Nivel: 04 - Diseno
 Clasificacion: Decisiones Arquitectonicas
@@ -957,10 +957,61 @@ Diseno tecnico de T-010 (Capacidades avanzadas de desarrollo).
 
 ---
 
+# DEC-039
+
+Titulo:
+Formalizacion del contrato de T-011 (Vision local).
+
+Decision:
+El contrato de T-011 queda formalizado en `operacion/TAREAS/T-011.md`
+(version 1.0.0), conforme al alcance aprobado (Opcion A):
+
+- T-011 implementa una capacidad local y acotada para analizar una imagen
+  mediante un modelo de vision local, materializada en `condor examinar`
+  (texto y `--json`);
+- la capacidad valida la imagen, consulta `VisionCapable` del Assessment,
+  verifica el modelo con capacidad `vision` (reutilizando
+  `ModelRoleClassifier.HasVision` y `condor recomendar --proposito vision`),
+  usa Ollama y degrada de forma controlada;
+- se autoriza una extension ADITIVA de `ILlmClient`, `LlmRequest` y
+  `OllamaClient` para entrada multimodal, sin alterar el contrato textual
+  existente (`condor consultar`) ni reabrir T-002 congelada;
+- la capacidad no se integra en Planner, Builder, Verifier ni Documenter, no se
+  ejecuta automaticamente en el flujo del agente, y no crea Architect, Guardian
+  ni SD-02;
+- sin descarga de modelos, sin Internet, sin Cloud y sin APIs externas;
+- la disponibilidad/validacion/seleccion/degradaciones son deterministas; el
+  contenido generado por el VLM no se considera determinista y se documenta.
+
+Las decisiones D-N1 a D-N5 que definen el alcance son:
+
+- D-N1: `condor examinar` analiza una imagen local con un VLM local, condicionado
+  por Assessment y por la disponibilidad real del modelo.
+- D-N2: la extension multimodal de T-002 es aditiva (nueva entrada de imagenes en
+  `LlmRequest`), sin modificar el contrato textual ni la historia congelada.
+- D-N3: la seleccion del modelo reutiliza `VisionCapable`,
+  `ModelRoleClassifier.HasVision` y `condor recomendar --proposito vision`; no se
+  crea un sistema de recomendacion nuevo.
+- D-N4: la disponibilidad y las degradaciones respetan las senales de Assessment
+  y se producen de forma estructurada (sin excepciones no controladas).
+- D-N5: la vision no se integra en el ciclo de ingenieria (Planner/Builder/
+  Verifier/Documenter); queda acotada al comando y se reserva su integracion
+  posterior.
+
+Estado:
+Aceptada (contrato aprobado para diseno). La implementacion aguarda el diseno
+tecnico (DEC-040).
+
+Origen:
+Reconocimiento y formalizacion de T-011 (Vision local).
+
+---
+
 # Historial de Cambios
 
 | Version | Cambio |
 |---------|--------|
+| 3.4.0 | Se incorpora DEC-039 (formalizacion del contrato de T-011, decisiones D-N1 a D-N5). |
 | 3.3.0 | Se incorpora DEC-038 (diseno tecnico de T-010, decisiones D-DY1 a D-DY8, aprobada). |
 | 3.2.0 | Se incorpora DEC-037 (formalizacion del contrato de T-010, decisiones D-C1 a D-C5). |
 | 3.1.0 | Se incorpora DEC-036 (formalizacion del contrato de T-009, Documentacion y continuidad). |
