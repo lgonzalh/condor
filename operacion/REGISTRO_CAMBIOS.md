@@ -1,6 +1,6 @@
 # REGISTRO_CAMBIOS
 
-Version: 3.4.0
+Version: 3.5.0
 Estado: Activo
 
 ## Proposito
@@ -30,29 +30,30 @@ Registrar cambios de implementacion y decisiones relevantes que necesiten contex
 | CH-031 | 2026-08-14 | T-012 | Implementacion, verificacion, integracion, publicacion y congelacion de T-012 y cierre del backlog MVP 1.0 | Completado | Serie de commits T-012 |
 | CH-032 | 2026-08-14 | T-013 | Formalizacion del contrato y diseno de T-013 (T-013.md, DEC-043 y DEC-044) | Completado | Serie de commits T-013 |
 | CH-033 | 2026-08-14 | T-013 | Implementacion, verificacion, integracion, publicacion y congelacion de T-013 | Completado | Serie de commits T-013 |
+| CH-034 | 2026-08-14 | T-014 | Formalizacion del contrato y diseno de T-014 (T-014.md, DEC-045 y DEC-046) | Completado | Serie de commits T-014 |
+| CH-035 | 2026-08-14 | T-014 | Implementacion, verificacion, integracion, publicacion y congelacion de T-014 | Completado | Serie de commits T-014 |
 
 ## Estado
 
-T-001 a T-013 completadas y publicadas.
+T-001 a T-014 completadas y publicadas.
 
-T-004 a T-013 estan formalmente congeladas.
+T-004 a T-014 estan formalmente congeladas.
 
-T-013 queda cerrada y congelada (Verificacion semantica y de calidad, SD-02):
-condor verificar-semantico (compilar y probar con --no-restore); build Release
-sin errores ni advertencias; unitarias 180/180; integracion 161/162
+T-014 queda cerrada y congelada (Integracion de la verificacion semantica en el
+ciclo): condor avanzar incorpora la etapa semantica de T-013 de forma aditiva;
+build Release sin errores ni advertencias; unitarias 180/180; integracion 167/168
 (la unica fallida es una prueba de entorno de T-002 dependiente de Ollama);
-arquitectura 19/19; E2E real sobre proyecto .NET temporal; D-SD1 a D-SD5
-(DEC-043) y D-ST1 a D-ST9 (DEC-044) cumplen.
+arquitectura 19/19; E2E real sobre proyecto .NET temporal; D-IN1 a D-IN5
+(DEC-045) y D-IC1 a D-IC6 (DEC-046) cumplen.
 
-Con T-013 se implementa la primera concrecion de la verificacion semantica
-(SD-02); las capacidades de calidad/arquitectura/coherencia quedan como
-evolucion posterior.
+SD-02 permanece parcialmente implementada (compilar/probar integrados y como
+comando); DE-002 parcialmente atendida.
 
-## Estado Git al cierre de T-013
+## Estado Git al cierre de T-014
 
 - Rama: `main`
-- HEAD: `94d270e`
-- origin/main: `94d270e`
+- HEAD: `c888df6`
+- origin/main: `c888df6`
 - Working tree: limpio
 
 Regla vigente:
