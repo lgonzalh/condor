@@ -6,7 +6,7 @@ Modo: Evolucion Continua
 
 ## PENDIENTE
 
-- T-012 Instalador y puesta en marcha simplificada
+Ninguna (backlog del MVP 1.0 completado).
 
 ## EN PROGRESO
 
@@ -29,11 +29,10 @@ Ninguna.
 - T-009 Documentacion y continuidad
 - T-010 Capacidades avanzadas de desarrollo
 - T-011 Vision local
+- T-012 Instalador y puesta en marcha simplificada
 
 ## Siguiente
 
-`T-012 - Instalador y puesta en marcha simplificada`
+El backlog del MVP 1.0 (T-001 a T-012) queda completado y congelado.
 
-Estado: Pendiente. No iniciada.
-
-No iniciar T-012 desde implementacion. Primero reconocimiento y formalizacion.
+La evolucion posterior se define mediante el ciclo de Evolucion Continua.
