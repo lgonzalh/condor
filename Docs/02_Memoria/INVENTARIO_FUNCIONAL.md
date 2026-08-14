@@ -1,6 +1,6 @@
 # INVENTARIO_FUNCIONAL
 
-Version: 1.6.0\
+Version: 1.7.0\
 Estado: Activo\
 Nivel: Global\
 Clasificacion: Inventario Funcional
@@ -151,6 +151,12 @@ Actualizar
             puesta en                                         
             marcha                                          
             (condor preparar)                              
+
+  FN-019   Compilar y        Motor             Implementada   DECISIONES.md
+            probar el                                         
+            proyecto                                          
+            objetivo                                       
+            (condor verificar-semantico)                   
   ----------------------------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
@@ -170,6 +176,10 @@ Actualizar
 
   Version   Cambios
   --------- --------------------------------------------------------
+  1.7.0     Se registra FN-019 (Compilar y probar el proyecto objetivo, condor
+            verificar-semantico) como Implementada tras T-013, primera concrecion
+            de la verificacion semantica y de calidad (SD-02). T-013 queda
+            formalmente congelada.
   1.6.0     Se registra FN-018 (Verificar la puesta en marcha, condor preparar)
             como Implementada tras T-012, con diagnostico no destructivo y
             separacion de dependencias obligatorias/opcionales. T-012 queda
