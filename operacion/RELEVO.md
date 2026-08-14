@@ -1,99 +1,101 @@
 # RELEVO
 
-Version: 9.0.0
+Version: 10.0.0
 Estado: Activo
 Modo: Evolucion Continua
 
 ## Ultimo trabajo
 
-T-010 - Capacidades avanzadas de desarrollo.
+T-011 - Vision local.
 
 ## Estado
 
-T-010 completada, verificada, integrada, publicada y formalmente congelada.
+T-011 completada, verificada, integrada, publicada y formalmente congelada.
 
-Commit del cierre documental de T-010:
-`0aa4784` (KANBAN -> sigue de T-010 a T-011)
+Commit del cierre documental de T-011:
+`bec3eba` (KANBAN -> sigue de T-011 a T-012)
 
 HEAD:
-`0aa4784`
+`bec3eba`
 
 Working tree: limpio.
 
-## Evidencia de T-010
+## Evidencia de T-011
 
 - Build Release: 0 errores, 0 advertencias.
-- Pruebas unitarias (Condor.Core): 152/152 correctas.
-- Pruebas de integracion (Condor.Infrastructure): 133/134 correctas; la unica
-  fallida es una prueba de entorno de T-002 dependiente de Ollama
-  (OllamaClientTests), ajena a T-010.
-- Pruebas de arquitectura: 16/16 correctas.
-- CLI `condor avanzar` y `condor avanzar --json` verificadas.
-- E2E real del ciclo (planificar, construir, verificar) sobre un proyecto
-  objetivo temporal: orquestacion real de Planner, Builder y Verifier; el ciclo
-  se detiene de forma controlada sin bucle infinito cuando no hay acciones
-  derivables; `cycle.json` persistido como checkpoint derivado.
-- Determinismo del ciclo verificado (doble ejecucion) con CycleId deterministico.
-- Degradaciones y proteccion MaxIterations verificadas.
-- D-C1 a D-C5 (DEC-037) y D-DY1 a D-DY8 (DEC-038) cumplidas.
+- Pruebas unitarias (Condor.Core): 157/157 correctas.
+- Pruebas de integracion (Condor.Infrastructure): 147/147 correctas, incluida la
+  compatibilidad textual de T-002 (extension aditiva multimodal).
+- Pruebas de arquitectura: 17/17 correctas.
+- CLI `condor examinar` y `condor examinar --json` verificadas.
+- Extension aditiva de `LlmRequest`/`OllamaClient` para entrada multimodal sin
+  romper el flujo textual de `condor consultar`.
+- E2E real de degradacion: el entorno no dispone de un modelo de vision
+  instalado, por lo que se verifico la degradacion correcta
+  ("No hay un modelo local con capacidad de vision disponible") y se documento
+  la imposibilidad del caso positivo. No se descargo ningun modelo.
+- `vision.json` persistido solo con metadatos (sin imagen ni Base64).
+- Determinismo de la parte no-LLM verificado; diferencia del contenido VLM
+  documentada.
+- D-N1 a D-N5 (DEC-039) y D-DW1 a D-DW8 (DEC-040) cumplidas.
 - `1 archivo = 1 commit`; commits publicados en origin/main.
-- T-010.md v1.1.0: cerrada y congelada.
+- T-011.md v1.1.0: cerrada y congelada.
 
-## Congelacion de T-010
+## Congelacion de T-011
 
-T-010 queda cerrada y congelada.
+T-011 queda cerrada y congelada.
 
-Su alcance aprobado (DEC-037, D-C1 a D-C5) y diseno tecnico (DEC-038, D-DY1 a
-D-DY8) no se modifican.
+Su alcance aprobado (DEC-039, D-N1 a D-N5) y diseno tecnico (DEC-040, D-DW1 a
+D-DW8) no se modifican.
 
-El ciclo de ingenieria parcial (Planner -> Builder -> Verifier) no implementa
-Architect, no verifica semanticamente ni compila/ejecuta el proyecto objetivo
-(linea SD-02/DE-002 pendiente).
+La vision no se integra en Planner, Builder, Verifier ni Documenter; queda
+acotada al comando `condor examinar`. La integracion de vision dentro del ciclo
+completo se reserva para una evolucion posterior.
 
-Cualquier mejora posterior del ciclo debe registrarse como nueva tarea, decision
-o deuda segun corresponda.
+Cualquier mejora posterior de la vision debe registrarse como nueva tarea,
+decision o deuda segun corresponda.
 
 ## Git
 
-Estado confirmado al cierre de la implementacion de T-010:
+Estado confirmado al cierre de la implementacion de T-011:
 
 - Rama local: `main`
-- `HEAD`: `0aa4784`
-- `origin/main`: `0aa4784`
+- `HEAD`: `bec3eba`
+- `origin/main`: `bec3eba`
 - Working tree: limpio
 - Regla vigente: `1 archivo = 1 commit`
 
 ## Siguiente tarea exacta
 
-`T-011 - Vision local`
+`T-012 - Instalador y puesta en marcha simplificada`
 
 Estado: Pendiente. No iniciada.
 
-T-010 (Capacidades avanzadas de desarrollo) quedo completada, verificada,
-integrada, publicada y congelada. Implemento el ciclo de ingenieria parcial con
-`condor avanzar`.
+T-011 (Vision local) quedo completada, verificada, integrada, publicada y
+congelada. Implemento `condor examinar` para analizar una imagen con un VLM
+local condicionado a GPU y modelo de vision.
 
-T-011 (Vision local) habilitara la capacidad de vision utilizando modelos
-locales, condicionada al hardware y a los modelos disponibles (restriccion MVP).
+T-012 (Instalador y puesta en marcha simplificada) simplificara la instalacion,
+el arranque y la puesta en marcha de Condor.
 
-T-011 debe comenzar por reconocimiento y formalizacion.
+T-012 debe comenzar por reconocimiento y formalizacion.
 
 No existe autorizacion para comenzar codigo directamente.
 
-El siguiente agente debe reconocer T-011, revisar sus dependencias y proponer
-el contrato antes de implementar.
+El siguiente agente debe reconocer T-012, revisar sus dependencias y proponer el
+contrato antes de implementar.
 
 ## Dependencias conocidas
 
 T-004 entrega `ProjectProfile`. T-005 entrega `ProjectContext`. T-006 entrega
 `WorkPlan`. T-007 aplica `BuildResult`. T-008 entrega `VerificationResult`.
 T-009 consolida la documentacion permanente. T-010 orquesta el ciclo de
-ingenieria parcial (Planner -> Builder -> Verifier).
+ingenieria parcial. T-011 incorpora vision local (`condor examinar`).
 
-T-011 (Vision local) dependera de T-002 (Ollama local) y del Assessment
-(T-001/T-003) para detectar capacidades de vision del modelo disponible.
+T-012 (Instalador) dependera de la CLI, del estado local y del assessment para
+simplificar la instalacion y el arranque de Condor.
 
-T-011 no debe reimplementar capacidades congeladas de T-001 a T-010.
+T-012 no debe reimplementar capacidades congeladas de T-001 a T-011.
 
 ## Regla de continuidad
 
@@ -107,7 +109,7 @@ No existe nivel activo.
 
 Condor opera actualmente en `Evolucion Continua`.
 
-No crear ni activar un Nivel 10 para T-011.
+No crear ni activar un Nivel 10 para T-012.
 
 ## Regla de idioma
 
