@@ -1,6 +1,6 @@
 # INVENTARIO_FUNCIONAL
 
-Version: 1.4.0\
+Version: 1.5.0\
 Estado: Activo\
 Nivel: Global\
 Clasificacion: Inventario Funcional
@@ -141,6 +141,11 @@ Actualizar
             ingenieria                                        
             parcial                                        
             (condor avanzar)                               
+
+  FN-017   Analizar una      Infraestructura   Implementada   DECISIONES.md
+            imagen con un                                     
+            VLM local                                        
+            (condor examinar)                              
   ----------------------------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
@@ -160,6 +165,10 @@ Actualizar
 
   Version   Cambios
   --------- --------------------------------------------------------
+  1.5.0     Se registra FN-017 (Analizar una imagen con un VLM local, condor
+            examinar) como Implementada tras T-011, condicionada a VisionCapable
+            y a un modelo de vision disponible, con degradacion controlada.
+            T-011 queda formalmente congelada.
   1.4.0     Se registra FN-016 (Ejecutar el ciclo de ingenieria parcial,
             condor avanzar) como Implementada tras T-010, que orquesta Planner,
             Builder y Verifier sin modificar los motores congelados. T-010 queda
