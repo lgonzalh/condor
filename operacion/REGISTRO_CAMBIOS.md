@@ -1,6 +1,6 @@
 # REGISTRO_CAMBIOS
 
-Version: 2.7.0
+Version: 2.8.0
 Estado: Activo
 
 ## Proposito
@@ -16,24 +16,29 @@ Registrar cambios de implementacion y decisiones relevantes que necesiten contex
 | CH-017 | 2026-08-12 | T-006 | Formalizacion del contrato de T-006 (reconocimiento y decision DEC-030) | Completado | Serie de commits T-006 |
 | CH-018 | 2026-08-12 | T-006 | Diseno tecnico completo de T-006 (T-006.md v1.1.0 y DEC-031, D-DE1 a D-DE6) | Completado | Serie de commits T-006 |
 | CH-019 | 2026-08-12 | T-006 | Implementacion, verificacion, integracion, publicacion y congelacion de T-006 | Completado | Serie de commits T-006 |
+| CH-020 | 2026-08-14 | T-007 | Formalizacion del contrato y diseno de T-007 (T-007.md v0.1.0, DEC-032 y DEC-033) | Completado | Serie de commits T-007 |
+| CH-021 | 2026-08-14 | T-007 | Implementacion, verificacion, integracion, publicacion y congelacion de T-007 | Completado | Serie de commits T-007 |
 
 ## Estado
 
-T-001 a T-006 completadas y publicadas.
+T-001 a T-007 completadas y publicadas.
 
-T-004, T-005 y T-006 estan formalmente congeladas.
+T-004, T-005, T-006 y T-007 estan formalmente congeladas.
 
-T-006 queda cerrada y congelada (Flujo de intencion a plan): build Release sin errores, unitarias 113/113, integracion 102/102, arquitectura 13/13, CLI condor planear y --json, E2E real y determinismo D-E7. D-E1 a D-E8 (DEC-030) y D-DE1 a D-DE6 (DEC-031) cumplen.
+T-007 queda cerrada y congelada (Builder inicial): build Release sin errores,
+unitarias 128/128, integracion 115/115, arquitectura 14/14, CLI condor construir
+y --json, E2E real, determinismo y rechazo de rutas fuera de objetivo. D-B1 a
+D-B5 (DEC-032) y D-DB1 a D-DB7 (DEC-033) cumplen.
 
-Siguiente tarea: `T-007 - Builder inicial`.
+Siguiente tarea: `T-008 - Verificacion inicial`.
 
 Estado: Pendiente. No iniciada.
 
-## Estado Git al cierre de T-005
+## Estado Git al cierre de T-007
 
 - Rama: `main`
-- HEAD: `f7db03190b3a55d3b979d24216b6d4aee4941e9a`
-- origin/main: `f7db03190b3a55d3b979d24216b6d4aee4941e9a`
+- HEAD: `138c6c7`
+- origin/main: `138c6c7`
 - Working tree: limpio
 
 Regla vigente:
