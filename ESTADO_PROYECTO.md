@@ -1,6 +1,6 @@
 # ESTADO_PROYECTO
 
-Version: 1.8.0
+Version: 1.9.0
 Estado: Vigente
 Clasificacion: Estado del Proyecto
 
@@ -166,11 +166,11 @@ El trabajo operativo se controla mediante:
 
 # SIGUIENTE ACCION
 
-Ejecutar `operacion/TAREAS/T-007.md` (Builder inicial) mediante un agente que cumpla `AGENTE_CONDOR.md`.
+Ejecutar `operacion/TAREAS/T-008.md` (Verificacion inicial) mediante un agente que cumpla `AGENTE_CONDOR.md`.
 
-Las tareas T-001 a T-006 fueron completadas, verificadas e integradas en `main`.
+Las tareas T-001 a T-007 fueron completadas, verificadas e integradas en `main`.
 
-T-004, T-005 y T-006 quedan cerradas y congeladas.
+T-004, T-005, T-006 y T-007 quedan cerradas y congeladas.
 
 El detalle operativo del avance se controla en `operacion/ESTADO_DESARROLLO.md`.
 
@@ -213,6 +213,7 @@ Al no existir nivel activo, los trabajos nuevos se consideran parte del ciclo de
 
 | Version | Cambio |
 |---------|--------|
+| 1.9.0 | Se actualiza SIGUIENTE ACCION: T-001 a T-007 fueron completadas, verificadas e integradas en main; T-007 (Builder inicial) queda cerrada y congelada; la siguiente tarea operativa es T-008 (Verificacion inicial). |
 | 1.8.0 | Se actualiza SIGUIENTE ACCION: T-001 a T-006 fueron completadas, verificadas e integradas en main; T-006 (Flujo de intencion a plan) queda cerrada y congelada; la siguiente tarea operativa es T-007 (Builder inicial). |
 | 1.7.0 | Se actualiza SIGUIENTE ACCION: T-001 a T-005 fueron completadas, verificadas e integradas en main; T-005 (Context Engine inicial) queda cerrada y congelada; la siguiente tarea operativa es T-006 (Flujo de intencion a plan). |
 | 1.6.0 | Se actualiza SIGUIENTE ACCION: las tareas T-001 a T-004 fueron completadas, verificadas e integradas en main; la siguiente tarea operativa es T-005 (Context Engine inicial). |
