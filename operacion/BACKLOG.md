@@ -1,6 +1,6 @@
 # BACKLOG
 
-Version: 2.3.0
+Version: 2.4.0
 Estado: Activo
 Modo: Evolucion Continua
 
@@ -16,20 +16,19 @@ Modo: Evolucion Continua
 | T-008 | Alta | Verificacion inicial | Completada y congelada |
 | T-009 | Alta | Documentacion y continuidad | Completada y congelada |
 | T-010 | Media | Capacidades avanzadas de desarrollo | Completada y congelada |
-| T-011 | Media | Vision local | Pendiente |
+| T-011 | Media | Vision local | Completada y congelada |
 | T-012 | Media | Instalador y puesta en marcha simplificada | Pendiente |
 
 ## Siguiente
 
-`T-011 - Vision local`
+`T-012 - Instalador y puesta en marcha simplificada`
 
 Estado: Pendiente. No iniciada.
 
-T-010 (Capacidades avanzadas de desarrollo) quedo completada, verificada,
-integrada, publicada y congelada (T-010.md, DEC-037 y DEC-038). Implemento el
-ciclo de ingenieria parcial (Planner -> Builder -> Verifier) con `condor avanzar`.
+T-011 (Vision local) quedo completada, verificada, integrada, publicada y
+congelada (T-011.md, DEC-039 y DEC-040). Implemento `condor examinar`, capaz de
+analizar una imagen con un VLM local condicionado a GPU y modelo de vision.
 
-T-011 (Vision local) habilitara la capacidad de vision con modelos locales,
-condicionada al hardware y modelos disponibles.
+T-012 simplificara la instalacion y el arranque de Condor.
 
-No iniciar T-011 desde codigo. Primero reconocimiento y formalizacion.
+No iniciar T-012 desde codigo. Primero reconocimiento y formalizacion.
