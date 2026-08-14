@@ -1,6 +1,6 @@
 # DECISIONES
 
-Version: 3.6.0
+Version: 3.7.0
 Estado: Activo
 Nivel: 04 - Diseno
 Clasificacion: Decisiones Arquitectonicas
@@ -1104,10 +1104,53 @@ simplificada).
 
 ---
 
+# DEC-042
+
+Titulo:
+Diseno tecnico de T-012 (Instalador y puesta en marcha simplificada).
+
+Estado:
+Aprobada (ratificada para implementacion).
+
+Decision:
+El diseno tecnico de T-012 se consolida en `operacion/TAREAS/T-012.md` (con
+D-P1 a D-P5 ratificados). Se incorporan las siguientes resoluciones tecnicas
+aprobadas:
+
+- D-DS1: `SetupEvaluator` reside en `Condor.Core.Setup` como logica pura de
+  disponibilidad determinista (patron D-D5): evalua Assessment y estado local
+  sin IO.
+- D-DS2: `StateDirectoryProbe` (Infrastructure) es la unica IO de lectura del
+  estado local y es NO destructiva (no crea, no borra, no reescribe).
+- D-DS3: `SetupService` orquesta Assessment (reutilizando `IAssessmentService` y
+  `IStateStore`) y estado local.
+- D-DS4: separacion de dependencias obligatorias (condiciones para ejecutar
+  Condor, p.ej. runtime de .NET) y opcionales (Ollama, modelos, GPU, Git,
+  herramientas), cada una con motivo e instruccion.
+- D-DS5: limites `MaxDependencies = 12`, `SetupTimeoutMilliseconds = 15_000`.
+- D-DS6: degradaciones definidas (entorno listo, obligatoria faltante, opcional
+  faltante, estado local ausente, estado local degradado, assessment no
+  disponible, capacidad opcional no disponible).
+- D-DS7: determinismo (patron D-E7) sin LLM para decidir disponibilidad.
+- D-DS8: `condor preparar` (texto y `--json`) y `INSTALACION_PUESTA_EN_MARCHA.md`
+  distinguiendo acciones de Condor vs. manuales del usuario.
+- D-DS9: comportamiento no destructivo; preserva `%LOCALAPPDATA%\Condor\state\`;
+  no crea el directorio de estado como responsabilidad nueva; no modifica
+  `create_test_environment.bat` ni T-001 a T-011.
+
+Estas decisiones son ratificadas por el usuario y habilitan la implementacion de
+T-012 dentro del alcance aprobado.
+
+Origen:
+Diseno tecnico de T-012 (Instalador y puesta en marcha simplificada).
+
+---
+
 # Historial de Cambios
 
 | Version | Cambio |
 |---------|--------|
+| 3.7.0 | Se incorpora DEC-042 (diseno tecnico de T-012, decisiones D-DS1 a D-DS9, aprobada). |
 | 3.6.0 | Se incorpora DEC-041 (formalizacion del contrato de T-012, decisiones D-P1 a D-P5). |
 | 3.5.0 | Se incorpora DEC-040 (diseno tecnico de T-011, decisiones D-DW1 a D-DW8, aprobada). |
 | 3.4.0 | Se incorpora DEC-039 (formalizacion del contrato de T-011, decisiones D-N1 a D-N5). |
