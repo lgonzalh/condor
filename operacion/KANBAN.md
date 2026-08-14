@@ -6,7 +6,6 @@ Modo: Evolucion Continua
 
 ## PENDIENTE
 
-- T-007 Builder inicial
 - T-008 Verificacion inicial
 - T-009 Documentacion y continuidad
 - T-010 Capacidades avanzadas de desarrollo
@@ -29,11 +28,12 @@ Ninguna.
 - T-004 Descubrimiento de proyecto
 - T-005 Context Engine inicial
 - T-006 Flujo de intencion a plan
+- T-007 Builder inicial
 
 ## Siguiente
 
-`T-007 - Builder inicial`
+`T-008 - Verificacion inicial`
 
 Estado: Pendiente. No iniciada.
 
-No iniciar T-007 desde implementacion. Primero reconocimiento y formalizacion.
+No iniciar T-008 desde implementacion. Primero reconocimiento y formalizacion.
