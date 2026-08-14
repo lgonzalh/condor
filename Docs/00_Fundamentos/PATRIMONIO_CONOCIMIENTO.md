@@ -1,6 +1,6 @@
 # PATRIMONIO_CONOCIMIENTO
 
-Version: 1.1.0\
+Version: 1.2.0\
 Estado: Activo\
 Nivel: Global\
 Clasificacion: Inventario de Conocimiento
@@ -129,11 +129,19 @@ Conservar
            interfaz                                                
 
   CI-010   La IA y el      Cuaderno V Principio      Pendiente     CONDOR_CONTEXTO_MAESTRO.md
-           ingeniero                                               
-           construyen                                              
-           conjuntamente                                           
-           Condor                                                  
-  ---------------------------------------------------------------------------------------------------------
+            ingeniero                                               
+            construyen                                              
+            conjuntamente                                           
+            Condor                                                  
+
+  CI-011   El ciclo de      T-006 a    Motor        Incorporado  T-006 a T-008
+            ingenieria      T-008, T-009                           y
+            operativo:      Evolucion                               DOCUMENTADOR.md
+            Planificar,    Continua                                
+            Construir,                                             
+            Verificar y                                             
+            Documentar                                             
+   ---------------------------------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
 
@@ -153,12 +161,18 @@ Conservar
   -----------------------------------------------------------------------
   Version                               Cambios
   ------------------------------------- ---------------------------------
+  1.2.0                                 CI-011 (ciclo operativo: Planificar,
+                                        Construir, Verificar y Documentar)
+                                        pasa a Incorporado: la trazabilidad
+                                        via T-006 a T-008 y el rol de
+                                        Documenter vive en DOCUMENTADOR.md.
+                                        La formalizacion de T-009 queda
+                                        congelada.
   1.1.0                                 CI-007 (Context Engine) pasa a
                                         Incorporado: la especificacion
                                         vive en CONTEXT_ENGINE.md y T-005
                                         formaliza su implementacion
                                         inicial.
-
   1.0.0                                 Creacion del inventario oficial
                                         del patrimonio de conocimiento.
 
