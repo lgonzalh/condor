@@ -1,74 +1,83 @@
 # RELEVO
 
-Version: 5.0.0
+Version: 6.0.0
 Estado: Activo
 Modo: Evolucion Continua
 
 ## Ultimo trabajo
 
-T-006 - Flujo de intencion a plan.
+T-007 - Builder inicial.
 
 ## Estado
 
-T-006 completada, verificada, integrada, publicada y formalmente congelada.
+T-007 completada, verificada, integrada, publicada y formalmente congelada.
 
-Commit final del cierre documental:
-`f7db03190b3a55d3b979d24216b6d4aee4941e9a` (cierre de T-005)
+Commit final de la implementacion y cierre de T-007:
+`7e1fcba` (KANBAN -> sigue de T-007 a T-008)
 
 HEAD:
-`07707ba1e4d911ecc7df4a6366db8dae47733e7e` (implementacion de T-006)
+`7e1fcba`
 
 Working tree: limpio.
 
-## Evidencia de T-006
+## Evidencia de T-007
 
 - Build Release: 0 errores, 0 advertencias.
-- Pruebas unitarias (Condor.Core): 113/113 correctas.
-- Pruebas de integracion (Condor.Infrastructure): 102/102 correctas.
-- Pruebas de arquitectura: 13/13 correctas.
-- CLI `condor planear` y `condor planear --json` verificadas.
-- E2E real ejecutado sobre el repositorio Condor (intenciones nueva, continuar y modificar; uso del punto de continuacion de T-005).
-- Determinismo D-E7 verificado (dos ejecuciones producen el mismo plan salvo GeneratedAtUtc).
-- D-E1 a D-E8 cumplidas (DEC-030). D-DE1 a D-DE6 aprobadas (DEC-031).
-- Limites verificados: MaxTasks 12, MaxObjectiveLength 240, MaxTaskDetailLength 320, MaxEvidenceItems 30, timeout 15 s.
+- Pruebas unitarias (Condor.Core): 128/128 correctas.
+- Pruebas de integracion (Condor.Infrastructure): 115/115 correctas
+  (incluye 13 nuevas de Builder y la habilitacion de la suite completa al
+  desactivar la ejecucion paralela que provocaba races de Console.Out).
+- Pruebas de arquitectura: 14/14 correctas.
+- CLI `condor construir` y `condor construir --json` verificadas.
+- E2E real sobre un proyecto objetivo temporal: creacion de archivos con
+  contenido derivado, persistencia de `build.json`, degradacion sin plan,
+  determinismo (doble ejecucion) y rechazo de rutas fuera de objetivo.
+- D-B1 a D-B5 cumplidas (DEC-032). D-DB1 a D-DB7 cumplidas (DEC-033).
+- Limites verificados: MaxActions 24, MaxContentLength 64000,
+  MaxRelativePathLength 260, timeout 15 s.
 - Commits auditados: 0 violaciones de la regla `1 archivo = 1 commit`.
 - Todos los commits publicados en `origin/main`.
 - Documentacion operativa actualizada.
-- T-006.md v1.2.0: cerrada y congelada.
+- T-007.md v1.0.0: cerrada y congelada.
 
-## Congelacion de T-006
+## Congelacion de T-007
 
-T-006 queda cerrada y congelada.
+T-007 queda cerrada y congelada.
 
-Su alcance aprobado, contrato (DEC-030) y diseno tecnico (DEC-031,
-D-DE1 a D-DE6) no se modifican.
+Su alcance aprobado, contrato (DEC-032, D-B1 a D-B5) y diseno tecnico
+(DEC-033, D-DB1 a D-DB7) no se modifican.
 
-Cualquier mejora posterior debe registrarse como nueva tarea, decision o deuda segun corresponda.
+Cualquier mejora posterior del Builder debe registrarse como nueva tarea,
+decision o deuda segun corresponda.
 
 ## Git
 
-Estado confirmado al cierre de la implementacion de T-006:
+Estado confirmado al cierre de la implementacion de T-007:
 
 - Rama local: `main`
-- `HEAD`: `07707ba1e4d911ecc7df4a6366db8dae47733e7e`
-- `origin/main`: `07707ba1e4d911ecc7df4a6366db8dae47733e7e`
+- `HEAD`: `7e1fcba`
+- `origin/main`: `7e1fcba`
 - Working tree: limpio
 - Regla vigente: `1 archivo = 1 commit`
 
 ## Siguiente tarea exacta
 
-`T-007 - Builder inicial`
+`T-008 - Verificacion inicial`
 
 Estado: Pendiente. No iniciada.
 
-T-006 (Flujo de intencion a plan) quedo completada, verificada, integrada,
-publicada y congelada. Entrega un `WorkPlan` como entrada de T-007.
+T-007 (Builder inicial) quedo completada, verificada, integrada, publicada y
+congelada. Aplica cambios acotados sobre el proyecto objetivo a partir del
+`WorkPlan` de T-006.
 
-T-007 debe comenzar por reconocimiento y formalizacion.
+T-008 (Verifier, ARQ-007 / FN-008) verificara los resultados de los cambios
+aplicados por T-007.
+
+T-008 debe comenzar por reconocimiento y formalizacion.
 
 No existe autorizacion para comenzar codigo directamente.
 
-El siguiente agente debe reconocer T-007, revisar sus dependencias y
+El siguiente agente debe reconocer T-008, revisar sus dependencias y
 proponer el contrato antes de implementar.
 
 ## Dependencias conocidas
@@ -79,9 +88,13 @@ T-005 consume `ProjectProfile` y entrega `ProjectContext`.
 
 T-006 consume `ProjectContext` y entrega `WorkPlan`.
 
-T-007 consumira `WorkPlan` para implementar cambios en el proyecto objetivo.
+T-007 consume `WorkPlan` y aplica `BuildResult` sobre el proyecto objetivo.
 
-T-007 no debe reimplementar capacidades congeladas de T-004, T-005 ni T-006.
+T-008 consumira los cambios aplicados (posiblemente `build.json`) para
+verificar resultados.
+
+T-008 no debe reimplementar capacidades congeladas de T-004, T-005, T-006 ni
+T-007.
 
 ## Regla de continuidad
 
@@ -95,7 +108,7 @@ No existe nivel activo.
 
 Condor opera actualmente en `Evolucion Continua`.
 
-No crear ni activar un Nivel 10 para T-007.
+No crear ni activar un Nivel 10 para T-008.
 
 ## Regla de idioma
 
