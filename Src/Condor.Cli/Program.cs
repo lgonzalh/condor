@@ -4,6 +4,7 @@ using Condor.Core.Contracts;
 using Condor.Infrastructure;
 using Condor.Infrastructure.Context;
 using Condor.Infrastructure.Building;
+using Condor.Infrastructure.Cycle;
 using Condor.Infrastructure.Llm;
 using Condor.Infrastructure.Planning;
 using Condor.Infrastructure.State;
@@ -89,6 +90,17 @@ public static class Program
                     args.Skip(1).ToArray(),
                     CancellationToken.None);
 
+            case "avanzar":
+                return await AdvanceCommand.ExecuteAsync(
+                    new CycleService(
+                        new PlanService(stateStore),
+                        new BuildService(stateStore),
+                        new VerificationService(stateStore),
+                        stateStore),
+                    stateStore,
+                    args.Skip(1).ToArray(),
+                    CancellationToken.None);
+
             default:
                 Terminal.WriteError("Comando desconocido: " + args[0]);
                 RenderHelp();
@@ -109,6 +121,7 @@ public static class Program
         Terminal.WriteDim("Usa 'condor planear \"<solicitud>\"' para generar un plan de trabajo.");
         Terminal.WriteDim("Usa 'condor construir' para aplicar los cambios del plan.");
         Terminal.WriteDim("Usa 'condor verificar' para comprobar los cambios aplicados.");
+        Terminal.WriteDim("Usa 'condor avanzar \"<solicitud>\"' para ejecutar el ciclo de ingenieria.");
         Terminal.WriteDim("Usa 'condor recomendar' para elegir un modelo local.");
         Terminal.WriteDim("Usa 'condor consultar' para consultar al modelo local.");
         Terminal.WriteDim("Usa 'condor ayuda' para ver los comandos disponibles.");
@@ -133,6 +146,8 @@ public static class Program
         Terminal.WriteLine("  condor construir --json    Genera el resultado en formato JSON.");
         Terminal.WriteLine("  condor verificar           Comprueba los cambios aplicados.");
         Terminal.WriteLine("  condor verificar --json    Genera el resultado en formato JSON.");
+        Terminal.WriteLine("  condor avanzar \"<solicitud>\"  Ejecuta el ciclo de ingenieria.");
+        Terminal.WriteLine("  condor avanzar \"<solicitud>\" --json");
         Terminal.WriteLine("  condor recomendar          Recomienda un modelo para el equipo.");
         Terminal.WriteLine("  condor recomendar --proposito <tipo>");
         Terminal.WriteLine("                             tipo: desarrollo, general o vision.");
