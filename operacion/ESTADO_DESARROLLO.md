@@ -1,18 +1,19 @@
 # ESTADO_DESARROLLO
 
-Version: 2.8.0
+Version: 2.9.0
 Estado: Activo
 Modo: Evolucion Continua
 MVP: Condor 1.0
 
 ## Estado actual
 
-Condor cuenta con T-001 a T-010 completadas, verificadas e integradas en
+Condor cuenta con T-001 a T-011 completadas, verificadas e integradas en
 `main`.
 
-T-004 a T-010 estan formalmente congeladas.
+T-004 a T-011 estan formalmente congeladas.
 
-T-011 (Vision local) queda pendiente y no iniciada.
+T-012 (Instalador y puesta en marcha simplificada) queda pendiente y no
+iniciada.
 
 ## Estado funcional
 
@@ -59,6 +60,8 @@ Condor puede:
 - orquestar el ciclo de ingenieria parcial (Planner -> Builder -> Verifier);
 - regenerar de forma controlada e interna al ciclo (determinista, acotada);
 - persistir el checkpoint del ciclo (`cycle.json`) como artefacto derivado;
+- analizar una imagen local con un VLM local (si hay GPU y modelo de vision);
+- degradar de forma estructurada cuando la vision no esta disponible;
 - degradar de forma controlada;
 - mantener limites deterministas.
 
@@ -91,13 +94,18 @@ T-010 agrego:
 - `condor avanzar "<solicitud>"`
 - `condor avanzar "<solicitud>" --json`
 
+T-011 agrego:
+
+- `condor examinar "<imagen>"`
+- `condor examinar "<imagen>" --json`
+
 No reintroducir contratos anteriores en ingles.
 
 ## Estado Git
 
-Ultimo estado confirmado al cierre de la implementacion de T-010:
+Ultimo estado confirmado al cierre de la implementacion de T-011:
 
-`3ef169e`
+`e1b2e30`
 
 `HEAD == origin/main`
 
@@ -192,6 +200,20 @@ T-010:
 - publicacion completa en `origin/main`;
 - cierre y congelacion formal.
 
+T-011:
+- 157/157 pruebas unitarias (Core);
+- 147/147 pruebas de integracion (Infrastructure; incluye compatibilidad textual de T-002);
+- 17/17 pruebas de arquitectura;
+- CLI examinar y examinar --json verificadas;
+- extension aditiva multimodal de LlmRequest/OllamaClient sin romper texto;
+- E2E real de degradacion (sin modelo de vision instalado) documentada;
+- vision.json persistido solo con metadatos (sin imagen ni Base64);
+- degradaciones y determinismo de la parte no-LLM verificadas;
+- D-N1 a D-N5 (DEC-039) y D-DW1 a D-DW8 (DEC-040) cumplidas;
+- commits auditados sin violaciones de `1 archivo = 1 commit`;
+- publicacion completa en `origin/main`;
+- cierre y congelacion formal.
+
 ## Tareas
 
 | ID | Trabajo | Estado |
@@ -206,23 +228,23 @@ T-010:
 | T-008 | Verificacion inicial | Completada, verificada y congelada |
 | T-009 | Documentacion y continuidad | Completada, verificada y congelada |
 | T-010 | Capacidades avanzadas de desarrollo | Completada, verificada y congelada |
-| T-011 | Vision local | Pendiente |
+| T-011 | Vision local | Completada, verificada y congelada |
 | T-012 | Instalador y puesta en marcha simplificada | Pendiente |
 
 ## Siguiente tarea
 
-`T-011 - Vision local`
+`T-012 - Instalador y puesta en marcha simplificada`
 
 Estado: Pendiente. No iniciada.
 
-T-010 (Capacidades avanzadas de desarrollo) quedo completada, verificada,
-integrada, publicada y congelada (T-010.md, DEC-037 y DEC-038). Implemento el
-ciclo de ingenieria parcial (Planner -> Builder -> Verifier) con `condor avanzar`.
+T-011 (Vision local) quedo completada, verificada, integrada, publicada y
+congelada (T-011.md, DEC-039 y DEC-040). Implemento `condor examinar`, capaz de
+analizar una imagen con un VLM local condicionado a GPU y modelo de vision.
 
-T-011 (Vision local) habilitara la capacidad de vision utilizando modelos
-locales, condicionada al hardware y modelos disponibles.
+T-012 (Instalador y puesta en marcha simplificada) simplificara la instalacion y
+el arranque de Condor.
 
-No iniciar T-011 desde codigo. Primero reconocimiento y formalizacion.
+No iniciar T-012 desde codigo. Primero reconocimiento y formalizacion.
 
 ## Regla de continuidad
 
@@ -236,4 +258,4 @@ No existe nivel activo.
 
 El estado oficial es `Evolucion Continua`.
 
-No crear ni reabrir un nivel numerico para T-011.
+No crear ni reabrir un nivel numerico para T-012.
