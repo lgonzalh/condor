@@ -1,6 +1,6 @@
 # INVENTARIO_FUNCIONAL
 
-Version: 1.1.0\
+Version: 1.2.0\
 Estado: Activo\
 Nivel: Global\
 Clasificacion: Inventario Funcional
@@ -101,8 +101,8 @@ Actualizar
   FN-007   Implementar       Desarrollo        Implementada    SISTEMA_DESARROLLO_CONDOR.md
             cambios                                            
 
-  FN-008   Verificar         Desarrollo        Planificada    SISTEMA_DESARROLLO_CONDOR.md
-           resultados                                         
+  FN-008   Verificar         Desarrollo        Implementada    SISTEMA_DESARROLLO_CONDOR.md
+            resultados                                         
 
   FN-009   Documentar        Documentacion     Planificada    DOCUMENTADOR.md
            automaticamente                                    
@@ -154,6 +154,10 @@ Actualizar
 
   Version   Cambios
   --------- --------------------------------------------------------
+  1.2.0     Se registra FN-008 (Verificar resultados) como Implementada tras
+            la ejecucion de T-008 (Verifier inicial): comando condor verificar
+            que comprueba la integridad y acotacion de los cambios aplicados por
+            T-007. T-008 queda formalmente congelada.
   1.1.0     Se registra FN-007 (Implementar cambios) como Implementada tras
             la ejecucion de T-007 (Builder inicial): comando condor construir
             que consume el WorkPlan y aplica cambios acotados sobre el proyecto
