@@ -1,6 +1,6 @@
 # ESTADO_PROYECTO
 
-Version: 2.1.0
+Version: 2.2.0
 Estado: Vigente
 Clasificacion: Estado del Proyecto
 
@@ -166,11 +166,11 @@ El trabajo operativo se controla mediante:
 
 # SIGUIENTE ACCION
 
-Ejecutar `operacion/TAREAS/T-010.md` (Capacidades avanzadas de desarrollo) mediante un agente que cumpla `AGENTE_CONDOR.md`.
+Ejecutar `operacion/TAREAS/T-011.md` (Vision local) mediante un agente que cumpla `AGENTE_CONDOR.md`.
 
-Las tareas T-001 a T-009 fueron completadas, verificadas e integradas en `main`.
+Las tareas T-001 a T-010 fueron completadas, verificadas e integradas en `main`.
 
-T-004, T-005, T-006, T-007, T-008 y T-009 quedan cerradas y congeladas.
+T-004 a T-010 quedan cerradas y congeladas.
 
 El detalle operativo del avance se controla en `operacion/ESTADO_DESARROLLO.md`.
 
@@ -213,6 +213,7 @@ Al no existir nivel activo, los trabajos nuevos se consideran parte del ciclo de
 
 | Version | Cambio |
 |---------|--------|
+| 2.2.0 | Se actualiza SIGUIENTE ACCION: T-001 a T-010 fueron completadas, verificadas e integradas en main; T-010 (Capacidades avanzadas de desarrollo) queda cerrada y congelada; la siguiente tarea operativa es T-011 (Vision local). |
 | 2.1.0 | Se actualiza SIGUIENTE ACCION: T-001 a T-009 fueron completadas, verificadas e integradas en main; T-009 (Documentacion y continuidad) queda cerrada y congelada; la siguiente tarea operativa es T-010 (Capacidades avanzadas de desarrollo). |
 | 2.0.0 | Se actualiza SIGUIENTE ACCION: T-001 a T-008 fueron completadas, verificadas e integradas en main; T-008 (Verificacion inicial) queda cerrada y congelada; la siguiente tarea operativa es T-009 (Documentacion y continuidad). |
 | 1.9.0 | Se actualiza SIGUIENTE ACCION: T-001 a T-007 fueron completadas, verificadas e integradas en main; T-007 (Builder inicial) queda cerrada y congelada; la siguiente tarea operativa es T-008 (Verificacion inicial). |
