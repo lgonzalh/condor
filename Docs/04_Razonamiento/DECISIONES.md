@@ -1,6 +1,6 @@
 # DECISIONES
 
-Version: 3.5.0
+Version: 3.6.0
 Estado: Activo
 Nivel: 04 - Diseno
 Clasificacion: Decisiones Arquitectonicas
@@ -1051,10 +1051,64 @@ Diseno tecnico de T-011 (Vision local).
 
 ---
 
+# DEC-041
+
+Titulo:
+Formalizacion del contrato de T-012 (Instalador y puesta en marcha simplificada).
+
+Decision:
+El contrato de T-012 queda formalizado en `operacion/TAREAS/T-012.md`
+(version 1.0.0), conforme al alcance aprobado:
+
+- T-012 implementa una capacidad de puesta en marcha reproducible mediante CLI
+  (`condor preparar`, texto y `--json`) y documentacion
+  (`INSTALACION_PUESTA_EN_MARCHA.md`);
+- el diagnostico verifica las condiciones para ejecutar Condor, distingue
+  dependencias obligatorias de opcionales, reutiliza Assessment
+  (`AssessmentResult`/`IAssessmentService`), informa el estado, identifica
+  faltantes, proporciona instrucciones manuales seguras y confirma que Condor
+  puede operar;
+- T-012 NO descarga .NET/Ollama/modelos, no configura servicios ni variables del
+  sistema, no realiza acciones administrativas, no gestiona modelos, no modifica
+  Assessment, no modifica T-001 a T-011 y no crea MSI/EXE/graficos/scripts de
+  instalacion del sistema;
+- el diagnostico es determinista y NO destructivo: preserva
+  `%LOCALAPPDATA%\Condor\state\` y solo verifica existencia/utilidad de los
+  artefactos derivados;
+- las degradaciones distinguen: entorno listo, obligatoria faltante, opcional
+  faltante, estado local ausente, estado local degradado, assessment no
+  disponible y capacidad opcional no disponible, cada una con motivo e
+  instruccion segura;
+- `create_test_environment.bat` (artefacto de T-005) no se modifica, elimina ni
+  renombra.
+
+Las decisiones D-P1 a D-P5 que definen el alcance son:
+
+- D-P1: el comando de puesta en marcha es `condor preparar` (texto y `--json`).
+- D-P2: el diagnostico reutiliza Assessment y no crea un segundo sistema de
+  deteccion.
+- D-P3: las dependencias externas quedan bajo control del usuario; T-012 no
+  descarga ni instala.
+- D-P4: el diagnostico es no destructivo y preserva el estado local.
+- D-P5: la puesta en marcha se documenta en `INSTALACION_PUESTA_EN_MARCHA.md`
+  distinguiendo instalacion, entorno, dependencias, modelos, configuracion,
+  verificacion y puesta en marcha.
+
+Estado:
+Aceptada (contrato aprobado para diseno). La implementacion aguarda el diseno
+tecnico (DEC-042).
+
+Origen:
+Reconocimiento y formalizacion de T-012 (Instalador y puesta en marcha
+simplificada).
+
+---
+
 # Historial de Cambios
 
 | Version | Cambio |
 |---------|--------|
+| 3.6.0 | Se incorpora DEC-041 (formalizacion del contrato de T-012, decisiones D-P1 a D-P5). |
 | 3.5.0 | Se incorpora DEC-040 (diseno tecnico de T-011, decisiones D-DW1 a D-DW8, aprobada). |
 | 3.4.0 | Se incorpora DEC-039 (formalizacion del contrato de T-011, decisiones D-N1 a D-N5). |
 | 3.3.0 | Se incorpora DEC-038 (diseno tecnico de T-010, decisiones D-DY1 a D-DY8, aprobada). |
