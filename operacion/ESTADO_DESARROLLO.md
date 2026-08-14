@@ -1,18 +1,18 @@
 # ESTADO_DESARROLLO
 
-Version: 2.7.0
+Version: 2.8.0
 Estado: Activo
 Modo: Evolucion Continua
 MVP: Condor 1.0
 
 ## Estado actual
 
-Condor cuenta con T-001 a T-009 completadas, verificadas e integradas en
+Condor cuenta con T-001 a T-010 completadas, verificadas e integradas en
 `main`.
 
-T-004, T-005, T-006, T-007, T-008 y T-009 estan formalmente congeladas.
+T-004 a T-010 estan formalmente congeladas.
 
-T-010 (Capacidades avanzadas de desarrollo) queda pendiente y no iniciada.
+T-011 (Vision local) queda pendiente y no iniciada.
 
 ## Estado funcional
 
@@ -56,6 +56,9 @@ Condor puede:
 - mantener la documentacion permanente sincronizada con el estado real;
 - especificar el rol de Documenter (DOCUMENTADOR.md);
 - distinguir deuda pendiente (DEUDA_EVOLUTIVA.md) y siguiente linea (ROADMAP_EVOLUCION.md);
+- orquestar el ciclo de ingenieria parcial (Planner -> Builder -> Verifier);
+- regenerar de forma controlada e interna al ciclo (determinista, acotada);
+- persistir el checkpoint del ciclo (`cycle.json`) como artefacto derivado;
 - degradar de forma controlada;
 - mantener limites deterministas.
 
@@ -83,19 +86,24 @@ T-008 agrego:
 - `condor verificar`
 - `condor verificar --json`
 
+T-010 agrego:
+
+- `condor avanzar "<solicitud>"`
+- `condor avanzar "<solicitud>" --json`
+
 No reintroducir contratos anteriores en ingles.
 
 ## Estado Git
 
-Ultimo estado confirmado al cierre de la implementacion de T-009:
+Ultimo estado confirmado al cierre de la implementacion de T-010:
 
-`ea11649`
+`3ef169e`
 
 `HEAD == origin/main`
 
 Working tree limpio.
 
-Rama activa: `main`.
+Rama activa: `main`. 
 
 ## Evidencia acumulada
 
@@ -170,6 +178,20 @@ T-009:
 - publicacion completa en `origin/main`;
 - cierre y congelacion formal.
 
+T-010:
+- 152/152 pruebas unitarias (Core);
+- 133/134 pruebas de integracion (Infrastructure; la unica fallida es una prueba de entorno de T-002 dependiente de Ollama, ajena a T-010);
+- 16/16 pruebas de arquitectura;
+- CLI avanzar y avanzar --json verificadas;
+- E2E real del ciclo (planificar, construir, verificar) sobre objetivo temporal;
+- determinismo del ciclo verificado (doble ejecucion) con CycleId deterministico;
+- degradaciones y proteccion MaxIterations verificadas;
+- checkpoint `cycle.json` persistido como artefacto derivado;
+- D-C1 a D-C5 (DEC-037) y D-DY1 a D-DY8 (DEC-038) cumplidas;
+- commits auditados sin violaciones de `1 archivo = 1 commit`;
+- publicacion completa en `origin/main`;
+- cierre y congelacion formal.
+
 ## Tareas
 
 | ID | Trabajo | Estado |
@@ -183,24 +205,24 @@ T-009:
 | T-007 | Builder inicial | Completada, verificada y congelada |
 | T-008 | Verificacion inicial | Completada, verificada y congelada |
 | T-009 | Documentacion y continuidad | Completada, verificada y congelada |
-| T-010 | Capacidades avanzadas de desarrollo | Pendiente |
+| T-010 | Capacidades avanzadas de desarrollo | Completada, verificada y congelada |
 | T-011 | Vision local | Pendiente |
 | T-012 | Instalador y puesta en marcha simplificada | Pendiente |
 
 ## Siguiente tarea
 
-`T-010 - Capacidades avanzadas de desarrollo`
+`T-011 - Vision local`
 
 Estado: Pendiente. No iniciada.
 
-T-009 (Documentacion y continuidad) quedo completada, verificada, integrada,
-publicada y congelada (T-009.md v1.0.0, DEC-036). Consolido la documentacion
-permanente tras T-001 a T-008 y formalizo el rol de Documenter.
+T-010 (Capacidades avanzadas de desarrollo) quedo completada, verificada,
+integrada, publicada y congelada (T-010.md, DEC-037 y DEC-038). Implemento el
+ciclo de ingenieria parcial (Planner -> Builder -> Verifier) con `condor avanzar`.
 
-T-010 (Capacidades avanzadas de desarrollo) evolucionara las capacidades de
-desarrollo sobre la base de Planner, Builder, Verifier y Documenter.
+T-011 (Vision local) habilitara la capacidad de vision utilizando modelos
+locales, condicionada al hardware y modelos disponibles.
 
-No iniciar T-010 desde codigo. Primero reconocimiento y formalizacion.
+No iniciar T-011 desde codigo. Primero reconocimiento y formalizacion.
 
 ## Regla de continuidad
 
@@ -214,4 +236,4 @@ No existe nivel activo.
 
 El estado oficial es `Evolucion Continua`.
 
-No crear ni reabrir un nivel numerico para T-010.
+No crear ni reabrir un nivel numerico para T-011.
