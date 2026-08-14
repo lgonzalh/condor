@@ -15,4 +15,8 @@ public interface IStateStore
     Task SavePlanAsync(WorkPlan plan, CancellationToken cancellationToken = default);
 
     Task<WorkPlan?> LoadPlanAsync(CancellationToken cancellationToken = default);
+
+    Task SaveBuildAsync(BuildResult result, CancellationToken cancellationToken = default);
+
+    Task<BuildResult?> LoadBuildAsync(CancellationToken cancellationToken = default);
 }
