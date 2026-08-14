@@ -1,6 +1,6 @@
 # ESTADO_PROYECTO
 
-Version: 2.4.0
+Version: 2.5.0
 Estado: Vigente
 Clasificacion: Estado del Proyecto
 
@@ -166,15 +166,14 @@ El trabajo operativo se controla mediante:
 
 # SIGUIENTE ACCION
 
-Las tareas T-001 a T-012 fueron completadas, verificadas e integradas en `main`.
+El backlog del MVP 1.0 (T-001 a T-012) esta completado y congelado.
 
-El backlog del MVP 1.0 (T-001 a T-012) queda completado.
+T-013 (Verificacion semantica y de calidad, SD-02) queda cerrada y congelada
+tras su primera concrecion: compilar y ejecutar pruebas del objetivo.
 
-T-004 a T-012 quedan cerradas y congeladas.
-
-La siguiente evolucion operativa se definira mediante el ciclo de Evolucion
-Continua, priorizando la consolidacion del MVP (roadmap SD-01/SD-02), garantizando
-la continuidad del proyecto y considerando futuras capacidades.
+La evolucion posterior se define mediante el ciclo de Evolucion Continua,
+continuando la linea SD-02 (verificacion semantica) hacia capacidades de
+calidad/arquitectura/coherencia, y consolidando el MVP.
 
 El detalle operativo del avance se controla en `operacion/ESTADO_DESARROLLO.md`.
 
@@ -217,6 +216,7 @@ Al no existir nivel activo, los trabajos nuevos se consideran parte del ciclo de
 
 | Version | Cambio |
 |---------|--------|
+| 2.5.0 | Se actualiza SIGUIENTE ACCION: T-013 (Verificacion semantica, SD-02) queda cerrada y congelada tras su primera concrecion (compilar y probar); la evolucion posterior continua la linea SD-02 hacia capacidades de calidad/arquitectura/coherencia. |
 | 2.4.0 | Se actualiza SIGUIENTE ACCION: T-001 a T-012 fueron completadas, verificadas e integradas en main; T-012 (Instalador y puesta en marcha simplificada) queda cerrada y congelada; el backlog del MVP 1.0 queda completado y la evolucion posterior se define por Evolucion Continua. |
 | 2.3.0 | Se actualiza SIGUIENTE ACCION: T-001 a T-011 fueron completadas, verificadas e integradas en main; T-011 (Vision local) queda cerrada y congelada; la siguiente tarea operativa es T-012 (Instalador y puesta en marcha simplificada). |
 | 2.2.0 | Se actualiza SIGUIENTE ACCION: T-001 a T-010 fueron completadas, verificadas e integradas en main; T-010 (Capacidades avanzadas de desarrollo) queda cerrada y congelada; la siguiente tarea operativa es T-011 (Vision local). |
