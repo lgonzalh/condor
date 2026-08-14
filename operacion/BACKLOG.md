@@ -1,6 +1,6 @@
 # BACKLOG
 
-Version: 2.4.0
+Version: 2.5.0
 Estado: Activo
 Modo: Evolucion Continua
 
@@ -17,18 +17,15 @@ Modo: Evolucion Continua
 | T-009 | Alta | Documentacion y continuidad | Completada y congelada |
 | T-010 | Media | Capacidades avanzadas de desarrollo | Completada y congelada |
 | T-011 | Media | Vision local | Completada y congelada |
-| T-012 | Media | Instalador y puesta en marcha simplificada | Pendiente |
+| T-012 | Media | Instalador y puesta en marcha simplificada | Completada y congelada |
 
 ## Siguiente
 
-`T-012 - Instalador y puesta en marcha simplificada`
+El backlog del MVP 1.0 (T-001 a T-012) queda completado y congelado.
 
-Estado: Pendiente. No iniciada.
+T-012 (Instalador y puesta en marcha simplificada) quedo completada, verificada,
+integrada, publicada y congelada (T-012.md, DEC-041 y DEC-042). Implemento
+`condor preparar` y la guia INSTALACION_PUESTA_EN_MARCHA.md.
 
-T-011 (Vision local) quedo completada, verificada, integrada, publicada y
-congelada (T-011.md, DEC-039 y DEC-040). Implemento `condor examinar`, capaz de
-analizar una imagen con un VLM local condicionado a GPU y modelo de vision.
-
-T-012 simplificara la instalacion y el arranque de Condor.
-
-No iniciar T-012 desde codigo. Primero reconocimiento y formalizacion.
+La evolucion posterior se define mediante el ciclo de Evolucion Continua,
+priorizando la consolidacion del MVP (roadmap SD-01/SD-02) y futuras capacidades.
