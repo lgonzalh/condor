@@ -1,6 +1,6 @@
 # REGISTRO_CAMBIOS
 
-Version: 2.9.0
+Version: 3.0.0
 Estado: Activo
 
 ## Proposito
@@ -20,27 +20,30 @@ Registrar cambios de implementacion y decisiones relevantes que necesiten contex
 | CH-021 | 2026-08-14 | T-007 | Implementacion, verificacion, integracion, publicacion y congelacion de T-007 | Completado | Serie de commits T-007 |
 | CH-022 | 2026-08-14 | T-008 | Formalizacion del contrato y diseno de T-008 (T-008.md v1.0.0, DEC-034 y DEC-035) | Completado | Serie de commits T-008 |
 | CH-023 | 2026-08-14 | T-008 | Implementacion, verificacion, integracion, publicacion y congelacion de T-008 | Completado | Serie de commits T-008 |
+| CH-024 | 2026-08-14 | T-009 | Formalizacion del contrato de T-009 (T-009.md, DEC-036) | Completado | Serie de commits T-009 |
+| CH-025 | 2026-08-14 | T-009 | Ejecucion documental, revision, publicacion y congelacion de T-009 | Completado | Serie de commits T-009 |
 
 ## Estado
 
-T-001 a T-008 completadas y publicadas.
+T-001 a T-009 completadas y publicadas.
 
-T-004, T-005, T-006, T-007 y T-008 estan formalmente congeladas.
+T-004, T-005, T-006, T-007, T-008 y T-009 estan formalmente congeladas.
 
-T-008 queda cerrada y congelada (Verificacion inicial): build Release sin errores,
-unitarias 143/143, integracion 127/127, arquitectura 15/15, CLI condor verificar
-y --json, E2E real, determinismo y deteccion de integridad/acotacion. D-V1 a
-D-V5 (DEC-034) y D-DV1 a D-DV7 (DEC-035) cumplen.
+T-009 queda cerrada y congelada (Documentacion y continuidad): tarea
+exclusivamente documental; DOCUMENTADOR.md creado e integrado en los inventarios
+(FN-009/ARQ-008 Especificado); trazabilidad T-001 a T-008 preservada; deuda
+(DEUDA_EVOLUTIVA DE-002) y siguiente linea (ROADMAP SD-01/SD-02) consolidados
+sin duplicidad; PATRIMONIO_CONOCIMIENTO (CI-011) actualizado. DEC-036 cumplida.
 
-Siguiente tarea: `T-009 - Documentacion y continuidad`.
+Siguiente tarea: `T-010 - Capacidades avanzadas de desarrollo`.
 
 Estado: Pendiente. No iniciada.
 
-## Estado Git al cierre de T-008
+## Estado Git al cierre de T-009
 
 - Rama: `main`
-- HEAD: `e0f78e5`
-- origin/main: `e0f78e5`
+- HEAD: `c439347`
+- origin/main: `c439347`
 - Working tree: limpio
 
 Regla vigente:
