@@ -1,6 +1,6 @@
 # INVENTARIO_FUNCIONAL
 
-Version: 1.0.0\
+Version: 1.1.0\
 Estado: Activo\
 Nivel: Global\
 Clasificacion: Inventario Funcional
@@ -98,8 +98,8 @@ Actualizar
   FN-006   Disenar           Desarrollo        Planificada    SISTEMA_DESARROLLO_CONDOR.md
            soluciones                                         
 
-  FN-007   Implementar       Desarrollo        Planificada    SISTEMA_DESARROLLO_CONDOR.md
-           cambios                                            
+  FN-007   Implementar       Desarrollo        Implementada    SISTEMA_DESARROLLO_CONDOR.md
+            cambios                                            
 
   FN-008   Verificar         Desarrollo        Planificada    SISTEMA_DESARROLLO_CONDOR.md
            resultados                                         
@@ -154,4 +154,8 @@ Actualizar
 
   Version   Cambios
   --------- --------------------------------------------------------
+  1.1.0     Se registra FN-007 (Implementar cambios) como Implementada tras
+            la ejecucion de T-007 (Builder inicial): comando condor construir
+            que consume el WorkPlan y aplica cambios acotados sobre el proyecto
+            objetivo. T-007 queda formalmente congelada.
   1.0.0     Creacion del Inventario Funcional del Proyecto Condor.
