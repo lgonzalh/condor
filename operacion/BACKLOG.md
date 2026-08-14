@@ -13,7 +13,7 @@ Modo: Evolucion Continua
 | T-005 | Alta | Context Engine inicial | Completada y verificada |
 | T-006 | Alta | Flujo de intencion a plan | Completada y congelada |
 | T-007 | Alta | Builder inicial | Completada y congelada |
-| T-008 | Alta | Verificacion inicial | Pendiente |
+| T-008 | Alta | Verificacion inicial | Completada y congelada |
 | T-009 | Alta | Documentacion y continuidad | Pendiente |
 | T-010 | Media | Capacidades avanzadas de desarrollo | Pendiente |
 | T-011 | Media | Vision local | Pendiente |
@@ -21,14 +21,14 @@ Modo: Evolucion Continua
 
 ## Siguiente
 
-`T-008 - Verificacion inicial`
+`T-009 - Documentacion y continuidad`
 
 Estado: Pendiente. No iniciada.
 
-T-007 (Builder inicial) quedo completada, verificada, integrada, publicada y
-congelada (T-007.md v1.0.0, DEC-032 y DEC-033).
+T-008 (Verificacion inicial) quedo completada, verificada, integrada, publicada
+y congelada (T-008.md v1.0.0, DEC-034 y DEC-035).
 
-T-008 consumira los cambios aplicados por T-007 para verificarlos (Verifier,
-ARQ-007 / FN-008).
+T-009 actualizara y consolidara la documentacion permanente para preservar la
+continuidad del proyecto.
 
-No iniciar T-008 desde codigo. Primero reconocimiento y formalizacion.
+No iniciar T-009 desde codigo. Primero reconocimiento y formalizacion.
