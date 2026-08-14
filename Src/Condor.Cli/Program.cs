@@ -11,6 +11,7 @@ using Condor.Infrastructure.State;
 using Condor.Infrastructure.Verification;
 using Condor.Infrastructure.Vision;
 using Condor.Infrastructure.Setup;
+using Condor.Infrastructure.SemanticVerification;
 
 namespace Condor.Cli;
 
@@ -116,6 +117,13 @@ public static class Program
                     args.Skip(1).ToArray(),
                     CancellationToken.None);
 
+            case "verificar-semantico":
+                return await CheckCommand.ExecuteAsync(
+                    new SemanticVerificationService(stateStore),
+                    stateStore,
+                    args.Skip(1).ToArray(),
+                    CancellationToken.None);
+
             default:
                 Terminal.WriteError("Comando desconocido: " + args[0]);
                 RenderHelp();
@@ -139,6 +147,7 @@ public static class Program
         Terminal.WriteDim("Usa 'condor avanzar \"<solicitud>\"' para ejecutar el ciclo de ingenieria.");
         Terminal.WriteDim("Usa 'condor examinar \"<imagen>\"' para analizar una imagen localmente.");
         Terminal.WriteDim("Usa 'condor preparar' para verificar la puesta en marcha.");
+        Terminal.WriteDim("Usa 'condor verificar-semantico' para compilar y probar el proyecto.");
         Terminal.WriteDim("Usa 'condor recomendar' para elegir un modelo local.");
         Terminal.WriteDim("Usa 'condor consultar' para consultar al modelo local.");
         Terminal.WriteDim("Usa 'condor ayuda' para ver los comandos disponibles.");
@@ -170,6 +179,10 @@ public static class Program
         Terminal.WriteLine("  condor preparar                Verifica la puesta en marcha.");
         Terminal.WriteLine("  condor preparar --json");
         Terminal.WriteLine("  condor preparar --actualizar   Refresca el Assessment antes de preparar.");
+        Terminal.WriteLine("  condor verificar-semantico     Compila y ejecuta las pruebas del proyecto.");
+        Terminal.WriteLine("  condor verificar-semantico --compilar");
+        Terminal.WriteLine("  condor verificar-semantico --probar");
+        Terminal.WriteLine("  condor verificar-semantico --json");
         Terminal.WriteLine("  condor recomendar          Recomienda un modelo para el equipo.");
         Terminal.WriteLine("  condor recomendar --proposito <tipo>");
         Terminal.WriteLine("                             tipo: desarrollo, general o vision.");
