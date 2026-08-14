@@ -1,6 +1,6 @@
 # ROADMAP_EVOLUCION
 
-Version: 1.2.0
+Version: 1.3.0
 Estado: Activo
 Nivel: 09 - Evolucion
 Clasificacion: Roadmap
@@ -306,8 +306,8 @@ Una iniciativa del roadmap se convierte en trabajo activo solamente mediante el 
 
 # SIGUIENTE LINEA DE DESARROLLO
 
-Tras el cierre de T-001 a T-009, la siguiente linea de desarrollo operativa del
-Proyecto Condor es:
+Tras el cierre del MVP 1.0 (T-001 a T-012), las lineas de desarrollo del
+Proyecto Condor son:
 
 ## SD-01 - Capacidades avanzadas de desarrollo (T-010)
 
@@ -335,12 +335,15 @@ del proyecto objetivo.
 
 Prioridad: Media
 
-Estado: Pendiente (deuda registrada)
+Estado: Activa (linea de trabajo de T-013, primera concrecion: compilar y
+ejecutar pruebas)
 
 Referencia:
 
 `DEUDA_EVOLUTIVA.md` (DE-002). Este roadmap solo indica la direccion; la deuda
-registra el detalle y no se duplica aqui.
+registra el detalle y no se duplica aqui. La primera concrecion de T-013 es
+compilar y ejecutar pruebas; capacidades de calidad/arquitectura/coherencia
+quedan como evolucion posterior.
 
 ---
 
@@ -358,6 +361,7 @@ Cada nueva linea base podra generar una revision del roadmap.
 
 | Version | Cambios |
 |---------|---------|
+| 1.3.0 | Se actualiza la cabecera de SIGUIENTE LINEA para reflejar el MVP 1.0 completado (T-001 a T-012) y se marca SD-02 como Activa, linea de trabajo de T-013 (primera concrecion: compilar y ejecutar pruebas). |
 | 1.2.0 | Se marca SD-01 (Capacidades avanzadas de desarrollo) como Implementada tras T-010 (ciclo de ingenieria parcial con condor avanzar). SD-02 permanece pendiente como deuda. |
 | 1.1.0 | Se incorpora la seccion SIGUIENTE LINEA DE DESARROLLO tras T-001 a T-009: SD-01 (Capacidades avanzadas de desarrollo, T-010) y SD-02 (verificacion semantica, referenciada a DEUDA_EVOLUTIVA DE-002). T-009 queda formalmente congelada. |
 | 1.0.0 | Creacion de la hoja de ruta evolutiva del Proyecto Condor para el Nivel 09. |
