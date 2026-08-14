@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Net.Http.Json;
 using Condor.Core.Contracts;
 using Condor.Core.Models;
@@ -37,11 +38,12 @@ public class OllamaClient : ILlmClient
 
         try
         {
+            var content = BuildContent(request);
             var payload = new
             {
                 model = request.Model,
                 stream = false,
-                messages = new[] { new { role = "user", content = request.Prompt } },
+                messages = new[] { new { role = "user", content = (object)content } },
                 options = request.MaxTokens is null
                     ? (object)new { temperature = request.Temperature }
                     : new { temperature = request.Temperature, num_predict = request.MaxTokens }
@@ -103,6 +105,28 @@ public class OllamaClient : ILlmClient
         {
             return new LlmResponse { Success = false, Error = "Error inesperado durante la inferencia" };
         }
+    }
+
+    private static object BuildContent(LlmRequest request)
+    {
+        var hasImages = request.Images is { Count: > 0 };
+
+        if (!hasImages)
+        {
+            return request.Prompt;
+        }
+
+        var parts = new List<object>
+        {
+            new { type = "text", text = request.Prompt }
+        };
+
+        foreach (var image in request.Images!)
+        {
+            parts.Add(new { type = "image", image });
+        }
+
+        return parts;
     }
 }
 
