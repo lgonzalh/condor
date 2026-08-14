@@ -27,4 +27,8 @@ public interface IStateStore
     Task SaveCycleAsync(CycleResult result, CancellationToken cancellationToken = default);
 
     Task<CycleResult?> LoadCycleAsync(CancellationToken cancellationToken = default);
+
+    Task SaveVisionAsync(VisionResult result, CancellationToken cancellationToken = default);
+
+    Task<VisionResult?> LoadVisionAsync(CancellationToken cancellationToken = default);
 }
