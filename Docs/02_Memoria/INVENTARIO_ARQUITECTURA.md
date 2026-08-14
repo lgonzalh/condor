@@ -1,6 +1,6 @@
 # INVENTARIO_ARQUITECTURA
 
-Version: 2.3.0
+Version: 2.4.0
 Estado: Activo
 Nivel: Global
 Clasificacion: Inventario Arquitectonico
@@ -171,6 +171,10 @@ mediante T-002 (OllamaClient local y comando consultar). ARQ-015 fue implementad
 
   Version   Cambios
   --------- -------------------------------------------------------------
+  2.4.0     ARQ-016 (Ciclo de Ingenieria) se extiende tras T-014: el ciclo
+            `condor avanzar` incorpora la etapa de verificacion semantica
+            (T-013) de forma aditiva, reutilizando SemanticVerificationService.
+            T-014 queda formalmente congelada.
   2.3.0     Se registra ARQ-019 (Verificacion semantica / compilar / probar)
             como Implementado tras T-013: SemanticVerifier en Condor.Core,
             SemanticVerificationService, ProcessRunner, DotNetManifestProbe y
