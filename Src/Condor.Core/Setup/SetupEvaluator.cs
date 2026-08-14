@@ -175,9 +175,7 @@ public static class SetupEvaluator
     {
         return (assessment.Tools?.DetectedTools ?? new List<ToolInfo>())
             .Any(t => t.Status == DetectionStatus.Detected &&
-                      (string.Equals(t.Name, "dotnet", StringComparison.OrdinalIgnoreCase) ||
-                       string.Equals(t.Name, "pwsh", StringComparison.OrdinalIgnoreCase) ||
-                       string.Equals(t.Name, "powershell", StringComparison.OrdinalIgnoreCase)));
+                      string.Equals(t.Name, "dotnet", StringComparison.OrdinalIgnoreCase));
     }
 
     private static SetupResult NotDetected(
