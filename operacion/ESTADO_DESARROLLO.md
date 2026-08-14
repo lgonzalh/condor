@@ -1,18 +1,19 @@
 # ESTADO_DESARROLLO
 
-Version: 3.0.0
+Version: 3.1.0
 Estado: Activo
 Modo: Evolucion Continua
 MVP: Condor 1.0
 
 ## Estado actual
 
-Condor cuenta con T-001 a T-012 completadas, verificadas e integradas en
+Condor cuenta con T-001 a T-013 completadas, verificadas e integradas en
 `main`.
 
-T-004 a T-012 estan formalmente congeladas.
+T-004 a T-013 estan formalmente congeladas.
 
-El backlog del MVP 1.0 (T-001 a T-012) queda completado. La evolucion posterior
+El backlog del MVP 1.0 (T-001 a T-012) queda completado. T-013 incorpora la
+primera concrecion de la verificacion semantica (SD-02). La evolucion posterior
 se define mediante el ciclo de Evolucion Continua.
 
 ## Estado funcional
@@ -65,6 +66,9 @@ Condor puede:
 - verificar la puesta en marcha y el estado del entorno (condor preparar);
 - distinguir dependencias obligatorias de opcionales sin descargar nada;
 - preservar el estado local de forma no destructiva;
+- compilar el proyecto objetivo con --no-restore (condor verificar-semantico);
+- ejecutar las pruebas del proyecto objetivo con --no-restore;
+- diferenciar compilacion/pruebas correctas, fallidas y capacidades no disponibles;
 - degradar de forma controlada;
 - mantener limites deterministas.
 
@@ -108,13 +112,20 @@ T-012 agrego:
 - `condor preparar --json`
 - `condor preparar --actualizar`
 
+T-013 agrego:
+
+- `condor verificar-semantico`
+- `condor verificar-semantico --compilar`
+- `condor verificar-semantico --probar`
+- `condor verificar-semantico --json`
+
 No reintroducir contratos anteriores en ingles.
 
 ## Estado Git
 
-Ultimo estado confirmado al cierre de la implementacion de T-012:
+Ultimo estado confirmado al cierre de la implementacion de T-013:
 
-`87aca9d`
+`d8ff1d3`
 
 `HEAD == origin/main`
 
@@ -238,6 +249,21 @@ T-012:
 - publicacion completa en `origin/main`;
 - cierre y congelacion formal.
 
+T-013:
+- 180/180 pruebas unitarias (Core);
+- 161/162 pruebas de integracion (Infrastructure; la unica fallida es una prueba
+  de entorno de T-002 dependiente de Ollama, ajena a T-013);
+- 19/19 pruebas de arquitectura;
+- CLI verificar-semantico (con --compilar/--probar/--json) verificadas;
+- E2E real sobre un proyecto .NET temporal: build exitoso, test exitoso,
+  compilacion fallida, no-restore efectivo y degradaciones;
+- `verificacion_semantica.json` persistido como artefacto derivado (resumen);
+- --no-restore sin restore implicito; contencion y timeout aplicados;
+- D-SD1 a D-SD5 (DEC-043) y D-ST1 a D-ST9 (DEC-044) cumplidas;
+- commits auditados sin violaciones de `1 archivo = 1 commit`;
+- publicacion completa en `origin/main`;
+- cierre y congelacion formal.
+
 ## Tareas
 
 | ID | Trabajo | Estado |
@@ -254,14 +280,17 @@ T-012:
 | T-010 | Capacidades avanzadas de desarrollo | Completada, verificada y congelada |
 | T-011 | Vision local | Completada, verificada y congelada |
 | T-012 | Instalador y puesta en marcha simplificada | Completada, verificada y congelada |
+| T-013 | Verificacion semantica y de calidad (SD-02) | Completada, verificada y congelada |
 
 ## Siguiente evolucion
 
 El backlog del MVP 1.0 (T-001 a T-012) queda completado y congelado.
 
+T-013 incorpora la primera concrecion de la verificacion semantica (SD-02):
+compilar y ejecutar pruebas del objetivo.
+
 La evolucion posterior se define mediante el ciclo de Evolucion Continua,
-priorizando la consolidacion del MVP (roadmap SD-01/SD-02), la continuidad del
-proyecto y futuras capacidades.
+continuando la linea SD-02 hacia capacidades de calidad/arquitectura/coherencia.
 
 ## Regla de continuidad
 
@@ -275,4 +304,4 @@ No existe nivel activo.
 
 El estado oficial es `Evolucion Continua`.
 
-El backlog operativo del MVP queda completado; la evolucion no crea un Nivel 10.
+La evolucion posterior no crea un Nivel 10.
