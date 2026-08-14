@@ -1,6 +1,6 @@
 # DECISIONES
 
-Version: 3.4.0
+Version: 3.5.0
 Estado: Activo
 Nivel: 04 - Diseno
 Clasificacion: Decisiones Arquitectonicas
@@ -1007,10 +1007,55 @@ Reconocimiento y formalizacion de T-011 (Vision local).
 
 ---
 
+# DEC-040
+
+Titulo:
+Diseno tecnico de T-011 (Vision local).
+
+Estado:
+Aprobada (ratificada para implementacion).
+
+Decision:
+El diseno tecnico de T-011 se consolida en `operacion/TAREAS/T-011.md` (con
+D-N1 a D-N5 ratificados). Se incorporan las siguientes resoluciones tecnicas
+aprobadas:
+
+- D-DW1: `VisionGate` reside en `Condor.Core.Vision` como logica pura de
+  disponibilidad determinista (patron D-D5): evalua `VisionCapable` del
+  Assessment y la presencia de un modelo con capacidad `vision` sin realizar IO.
+- D-DW2: `ImageFileReader` (Infrastructure) es la unica IO de lectura de imagen;
+  valida existencia, no-directorio, tamano (MaxImageBytes) y legibilidad.
+- D-DW3: `VisionService` orquesta gate + lectura + consulta multimodal via
+  Ollama; no persiste la imagen ni su Base64 (solo metadatos en vision.json).
+- D-DW4: extension ADITIVA `LlmRequest.Images` (base64) y `OllamaClient` para
+  entrada multimodal; con `Images` nulo o vacio se conserva el payload textual
+  exacto de T-002 (compatibilidad verificada por prueba).
+- D-DW5: limites `MaxImageBytes = 10 MB`, `MaxDescriptionLength = 4000`,
+  `VisionTimeoutMilliseconds = 60_000`; la descripcion se trunca de forma
+  determinista y el timeout se aplica a la operacion multimodal.
+- D-DW6: la seleccion del modelo reutiliza la capacidad de proposito vision
+  (`HasVision`); no se crea un sistema de seleccion paralelo.
+- D-DW7: degradaciones estructuradas sin excepciones no controladas para imagen
+  invalida, VisionCapable=false, modelo inexistente, Ollama no disponible y VLM
+  sin contenido.
+- D-DW8: determinismo en la parte no-LLM (disponibilidad, validacion, seleccion,
+  degradaciones, truncado); el contenido generado por el VLM no es determinista y
+  se documenta expresamente.
+
+Estas decisiones son ratificadas por el usuario y habilitan la implementacion de
+T-011 dentro del alcance aprobado (sin vision en Planner/Builder/Verifier/
+Documenter, sin Architect, sin SD-02, sin descarga de modelos).
+
+Origen:
+Diseno tecnico de T-011 (Vision local).
+
+---
+
 # Historial de Cambios
 
 | Version | Cambio |
 |---------|--------|
+| 3.5.0 | Se incorpora DEC-040 (diseno tecnico de T-011, decisiones D-DW1 a D-DW8, aprobada). |
 | 3.4.0 | Se incorpora DEC-039 (formalizacion del contrato de T-011, decisiones D-N1 a D-N5). |
 | 3.3.0 | Se incorpora DEC-038 (diseno tecnico de T-010, decisiones D-DY1 a D-DY8, aprobada). |
 | 3.2.0 | Se incorpora DEC-037 (formalizacion del contrato de T-010, decisiones D-C1 a D-C5). |
