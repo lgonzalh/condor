@@ -54,7 +54,13 @@ public static class CycleEngine
             return new CycleDecision(false, false, true, CycleStage.Detenido, ReasonVerificationMissing);
         }
 
-        if (verification.Failed == 0 && verification.Status != DetectionStatus.Limited)
+        if (verification.Status == DetectionStatus.Limited)
+        {
+            return new CycleDecision(false, false, true, CycleStage.Degradado,
+                "La verificacion quedo degradada; el ciclo se detiene sin regenerar.");
+        }
+
+        if (verification.Failed == 0)
         {
             return new CycleDecision(true, false, false, CycleStage.Completado, null);
         }
