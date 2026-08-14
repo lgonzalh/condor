@@ -1,18 +1,18 @@
 # ESTADO_DESARROLLO
 
-Version: 2.5.0
+Version: 2.6.0
 Estado: Activo
 Modo: Evolucion Continua
 MVP: Condor 1.0
 
 ## Estado actual
 
-Condor cuenta con T-001, T-002, T-003, T-004, T-005, T-006 y T-007 completadas,
-verificadas e integradas en `main`.
+Condor cuenta con T-001 a T-008 completadas, verificadas e integradas en
+`main`.
 
-T-004, T-005, T-006 y T-007 estan formalmente congeladas.
+T-004, T-005, T-006, T-007 y T-008 estan formalmente congeladas.
 
-T-008 (Verificacion inicial) queda pendiente y no iniciada.
+T-009 (Documentacion y continuidad) queda pendiente y no iniciada.
 
 ## Estado funcional
 
@@ -47,6 +47,12 @@ Condor puede:
 - persistir `build.json` como artefacto derivado;
 - emitir `condor construir`;
 - emitir `condor construir --json`;
+- verificar la integridad y acotacion de los cambios aplicados;
+- comprobar existencia de archivos declarados como aplicados y coincidencia de contenido;
+- registrar cada verificacion mediante `VerificationCheck`;
+- persistir `verification.json` como artefacto derivado;
+- emitir `condor verificar`;
+- emitir `condor verificar --json`;
 - degradar de forma controlada;
 - mantener limites deterministas.
 
@@ -69,13 +75,18 @@ T-007 agrego:
 - `condor construir`
 - `condor construir --json`
 
+T-008 agrego:
+
+- `condor verificar`
+- `condor verificar --json`
+
 No reintroducir contratos anteriores en ingles.
 
 ## Estado Git
 
-Ultimo estado confirmado al cierre de la implementacion de T-007:
+Ultimo estado confirmado al cierre de la implementacion de T-008:
 
-`2acf3f4`
+`e3d2056`
 
 `HEAD == origin/main`
 
@@ -131,6 +142,20 @@ T-007:
 - publicacion completa en `origin/main`;
 - cierre y congelacion formal.
 
+T-008:
+- 143/143 pruebas unitarias (Core);
+- 127/127 pruebas de integracion (Infrastructure);
+- 15/15 pruebas de arquitectura;
+- build Release sin errores ni advertencias;
+- CLI verificar y verificar --json verificadas;
+- E2E real sobre un proyecto objetivo temporal (caso correcto e incorrecto);
+- determinismo del Verifier verificado (doble ejecucion);
+- degradaciones y deteccion de integridad/acotacion verificadas;
+- D-V1 a D-V5 (DEC-034) y D-DV1 a D-DV7 (DEC-035) cumplidas;
+- commits auditados sin violaciones de `1 archivo = 1 commit`;
+- publicacion completa en `origin/main`;
+- cierre y congelacion formal.
+
 ## Tareas
 
 | ID | Trabajo | Estado |
@@ -142,7 +167,7 @@ T-007:
 | T-005 | Context Engine inicial | Completada, verificada y congelada |
 | T-006 | Flujo de intencion a plan | Completada, verificada y congelada |
 | T-007 | Builder inicial | Completada, verificada y congelada |
-| T-008 | Verificacion inicial | Pendiente |
+| T-008 | Verificacion inicial | Completada, verificada y congelada |
 | T-009 | Documentacion y continuidad | Pendiente |
 | T-010 | Capacidades avanzadas de desarrollo | Pendiente |
 | T-011 | Vision local | Pendiente |
@@ -150,18 +175,18 @@ T-007:
 
 ## Siguiente tarea
 
-`T-008 - Verificacion inicial`
+`T-009 - Documentacion y continuidad`
 
 Estado: Pendiente. No iniciada.
 
-T-007 (Builder inicial) quedo completada, verificada, integrada, publicada y
-congelada (T-007.md v1.0.0, DEC-032 y DEC-033). Consume el `WorkPlan` de T-006
-y aplica cambios acotados sobre el proyecto objetivo.
+T-008 (Verificacion inicial) quedo completada, verificada, integrada, publicada
+y congelada (T-008.md v1.0.0, DEC-034 y DEC-035). Consume el `BuildResult` de
+T-007 y comprueba la integridad y acotacion de los cambios aplicados.
 
-T-008 (Verifier, ARQ-007 / FN-008) verificara los resultados de los cambios
-aplicados por T-007.
+T-009 (Documentacion y continuidad) actualizara y consolidara la documentacion
+permanente para preservar la continuidad del proyecto.
 
-No iniciar T-008 desde codigo. Primero reconocimiento y formalizacion.
+No iniciar T-009 desde codigo. Primero reconocimiento y formalizacion.
 
 ## Regla de continuidad
 
@@ -175,4 +200,4 @@ No existe nivel activo.
 
 El estado oficial es `Evolucion Continua`.
 
-No crear ni reabrir un nivel numerico para T-008.
+No crear ni reabrir un nivel numerico para T-009.
