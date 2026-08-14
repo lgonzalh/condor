@@ -23,4 +23,8 @@ public interface IStateStore
     Task SaveVerificationAsync(VerificationResult result, CancellationToken cancellationToken = default);
 
     Task<VerificationResult?> LoadVerificationAsync(CancellationToken cancellationToken = default);
+
+    Task SaveCycleAsync(CycleResult result, CancellationToken cancellationToken = default);
+
+    Task<CycleResult?> LoadCycleAsync(CancellationToken cancellationToken = default);
 }
