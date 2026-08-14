@@ -13,6 +13,7 @@ namespace Condor.Infrastructure.State
         private const string ContextFileName = "context.json";
         private const string PlanFileName = "plan.json";
         private const string BuildFileName = "build.json";
+        private const string VerificationFileName = "verification.json";
         private readonly string _stateDirectory;
 
         public LocalStateStore()
@@ -165,6 +166,41 @@ namespace Condor.Infrastructure.State
             {
                 Directory.CreateDirectory(_stateDirectory);
                 var json = BuildJson.Serialize(result);
+                await File.WriteAllTextAsync(filePath, json, new UTF8Encoding(false), cancellationToken);
+            }
+            catch
+            {
+            }
+        }
+
+        public async Task<VerificationResult?> LoadVerificationAsync(CancellationToken cancellationToken = default)
+        {
+            var filePath = Path.Combine(_stateDirectory, VerificationFileName);
+
+            if (!File.Exists(filePath))
+            {
+                return null;
+            }
+
+            try
+            {
+                var json = await File.ReadAllTextAsync(filePath, cancellationToken);
+                return VerificationJson.Deserialize(json);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public async Task SaveVerificationAsync(VerificationResult result, CancellationToken cancellationToken = default)
+        {
+            var filePath = Path.Combine(_stateDirectory, VerificationFileName);
+
+            try
+            {
+                Directory.CreateDirectory(_stateDirectory);
+                var json = VerificationJson.Serialize(result);
                 await File.WriteAllTextAsync(filePath, json, new UTF8Encoding(false), cancellationToken);
             }
             catch
