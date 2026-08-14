@@ -30,9 +30,11 @@ Ninguna.
 - T-010 Capacidades avanzadas de desarrollo
 - T-011 Vision local
 - T-012 Instalador y puesta en marcha simplificada
+- T-013 Verificacion semantica y de calidad (SD-02)
 
 ## Siguiente
 
 El backlog del MVP 1.0 (T-001 a T-012) queda completado y congelado.
 
-La evolucion posterior se define mediante el ciclo de Evolucion Continua.
+La evolucion posterior se define mediante el ciclo de Evolucion Continua,
+continuando la linea SD-02 hacia capacidades de calidad/arquitectura/coherencia.
