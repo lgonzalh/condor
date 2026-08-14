@@ -1,6 +1,6 @@
 # REGISTRO_CAMBIOS
 
-Version: 3.0.0
+Version: 3.1.0
 Estado: Activo
 
 ## Proposito
@@ -22,28 +22,31 @@ Registrar cambios de implementacion y decisiones relevantes que necesiten contex
 | CH-023 | 2026-08-14 | T-008 | Implementacion, verificacion, integracion, publicacion y congelacion de T-008 | Completado | Serie de commits T-008 |
 | CH-024 | 2026-08-14 | T-009 | Formalizacion del contrato de T-009 (T-009.md, DEC-036) | Completado | Serie de commits T-009 |
 | CH-025 | 2026-08-14 | T-009 | Ejecucion documental, revision, publicacion y congelacion de T-009 | Completado | Serie de commits T-009 |
+| CH-026 | 2026-08-14 | T-010 | Formalizacion del contrato y diseno de T-010 (T-010.md, DEC-037 y DEC-038) | Completado | Serie de commits T-010 |
+| CH-027 | 2026-08-14 | T-010 | Implementacion, verificacion, integracion, publicacion y congelacion de T-010 | Completado | Serie de commits T-010 |
 
 ## Estado
 
-T-001 a T-009 completadas y publicadas.
+T-001 a T-010 completadas y publicadas.
 
-T-004, T-005, T-006, T-007, T-008 y T-009 estan formalmente congeladas.
+T-004 a T-010 estan formalmente congeladas.
 
-T-009 queda cerrada y congelada (Documentacion y continuidad): tarea
-exclusivamente documental; DOCUMENTADOR.md creado e integrado en los inventarios
-(FN-009/ARQ-008 Especificado); trazabilidad T-001 a T-008 preservada; deuda
-(DEUDA_EVOLUTIVA DE-002) y siguiente linea (ROADMAP SD-01/SD-02) consolidados
-sin duplicidad; PATRIMONIO_CONOCIMIENTO (CI-011) actualizado. DEC-036 cumplida.
+T-010 queda cerrada y congelada (Capacidades avanzadas de desarrollo): ciclo de
+ingenieria parcial (Planner -> Builder -> Verifier) con condor avanzar; build
+Release sin errores; unitarias 152/152; integracion 133/134 (la unica fallida es
+una prueba de entorno de T-002 dependiente de Ollama, ajena a T-010);
+arquitectura 16/16; E2E real; determinismo; checkpoint cycle.json; D-C1 a D-C5
+(DEC-037) y D-DY1 a D-DY8 (DEC-038) cumplen.
 
-Siguiente tarea: `T-010 - Capacidades avanzadas de desarrollo`.
+Siguiente tarea: `T-011 - Vision local`.
 
 Estado: Pendiente. No iniciada.
 
-## Estado Git al cierre de T-009
+## Estado Git al cierre de T-010
 
 - Rama: `main`
-- HEAD: `c439347`
-- origin/main: `c439347`
+- HEAD: `e63ba4b`
+- origin/main: `e63ba4b`
 - Working tree: limpio
 
 Regla vigente:
