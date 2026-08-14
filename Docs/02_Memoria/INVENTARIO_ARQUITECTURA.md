@@ -1,6 +1,6 @@
 # INVENTARIO_ARQUITECTURA
 
-Version: 1.7.0
+Version: 1.8.0
 Estado: Activo
 Nivel: Global
 Clasificacion: Inventario Arquitectonico
@@ -91,7 +91,7 @@ Actualizar
 
   ARQ-006   Builder        Engine            Implementado   KERNEL_CONDOR.md
 
-  ARQ-007   Verifier       Engine            Planificado    KERNEL_CONDOR.md
+  ARQ-007   Verifier       Engine            Implementado   KERNEL_CONDOR.md
 
   ARQ-008   Documenter     Servicio          Planificado    DOCUMENTADOR.md
 
@@ -120,7 +120,7 @@ Actualizar
 Nota: ARQ-002 fue implementado inicialmente mediante T-001. ARQ-012
 cuenta con una CLI inicial (identidad, estado, analizar y consultar) pendiente
 de evolucion con los motores posteriores. ARQ-013 fue implementado
-mediante T-002 (OllamaClient local y comando consultar). ARQ-015 fue implementado mediante T-003 (ModelRecommender, ModelRoleClassifier, ModelMemoryBudget y comando recomendar). ARQ-002 fue extendido mediante T-004 (descubrimiento de proyecto: ProjectDetector, parsers de manifiestos, seccion PROYECTO y campo project). El contrato publico de la CLI fue corregido al espanol por DEC-025. ARQ-003 fue implementado mediante T-005 (Context Engine inicial: ContextReconstructor en Condor.Core, OperativeArtifactReader y ContextService en Condor.Infrastructure, y comando condor contexto en la CLI; verificacion integral completada con unitarias, integracion, arquitectura, CLI, E2E y determinismo D-D11). ARQ-004 fue implementado mediante T-006 (Planner inicial: WorkPlan, PlanTask y PlanLimits en Condor.Core, PlanGenerator y PlanIntent en Condor.Core.Planning, PlanService en Condor.Infrastructure, comando condor planear en la CLI; verificacion integral con unitarias, integracion, arquitectura, CLI, E2E y determinismo D-E7). ARQ-006 fue implementado mediante T-007 (Builder inicial: BuildAction, BuildActionKind, BuildResult y BuildLimits en Condor.Core, BuildDeriver en Condor.Core.Building, BuildService y ProjectFileWriter en Condor.Infrastructure, comando condor construir en la CLI; verificacion integral con unitarias, integracion, arquitectura, CLI, E2E y determinismo).
+mediante T-002 (OllamaClient local y comando consultar). ARQ-015 fue implementado mediante T-003 (ModelRecommender, ModelRoleClassifier, ModelMemoryBudget y comando recomendar). ARQ-002 fue extendido mediante T-004 (descubrimiento de proyecto: ProjectDetector, parsers de manifiestos, seccion PROYECTO y campo project). El contrato publico de la CLI fue corregido al espanol por DEC-025. ARQ-003 fue implementado mediante T-005 (Context Engine inicial: ContextReconstructor en Condor.Core, OperativeArtifactReader y ContextService en Condor.Infrastructure, y comando condor contexto en la CLI; verificacion integral completada con unitarias, integracion, arquitectura, CLI, E2E y determinismo D-D11). ARQ-004 fue implementado mediante T-006 (Planner inicial: WorkPlan, PlanTask y PlanLimits en Condor.Core, PlanGenerator y PlanIntent en Condor.Core.Planning, PlanService en Condor.Infrastructure, comando condor planear en la CLI; verificacion integral con unitarias, integracion, arquitectura, CLI, E2E y determinismo D-E7). ARQ-006 fue implementado mediante T-007 (Builder inicial: BuildAction, BuildActionKind, BuildResult y BuildLimits en Condor.Core, BuildDeriver en Condor.Core.Building, BuildService y ProjectFileWriter en Condor.Infrastructure, comando condor construir en la CLI; verificacion integral con unitarias, integracion, arquitectura, CLI, E2E y determinismo). ARQ-007 fue implementado mediante T-008 (Verifier inicial: VerificationCheck, VerificationResult, VerificationLimits y ProbedFile en Condor.Core, Verifier en Condor.Core.Verification, VerificationService y ProjectFileProbe en Condor.Infrastructure, comando condor verificar en la CLI; verificacion integral con unitarias, integracion, arquitectura, CLI, E2E y determinismo).
 
 ------------------------------------------------------------------------
 
@@ -156,6 +156,10 @@ mediante T-002 (OllamaClient local y comando consultar). ARQ-015 fue implementad
 
   Version   Cambios
   --------- -------------------------------------------------------------
+  1.8.0     Se registra ARQ-007 (Verifier) como Implementado tras la ejecucion
+            de T-008 (Verifier inicial): Verifier en Condor.Core, VerificationService
+            y ProjectFileProbe en Condor.Infrastructure, comando condor verificar
+            en la CLI. T-008 queda formalmente congelada.
   1.7.0     Se registra ARQ-006 (Builder) como Implementado tras la ejecucion
             de T-007 (Builder inicial): BuildDeriver en Condor.Core, BuildService
             y ProjectFileWriter en Condor.Infrastructure, comando condor construir
