@@ -1,6 +1,6 @@
 # DECISIONES
 
-Version: 2.0.0
+Version: 3.0.0
 Estado: Activo
 Nivel: 04 - Diseno
 Clasificacion: Decisiones Arquitectonicas
@@ -727,10 +727,110 @@ Diseno tecnico de T-007 (Builder inicial).
 
 ---
 
+# DEC-034
+
+Titulo:
+Formalizacion del contrato de T-008 (Verificacion inicial).
+
+Decision:
+El contrato de T-008 queda formalizado en `operacion/TAREAS/T-008.md`
+(version 1.0.0):
+
+- T-008 implementa la version inicial del Verifier (ARQ-007 / FN-008): consume
+  el `BuildResult` entregado por T-007 y comprueba que los cambios declarados
+  como aplicados fueron escritos de forma correcta, completa y acotada sobre el
+  proyecto objetivo, dentro del flujo del Kernel (Planner -> Builder -> Verifier);
+- la frontera con T-007 es estricta: T-008 consume `BuildResult` de solo lectura
+  y no re-aplica ni modifica cambios en el proyecto objetivo;
+- la frontera con T-005 es estricta: T-008 consume `ProjectContext` de solo
+  lectura como base de referencia (WorkingDirectory/RootName) sin reconstruirlo;
+- el alcance v1.0 del Verifier es la verificacion de integridad y acotacion de la
+  escritura: archivos declarados como aplicados existen con el contenido
+  declarado, las rutas permanecen dentro del WorkingDirectory, y se registran
+  acciones aplicadas/omitidas/fallidas conforme al resultado de T-007;
+- quedan FUERA de alcance de T-008 v1.0: compilar el proyecto objetivo, ejecutar
+  sus pruebas, analizar la calidad semantica del codigo, validar su arquitectura,
+  evaluar la coherencia funcional del cambio, re-derivar el `WorkPlan`, re-aplicar
+  cambios, re-descubrir el proyecto y reconstruir el contexto; estas capacidades
+  quedan reservadas para evoluciones posteriores;
+- la capacidad se expone mediante el comando publico `condor verificar` (texto y
+  `--json`);
+- el resultado se persiste como artefacto derivado y transitorio en el estado
+  local (`verification.json`), sin modificar `assessment.json`, `context.json`,
+  `plan.json` ni `build.json`.
+
+Las decisiones D-V1 a D-V5 que definen el alcance son:
+
+- D-V1: el Verifier verifica la integridad y acotacion de los cambios aplicados
+  por T-007: archivos existentes con contenido declarado dentro del
+  `WorkingDirectory`.
+- D-V2: la verificacion semantica y de calidad queda fuera del alcance v1.0 y se
+  reserva para evoluciones posteriores sin contaminar esta responsabilidad
+  inicial.
+- D-V3: las acciones omitidas/fallidas declaradas se registran como checks
+  informativos y no como fallas del Verifier.
+- D-V4: `verification.json` se persiste como artefacto derivado y transitorio en
+  el estado local, sin tocar el objetivo ni otros artefactos derivados.
+- D-V5: el Verifier opera sin LLM, sin red y sin modificar el proyecto objetivo.
+
+Estado:
+Aceptada (contrato aprobado). El alcance queda ratificado expresamente por el
+usuario; la implementacion aguarda el diseno tecnico (DEC-035).
+
+Origen:
+Reconocimiento y formalizacion de T-008 (Verificacion inicial).
+
+---
+
+# DEC-035
+
+Titulo:
+Diseno tecnico de T-008 (Verificacion inicial).
+
+Estado:
+Propuesta (Pendiente de ratificacion para implementacion).
+
+Decision:
+El diseno tecnico de T-008 se consolida en `operacion/TAREAS/T-008.md`
+(con D-V1 a D-V5 ratificados). Se incorporan las siguientes resoluciones
+tecnicas, pendientes de aprobacion formal:
+
+- D-DV1: `Verifier` reside en `Condor.Core.Verification` como logica pura
+  (patron D-D5): recibe el `BuildResult`, el `ProjectContext` y la informacion
+  de archivos leida; no realiza IO. `VerificationService` (Infrastructure)
+  orquesta la carga y delega la comparacion; `ProjectFileProbe` es el unico
+  componente con IO de lectura sobre el objetivo (no escribe).
+- D-DV2: `VerificationJson` en `Condor.Core.Serialization` sigue el patron de
+  `BuildJson`/`PlanJson`/`ContextJson` (camelCase, `WriteIndented`, ignorar
+  nulls, enum como string).
+- D-DV3: `VerificationLimits` centralizado (patron D-D12) con valores de
+  referencia propuestos: `MaxChecks = 24`, `MaxContentLength = 64_000`,
+  `VerifyTimeoutMilliseconds = 15_000`.
+- D-DV4: la verificacion compara cada `BuildAction` de `BuildResult` con el
+  estado real del archivo en orden ordinal: aplicadas (existe + contenido),
+  omitidas/fallidas (informativas), con validacion de acotacion de ruta.
+- D-DV5: `verification.json` se persiste tras cada ejecucion de
+  `condor verificar`, UTF-8 sin BOM (patrones D-D4 y D-D9), sin modificar otros
+  artefactos derivados.
+- D-DV6: la CLI `condor verificar` (texto y `--json`) en espanol sin tildes; sin
+  build, `NotDetected` con motivo instructivo y exit code 1.
+- D-DV7: determinismo (patron D-E7): mismo `BuildResult` y mismo estado de
+  archivos producen el mismo resultado, con la unica excepcion de
+  `GeneratedAtUtc`; se incluye una prueba de doble ejecucion.
+
+Estas decisiones se presentan a revision formal. Su ratificacion convierte el
+diseno de T-008 en aprobado y habilita la implementacion autorizada.
+
+Origen:
+Diseno tecnico de T-008 (Verificacion inicial).
+
+---
+
 # Historial de Cambios
 
 | Version | Cambio |
 |---------|--------|
+| 3.0.0 | Se incorporan DEC-034 (formalizacion del contrato de T-008, decisiones D-V1 a D-V5) y DEC-035 (diseno tecnico de T-008, D-DV1 a D-DV7, propuesta pendiente de ratificacion). |
 | 2.0.0 | Se incorporan DEC-032 (formalizacion del contrato de T-007, decisiones D-B1 a D-B5) y DEC-033 (diseno tecnico de T-007, D-DB1 a D-DB7, propuesta pendiente de ratificacion). |
 | 1.8.0 | Se incorpora DEC-030 (formalizacion del contrato de T-006, decisiones D-E1 a D-E8). |
 | 1.7.0 | Se incorporan DEC-028 (formalizacion del contrato de T-005) y DEC-029 (diseno tecnico aprobado de T-005, decisiones D-D1 a D-D12). |
