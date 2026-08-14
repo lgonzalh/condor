@@ -37,7 +37,7 @@ public sealed class CycleService : ICycleService
 
         try
         {
-            var cycleId = "C" + DateTime.UtcNow.Ticks.ToString();
+            var cycleId = BuildCycleId(userRequest);
             var iteration = 1;
             var limitsApplied = new List<string>();
             WorkPlan? plan = null;
@@ -75,22 +75,13 @@ public sealed class CycleService : ICycleService
 
                 if (decision.Stopped)
                 {
-                    if (iteration <= 1)
-                    {
-                        limitsApplied.Add(CycleLimits.LimitIterations);
-                    }
-
                     return Result(plan, build, verification, cycleId, iteration,
                         decision.Stage, decision.Reason, limitsApplied);
                 }
 
                 if (decision.Regenerate)
                 {
-                    if (iteration >= _limits.MaxIterations)
-                    {
-                        limitsApplied.Add(CycleLimits.LimitIterations);
-                    }
-
+                    limitsApplied.Add(CycleLimits.LimitIterations);
                     iteration++;
                 }
             }
@@ -117,13 +108,15 @@ public sealed class CycleService : ICycleService
         string? reason,
         List<string> limitsApplied)
     {
-        var status = stage switch
-        {
-            CycleStage.Completado => DetectionStatus.Detected,
-            CycleStage.Detenido => DetectionStatus.Limited,
-            CycleStage.Degradado => DetectionStatus.Limited,
-            _ => DetectionStatus.Limited
-        };
+        var notDetected = plan.Status == DetectionStatus.NotDetected ||
+                          build.Status == DetectionStatus.NotDetected;
+        var status = notDetected
+            ? DetectionStatus.NotDetected
+            : stage switch
+            {
+                CycleStage.Completado => DetectionStatus.Detected,
+                _ => DetectionStatus.Limited
+            };
 
         return new CycleResult
         {
@@ -145,7 +138,8 @@ public sealed class CycleService : ICycleService
                 Iteration = iteration,
                 Stage = stage,
                 StageResult = stage == CycleStage.Completado ? "correcto" : "no_valido",
-                StatusCycle = stage == CycleStage.Completado ? "completado" : "detenido",
+                StatusCycle = status == DetectionStatus.NotDetected ? "no_detectado"
+                    : stage == CycleStage.Completado ? "completado" : "detenido",
                 RecoveryState = stage == CycleStage.Completado ? "sin_recuperacion" : (reason ?? "pendiente"),
                 NextAction = stage == CycleStage.Completado ? "continuar" : "revisar",
                 GeneratedAtUtc = DateTime.UtcNow
@@ -155,5 +149,31 @@ public sealed class CycleService : ICycleService
                 : new List<string>(),
             GeneratedAtUtc = DateTime.UtcNow
         };
+    }
+
+    private static string BuildCycleId(string userRequest)
+    {
+        var source = string.IsNullOrWhiteSpace(userRequest) ? "ciclo" : userRequest.Trim();
+        var normalized = source
+            .ToLowerInvariant()
+            .Replace(" ", string.Empty)
+            .Replace("á", "a").Replace("é", "e").Replace("í", "i")
+            .Replace("ó", "o").Replace("ú", "u").Replace("ñ", "n");
+        var id = "C" + StableHash(normalized).ToString("X8");
+        return id;
+    }
+
+    private static int StableHash(string value)
+    {
+        unchecked
+        {
+            var hash = 17;
+            foreach (var c in value)
+            {
+                hash = (hash * 31) + c;
+            }
+
+            return hash;
+        }
     }
 }
