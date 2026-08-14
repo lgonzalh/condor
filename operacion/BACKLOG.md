@@ -1,6 +1,6 @@
 # BACKLOG
 
-Version: 2.6.0
+Version: 2.7.0
 Estado: Activo
 Modo: Evolucion Continua
 
@@ -19,14 +19,15 @@ Modo: Evolucion Continua
 | T-011 | Media | Vision local | Completada y congelada |
 | T-012 | Media | Instalador y puesta en marcha simplificada | Completada y congelada |
 | T-013 | Media | Verificacion semantica y de calidad (SD-02) | Completada y congelada |
+| T-014 | Media | Integracion de la verificacion semantica en el ciclo | Completada y congelada |
 
 ## Siguiente
 
 El backlog del MVP 1.0 (T-001 a T-012) queda completado y congelado.
 
-T-013 (Verificacion semantica y de calidad, SD-02) quedo completada, verificada,
-integrada, publicada y congelada (T-013.md, DEC-043 y DEC-044). Implemento el
-comando `condor verificar-semantico` (compilar y ejecutar pruebas con --no-restore).
+T-013 (Verificacion semantica, SD-02) y T-014 (Integracion de la verificacion
+semantica en el ciclo) quedan completadas, verificadas, integradas, publicadas y
+congeladas.
 
 La evolucion posterior se define mediante el ciclo de Evolucion Continua,
 continuando la linea SD-02 hacia capacidades de calidad/arquitectura/coherencia.
