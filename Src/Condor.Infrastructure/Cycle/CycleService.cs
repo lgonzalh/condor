@@ -215,7 +215,7 @@ public sealed class CycleService : ICycleService
             Stages = 3,
             Applied = build.Applied,
             Verified = verification.Passed,
-            SemanticAvailable = semantic.Available,
+            SemanticAvailable = semantic.Status is null ? null : semantic.Available,
             SemanticStatus = semantic.Status,
             SemanticSummary = semantic.Summary,
             SemanticReference = semantic.Reference,
