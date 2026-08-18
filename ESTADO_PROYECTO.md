@@ -1,26 +1,20 @@
 # ESTADO_PROYECTO
 
-Version: 2.6.0
+Version: 2.0.0
 Estado: Vigente
 Clasificacion: Estado del Proyecto
 
----
-
-# FUENTE OFICIAL DEL NIVEL ACTIVO
-
-La fuente oficial para determinar el nivel activo del Proyecto Condor es este documento.
+## FUENTE OFICIAL DEL NIVEL ACTIVO
 
 Actualmente no existe un nivel activo.
 
 El Proyecto Condor opera en modo Evolucion Continua.
 
----
-
-# RESUMEN
+## RESUMEN
 
 Proyecto: Condor
 
-Estado general: En desarrollo
+Estado general: Desarrollo del software / Evolucion Continua
 
 Nivel activo: Ninguno
 
@@ -30,208 +24,27 @@ Linea base inicial de niveles 00-09: Completada
 
 Ultimo nivel estructural cerrado: 09 - Evolucion
 
----
+MVP Condor 1.0: Completado (T-001..T-012)
 
-# ESTADO POR NIVEL
+## ESTADO OPERATIVO
 
-| Nivel | Nombre | Estado |
-|-------|--------|--------|
-| 00 | Fundamentos | Completado |
-| 01 | Vision | Completado |
-| 02 | Arquitectura | Completado |
-| 03 | Motores | Completado |
-| 04 | Desarrollo | Completado |
-| 05 | Operacion | Completado |
-| 06 | Implementacion | Completado |
-| 07 | Interfaz | Completado |
-| 08 | Calidad | Completado |
-| 09 | Evolucion | Completado |
+- T-001 a T-012: completadas y congeladas.
+- T-013: completada y congelada.
+- T-014: continuidad activa.
+- No existe Nivel 10.
 
----
+## EVOLUCION CONTINUA
 
-# VERIFICACION DE CIERRE
+La continuidad posterior al cierre de los niveles estructurales opera mediante ciclos de:
 
-## Nivel 07 - Interfaz
+Comprender → Planificar → Disenar → Implementar → Verificar → Documentar → Congelar → Continuar
 
-- Entregables completos: SI
-- Nivel revisado: SI
-- Nivel congelado: SI
-- Nivel cerrado: SI
+El software es el resultado principal. La documentacion permanente se mantiene de forma proporcional para decisiones, arquitectura, contratos, requisitos y cambios relevantes.
 
-## Nivel 08 - Calidad
+## SIGUIENTE ACCION
 
-- Entregables completos: SI
-- Nivel revisado: SI
-- Nivel congelado: SI
-- Nivel cerrado: SI
+Completar y cerrar T-014.
 
-## Nivel 09 - Evolucion
+## BLOQUEADORES
 
-- Entregables completos: SI
-- Nivel revisado: SI
-- Nivel congelado: SI
-- Nivel cerrado: SI
-
----
-
-# LINEA BASE INICIAL
-
-La linea base inicial de niveles 00-09 esta completada.
-
-El Nivel 09 - Evolucion fue el ultimo nivel estructural definido y ya fue revisado, congelado y cerrado.
-
-No existe Nivel 10.
-
-La continuidad posterior opera mediante Evolucion Continua y no constituye un nuevo nivel estructural.
-
----
-
-# EVOLUCION CONTINUA
-
-Evolucion Continua es el modo operativo posterior al cierre del ultimo nivel estructural.
-
-El proyecto continua mediante ciclos de:
-
-Comprender
-
-↓
-
-Planificar
-
-↓
-
-Disenar
-
-↓
-
-Implementar
-
-↓
-
-Verificar
-
-↓
-
-Documentar
-
-↓
-
-Congelar
-
-↓
-
-Continuar
-
-La documentacion acompana el desarrollo de forma proporcional a las necesidades reales.
-
-El software constituye el resultado principal del proyecto.
-
-La documentacion permanente continua siendo obligatoria para decisiones, arquitectura, contratos, requisitos, cambios relevantes y conocimiento que deba preservarse.
-
----
-
-# INICIO DEL DESARROLLO DEL SOFTWARE
-
-El proyecto entra en la fase practica de construccion del software Condor 1.0 MVP dentro de Evolucion Continua.
-
-La primera tarea operativa definida es:
-
-`operacion/TAREAS/T-001.md`
-
-Bootstrap del MVP y Assessment inicial.
-
-El trabajo operativo se controla mediante:
-
-- `AGENTE_CONDOR.md`
-- `operacion/ESTADO_DESARROLLO.md`
-- `operacion/RELEVO.md`
-- `operacion/BACKLOG.md`
-- `operacion/KANBAN.md`
-- `operacion/REGISTRO_CAMBIOS.md`
-
----
-
-# RESTRICCIONES MVP 1.0
-
-- Windows como plataforma oficial inicial.
-- Operacion 100% local.
-- Modelos LLM locales.
-- Ollama como implementacion inicial.
-- Interfaz inicial basada en terminal.
-- Seleccion de modelos basada en assessment del entorno.
-- Capacidades avanzadas, incluida vision, condicionadas al hardware y modelos disponibles.
-- Sin dependencia obligatoria de servicios cloud.
-
----
-
-# SIGUIENTE ACCION
-
-El backlog del MVP 1.0 (T-001 a T-012) esta completado y congelado.
-
-T-013 (Verificacion semantica y de calidad, SD-02) y T-014 (Integracion de la
-verificacion semantica en el ciclo) quedan cerradas y congeladas.
-
-SD-01 implementada; SD-02 parcialmente implementada (compilar/probar integrados
-al ciclo y como comando). DE-002 parcialmente atendida.
-
-La evolucion posterior se define mediante el ciclo de Evolucion Continua,
-continuando la linea SD-02 hacia capacidades de calidad/arquitectura/coherencia.
-
-El detalle operativo del avance se controla en `operacion/ESTADO_DESARROLLO.md`.
-
----
-
-# BLOQUEADORES
-
-No se identifican bloqueadores para iniciar el desarrollo del MVP.
-
----
-
-# REGLA DE TRANSICION
-
-El Nivel 09 fue el ultimo nivel estructural definido.
-
-Al cerrarse mediante condorcerrar:
-
-1. El Nivel 09 se marca como Completado.
-2. No se activa un Nivel 10.
-3. La linea base inicial de niveles 00-09 se declara Completada.
-4. El modo operativo pasa a Evolucion Continua.
-5. El siguiente trabajo se define mediante ciclos de evolucion y desarrollo.
-6. INVENTARIO_PROYECTO.md se sincroniza con los artefactos efectivamente entregados.
-
----
-
-# REGLA DE CONSISTENCIA ENTRE CHAT Y PROYECTO
-
-Los chats historicos de los niveles 07, 08 y 09 pueden conservar sus nombres y contexto originales.
-
-Esto no modifica el estado oficial del proyecto.
-
-La fuente oficial es este documento.
-
-Al no existir nivel activo, los trabajos nuevos se consideran parte del ciclo de Evolucion Continua.
-
----
-
-# HISTORIAL
-
-| Version | Cambio |
-|---------|--------|
-| 2.6.0 | Se actualiza SIGUIENTE ACCION: T-014 (Integracion de la verificacion semantica en el ciclo) queda cerrada y congelada; SD-02 sigue parcialmente implementada. |
-| 2.5.0 | Se actualiza SIGUIENTE ACCION: T-013 (Verificacion semantica, SD-02) queda cerrada y congelada tras su primera concrecion (compilar y probar); la evolucion posterior continua la linea SD-02 hacia capacidades de calidad/arquitectura/coherencia. |
-| 2.4.0 | Se actualiza SIGUIENTE ACCION: T-001 a T-012 fueron completadas, verificadas e integradas en main; T-012 (Instalador y puesta en marcha simplificada) queda cerrada y congelada; el backlog del MVP 1.0 queda completado y la evolucion posterior se define por Evolucion Continua. |
-| 2.3.0 | Se actualiza SIGUIENTE ACCION: T-001 a T-011 fueron completadas, verificadas e integradas en main; T-011 (Vision local) queda cerrada y congelada; la siguiente tarea operativa es T-012 (Instalador y puesta en marcha simplificada). |
-| 2.2.0 | Se actualiza SIGUIENTE ACCION: T-001 a T-010 fueron completadas, verificadas e integradas en main; T-010 (Capacidades avanzadas de desarrollo) queda cerrada y congelada; la siguiente tarea operativa es T-011 (Vision local). |
-| 2.1.0 | Se actualiza SIGUIENTE ACCION: T-001 a T-009 fueron completadas, verificadas e integradas en main; T-009 (Documentacion y continuidad) queda cerrada y congelada; la siguiente tarea operativa es T-010 (Capacidades avanzadas de desarrollo). |
-| 2.0.0 | Se actualiza SIGUIENTE ACCION: T-001 a T-008 fueron completadas, verificadas e integradas en main; T-008 (Verificacion inicial) queda cerrada y congelada; la siguiente tarea operativa es T-009 (Documentacion y continuidad). |
-| 1.9.0 | Se actualiza SIGUIENTE ACCION: T-001 a T-007 fueron completadas, verificadas e integradas en main; T-007 (Builder inicial) queda cerrada y congelada; la siguiente tarea operativa es T-008 (Verificacion inicial). |
-| 1.8.0 | Se actualiza SIGUIENTE ACCION: T-001 a T-006 fueron completadas, verificadas e integradas en main; T-006 (Flujo de intencion a plan) queda cerrada y congelada; la siguiente tarea operativa es T-007 (Builder inicial). |
-| 1.7.0 | Se actualiza SIGUIENTE ACCION: T-001 a T-005 fueron completadas, verificadas e integradas en main; T-005 (Context Engine inicial) queda cerrada y congelada; la siguiente tarea operativa es T-006 (Flujo de intencion a plan). |
-| 1.6.0 | Se actualiza SIGUIENTE ACCION: las tareas T-001 a T-004 fueron completadas, verificadas e integradas en main; la siguiente tarea operativa es T-005 (Context Engine inicial). |
-| 1.5.0 | Se consolida el estado posterior al cierre del Nivel 09: ningun nivel activo, Evolucion Continua y comienzo formal del desarrollo del software mediante el sistema operativo multi-agente y T-001. Se eliminan duplicidades y fragmentos inconsistentes del historial anterior. |
-| 1.4.0 | Se corrige el estado oficial para reflejar que los niveles 07, 08 y 09 ya fueron revisados, congelados y cerrados. Se declara completada la linea base inicial y se establece Evolucion Continua sin nivel activo y sin Nivel 10. |
-| 1.3.0 | Cierre oficial del Nivel 09 - Evolucion, sincronizacion del inventario, finalizacion de la linea base inicial 00-09 y entrada formal en Evolucion Continua. |
-| 1.2.0 | Se formaliza ESTADO_PROYECTO.md como fuente unica para determinar el nivel activo y se incorporan reglas explicitas de transicion y consistencia entre chat y proyecto. |
-| 1.1.0 | Cierre oficial del Nivel 08 - Calidad, activacion del Nivel 09 - Evolucion y definicion de su plan documental inicial. |
-| 1.0.0 | Estado inicial del proyecto durante el Nivel 08 - Calidad. |
+No se identifican bloqueadores documentales para la continuidad.
