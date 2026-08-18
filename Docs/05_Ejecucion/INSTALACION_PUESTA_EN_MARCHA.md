@@ -66,16 +66,28 @@ Acciones de Condor (automaticas):
 
 # Modelos locales
 
-Condor no descarga ni instala modelos.
+En la puesta en marcha, Condor puede obtener automaticamente el modelo LLM local
+compatible cuando es tecnicamente posible (Ollama utilizable, existe un modelo
+compatible en el catalogo y el equipo tiene capacidad suficiente).
 
-Acciones del usuario:
+Acciones de Condor (automaticas, durante `condor preparar`):
 
-- Descargar e instalar manualmente un modelo compatible (por ejemplo, usando
-  `condor recomendar` para identificar un modelo adecuado).
+- Evaluar el hardware y determinar la capacidad del equipo.
+- Seleccionar un modelo compatible del catalogo.
+- Comprobar el inventario de Ollama.
+- Si el modelo deseado ya existe: reutilizarlo sin volver a descargarlo.
+- Si no existe: obtenerlo mediante Ollama, con limite de tiempo, reintentos
+  controlados y verificacion posterior de que quedo instalado.
+- Continuar el flujo una vez el modelo este disponible.
 
-Acciones de Condor (automaticas):
+Cuando la obtencion automatica no es posible (Ollama apagado/ausente, sin modelo
+compatible, hardware insuficiente o descarga fallida tras reintentos), Condor
+degrada de forma explicita y segura e indica el motivo.
 
-- Detectar los modelos instalados y recomendar uno compatible.
+Acciones manuales (alternativa/fallback):
+
+- Instalar manualmente un modelo compatible (por ejemplo, usando
+  `condor recomendar` para identificar uno adecuado).
 
 # Configuracion inicial
 
@@ -117,9 +129,14 @@ Una vez listo, Condor opera mediante sus comandos:
 
 # Notas sobre automatizacion
 
-Ninguna accion que requiera instalar software, descargar modelos o configurar el
-sistema queda automatizada por Condor. Todo lo delegado al usuario se indica
-explicitamente como accion manual.
+Condor automatiza la puesta en marcha: detecta hardware, selecciona y obtiene el
+modelo LLM local cuando es tecnicamente posible, y continuua el flujo sin exigir
+pasos manuales innecesarios.
+
+Aquellas acciones que requieren instalar software del sistema (p. ej. .NET u
+Ollama) o descargar manualmente un modelo cuando la obtencion automatica no es
+posible quedan delegadas al usuario y se indican explicitamente como acciones
+manuales.
 
 # Historial de cambios
 
