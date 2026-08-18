@@ -1,6 +1,6 @@
 # BACKLOG
 
-Version: 3.0.0
+Version: 3.1.0
 Estado: Activo
 Modo: Evolucion Continua
 MVP: Condor 1.0
@@ -30,7 +30,7 @@ T-013 y T-014 corresponden a evolucion posterior del MVP:
 | T-011 | Vision local | Completada y congelada |
 | T-012 | Instalador y puesta en marcha simplificada | Completada y congelada |
 | T-013 | Verificacion semantica y de calidad — primera concrecion | Completada y congelada |
-| T-014 | Integracion de verificacion semantica en el ciclo | En continuidad / cierre |
+| T-014 | Integracion de verificacion semantica en el ciclo | Completada, verificada y congelada |
 
 ## Frontera de Condor 1.0
 
@@ -40,4 +40,7 @@ La evolucion posterior se gestiona mediante tareas explicitamente justificadas y
 
 ## Siguiente
 
-Completar/verificar/cerrar T-014. Posteriormente evaluar formalmente si existe una necesidad concreta para una T-015 de cierre, sin crear tareas por inercia.
+T-014 queda completada, verificada y congelada (commit `c982b14`).
+
+Posteriormente se evaluara formalmente, sin crear tareas por inercia, si existe
+una necesidad concreta de cierre del ciclo MVP 1.0 o de una evolucion posterior.
