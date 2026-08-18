@@ -1,105 +1,70 @@
-# RELEVO
+# RELEVO — POST T-014
 
-Version: 13.0.0
-Estado: Activo
+Version: 1.0.0
+Estado: Preparado
 Modo: Evolucion Continua
+Alcance: cierre hacia Condor 1.0 MVP
 
-## Ultimo trabajo
+## Estado real
 
-T-014 - Integracion de la verificacion semantica en el ciclo de ingenieria.
+- T-001 a T-013: completadas, publicadas y congeladas.
+- T-014: diseño tecnico ratificado; implementacion pendiente al momento de este relevo.
+- No existe nivel activo.
+- No crear Nivel 10.
+- Condor opera en Evolucion Continua.
+- Objetivo inmediato: implementar y cerrar T-014.
 
-## Estado
+## T-014
 
-T-014 completada, verificada, integrada, publicada y formalmente congelada.
+T-014 integra la verificacion semantica de T-013 dentro del ciclo T-010.
 
-Commit del cierre documental de T-014:
-`57f3c3e` (REGISTRO_CAMBIOS -> cierre de T-014)
+Flujo objetivo:
 
-HEAD:
-`57f3c3e`
+Planificar -> Construir -> Verificar integridad -> Verificar semantica -> resultado del ciclo.
 
-Working tree: limpio.
+Se mantienen:
+- `condor verificar`
+- `condor verificar-semantico`
+- `condor avanzar`
 
-## Evidencia de T-014
+La semantica se reutiliza; no se reimplementa.
 
-- Build Release: 0 errores, 0 advertencias.
-- Pruebas unitarias (Condor.Core): 180/180 correctas.
-- Pruebas de integracion (Condor.Infrastructure): 167/168 correctas; la unica
-  fallida es una prueba de entorno de T-002 dependiente de Ollama, ajena a T-014.
-- Pruebas de arquitectura: 19/19 correctas.
-- El ciclo `condor avanzar` incorpora la etapa de verificacion semantica de T-013
-  de forma aditiva, reutilizando SemanticVerificationService/SemanticVerifier/
-  ProcessRunner (sin duplicar logica).
-- Diferencia los cuatro estados semanticos: correcta, no_disponible, incompleta
-  y fallida; no declara falsa falla por no-disponibilidad y no convierte fallida
-  en exito silencioso.
-- `cycle.json` guarda resumen y referencia a `verificacion_semantica.json` sin
-  duplicar su contenido; `verificacion_semantica.json` se persiste al ejecutar la
-  etapa semantica en el ciclo.
-- E2E real sobre un proyecto .NET temporal: semantica correcta (compilar/probar
-  OK) y compilacion fallida reflejadas en el ciclo.
-- Compatibilidad conservada con `condor verificar` y `condor verificar-semantico`.
-- D-IN1 a D-IN5 (DEC-045) y D-IC1 a D-IC6 (DEC-046) cumplidas.
-- `1 archivo = 1 commit`; commits publicados en origin/main.
-- T-014.md v1.1.0: cerrada y congelada.
+## Estados semanticos
 
-## Congelacion de T-014
+- correcta: permite completar normalmente.
+- no_disponible: degrada sin atribuir fallo al objetivo.
+- incompleta/timeout: ciclo degradado, evidencia incompleta.
+- fallida: compilacion o pruebas ejecutadas con resultado negativo; no puede declararse exito.
 
-T-014 queda cerrada y congelada.
+No convertir una falla real de compilacion/pruebas en una simple indisponibilidad.
 
-Su alcance aprobado (DEC-045, D-IN1 a D-IN5) y diseno tecnico (DEC-046, D-IC1 a
-D-IC6) no se modifican.
+## Fronteras T-014
 
-La integracion es aditiva: no se reimplementan Planner, Builder, Verifier de
-integridad, SemanticVerificationService, SemanticVerifier ni ProcessRunner, y no
-se reabren T-008/T-010/T-013 de forma destructiva.
+Fuera de alcance:
+- calidad avanzada;
+- analisis arquitectonico;
+- coherencia funcional;
+- Architect;
+- Guardian;
+- vision integrada al ciclo;
+- LLM;
+- reparacion automatica;
+- nuevas capacidades de compilacion/pruebas.
 
-SD-02 permanece parcialmente implementada (compilar/probar, integrados al ciclo y
-como comando); las capacidades de calidad/arquitectura/coherencia quedan como
-evolucion posterior. DE-002 queda parcialmente atendida.
+SD-02 queda parcialmente implementada despues de T-014.
 
-Cualquier mejora posterior debe registrarse como nueva tarea, decision o deuda.
+## Cierre de version
 
-## Git
+Despues de T-014 se propone una unica tarea adicional:
 
-Estado confirmado al cierre de la implementacion de T-014:
+**T-015 — Cierre y validacion de Condor 1.0 MVP.**
 
-- Rama local: `main`
-- `HEAD`: `57f3c3e`
-- `origin/main`: `57f3c3e`
-- Working tree: limpio
-- Regla vigente: `1 archivo = 1 commit`
+T-015 no debe crear un nuevo motor ni ampliar funcionalidad. Debe validar el producto completo, la CLI y el flujo principal, corregir solamente defectos reales del MVP y declarar la version 1.0 si cumple.
 
-## Siguiente evolucion
+No se autoriza crear T-016 por anticipacion.
 
-Tras el MVP 1.0 (T-001 a T-012), la verificacion semantica (T-013) y su
-integracion al ciclo (T-014), la siguiente evolucion se define mediante el ciclo
-de Evolucion Continua:
+## Regla de limite
 
-- continuar la linea SD-02 hacia capacidades de calidad, arquitectura y
-  coherencia funcional (evolucion posterior de la verificacion semantica);
-- en su momento, Architect/Guardian y la integracion de vision en el ciclo
-  (reservadas a decisiones posteriores).
+El objetivo es cerrar Condor 1.0, no desarrollar indefinidamente.
 
-Debe comenzar por reconocimiento y formalizacion; no hay autorizacion para
-comenzar codigo directamente sin un contrato aprobado.
-
-## Regla de continuidad
-
-El conocimiento permanente debe permanecer en el repositorio.
-
-No reconstruir el contexto desde conversaciones anteriores si el repositorio contiene la informacion necesaria.
-
-## Contexto de niveles
-
-No existe nivel activo.
-
-Condor opera actualmente en `Evolucion Continua`.
-
-La evolucion posterior no crea un Nivel 10.
-
-## Regla de idioma
-
-Todo texto visible nuevo debe estar en espanol latinoamericano sin tildes, sin acentos y sin spanglish.
-
-Los identificadores tecnicos internos permanecen en su forma original.
+T-015 sera la tarea candidata de cierre. Cualquier trabajo posterior debe justificarse como una nueva version o necesidad real, no como continuacion automatica de tareas.
