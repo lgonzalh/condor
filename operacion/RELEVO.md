@@ -1,24 +1,28 @@
-# RELEVO — POST T-014
+# RELEVO — POST CIERRE CONDOR 1.0
 
-Version: 1.0.0
+Version: 3.0.0
 Estado: Preparado
 Modo: Evolucion Continua
-Alcance: cierre hacia Condor 1.0 MVP
+Alcance: continuidad posterior al cierre de Condor 1.0 MVP
 
 ## Estado real
 
 - T-001 a T-013: completadas, publicadas y congeladas.
-- T-014: diseño tecnico ratificado; implementacion pendiente al momento de este relevo.
+- T-014: **implementada, verificada, integrada, publicada y formalmente congelada**
+  (commit `c982b14` "Close and freeze T-014 at v1.1.0").
+- Condor 1.0 MVP: **COMPLETADO, VERIFICADO, PUBLICADO, CERRADO Y CONGELADO**
+  (version 1.0.0).
 - No existe nivel activo.
 - No crear Nivel 10.
 - Condor opera en Evolucion Continua.
-- Objetivo inmediato: implementar y cerrar T-014.
+- No se inician nuevas tareas por anticipacion; cualquier evolucion posterior
+  debe justificarse con una necesidad real.
 
 ## T-014
 
-T-014 integra la verificacion semantica de T-013 dentro del ciclo T-010.
+T-014 integro la verificacion semantica de T-013 dentro del ciclo T-010.
 
-Flujo objetivo:
+Flujo resultante:
 
 Planificar -> Construir -> Verificar integridad -> Verificar semantica -> resultado del ciclo.
 
@@ -27,7 +31,7 @@ Se mantienen:
 - `condor verificar-semantico`
 - `condor avanzar`
 
-La semantica se reutiliza; no se reimplementa.
+La semantica se reutilizo; no se reimplemento.
 
 ## Estados semanticos
 
@@ -36,11 +40,27 @@ La semantica se reutiliza; no se reimplementa.
 - incompleta/timeout: ciclo degradado, evidencia incompleta.
 - fallida: compilacion o pruebas ejecutadas con resultado negativo; no puede declararse exito.
 
-No convertir una falla real de compilacion/pruebas en una simple indisponibilidad.
+No se convierte una falla real de compilacion/pruebas en una simple indisponibilidad.
+
+## Evidencia de cierre de T-014
+
+- Commit `c982b14` (T-014.md v1.1.0 cerrada y congelada).
+- Build Release: 0 errores, 0 advertencias.
+- Pruebas unitarias (Condor.Core): 180/180 correctas.
+- Pruebas de integracion (Condor.Infrastructure): 167/168 correctas; la unica no
+  verde es la prueba de entorno de T-002 dependiente de Ollama
+  (`OllamaClientTests.CompleteAsync_ModeloInexistente`), preexistente y ajena a
+  T-014 (incidencia ambiental, no defecto de T-014).
+- Pruebas de arquitectura: 19/19 correctas.
+- E2E real sobre un proyecto .NET temporal: semantica correcta y compilacion
+  fallida reflejadas en el ciclo; no falso exito.
+- D-IN1..D-IN5 (DEC-045) y D-IC1..D-IC6 (DEC-046) cumplidas.
+- Ausencia de bloqueos funcionales.
 
 ## Fronteras T-014
 
-Fuera de alcance:
+Fuera de alcance de T-014 (no incorporado):
+
 - calidad avanzada;
 - analisis arquitectonico;
 - coherencia funcional;
@@ -55,16 +75,18 @@ SD-02 queda parcialmente implementada despues de T-014.
 
 ## Cierre de version
 
-Despues de T-014 se propone una unica tarea adicional:
+Condor 1.0 MVP quedo **cerrado y congelado** (version 1.0.0). La trazabilidad del
+cierre queda establecida: T-001 -> T-014 -> Condor 1.0 MVP -> version 1.0.0 ->
+cierre/congelamiento.
 
-**T-015 — Cierre y validacion de Condor 1.0 MVP.**
+No se crea una T-015 por anticipacion.
 
-T-015 no debe crear un nuevo motor ni ampliar funcionalidad. Debe validar el producto completo, la CLI y el flujo principal, corregir solamente defectos reales del MVP y declarar la version 1.0 si cumple.
-
-No se autoriza crear T-016 por anticipacion.
+La evolucion posterior se define mediante el ciclo de Evolucion Continua y solo
+si existe una necesidad real justificada.
 
 ## Regla de limite
 
 El objetivo es cerrar Condor 1.0, no desarrollar indefinidamente.
 
-T-015 sera la tarea candidata de cierre. Cualquier trabajo posterior debe justificarse como una nueva version o necesidad real, no como continuacion automatica de tareas.
+Cualquier trabajo posterior debe justificarse como una nueva version o necesidad
+real, no como continuacion automatica de tareas.
