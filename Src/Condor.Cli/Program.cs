@@ -115,6 +115,7 @@ public static class Program
             case "preparar":
                 return await PrepareCommand.ExecuteAsync(
                     new SetupService(stateStore, assessmentService),
+                    new ModelAutoSetupService(stateStore, assessmentService),
                     args.Skip(1).ToArray(),
                     CancellationToken.None);
 
