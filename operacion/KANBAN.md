@@ -1,17 +1,19 @@
 # KANBAN
 
-Version: 3.0.0
+Version: 3.1.0
 Estado: Activo
 Modo: Evolucion Continua
 
 ## PENDIENTE
 
-- Cierre formal de T-014.
-- Evaluacion de una posible T-015 de cierre, solo si existe alcance concreto y necesario.
+Ninguna tarea de desarrollo activa.
+
+La siguiente etapa sera evaluar formalmente el cierre de Condor 1.0 MVP sin crear
+tareas por anticipacion.
 
 ## EN PROGRESO
 
-- T-014 — Integracion de la verificacion semantica en el ciclo.
+Ninguna.
 
 ## REVISION
 
@@ -32,6 +34,7 @@ Ninguna.
 - T-011 — Vision local
 - T-012 — Instalador y puesta en marcha simplificada
 - T-013 — Verificacion semantica y de calidad — primera concrecion
+- T-014 — Integracion de la verificacion semantica en el ciclo (congelada, commit c982b14)
 
 ## Frontera
 
