@@ -1,6 +1,6 @@
 # ESTADO_PROYECTO
 
-Version: 2.2.0
+Version: 2.3.0
 Estado: Vigente
 Clasificacion: Estado del Proyecto
 
@@ -24,19 +24,23 @@ Linea base inicial de niveles 00-09: Completada
 
 Ultimo nivel estructural cerrado: 09 - Evolucion
 
-Condor 1.0 MVP: **COMPLETADO, VERIFICADO, PUBLICADO y CERRADO (version 1.0.0)**
+Condor 1.0 MVP: **COMPLETADO, VERIFICADO, PUBLICADO y CERRADO (version 1.0.0, tag `v1.0.0`)**
 
 ## ESTADO OPERATIVO
 
 - T-001 a T-012: completadas y congeladas (MVP funcional).
 - T-013: completada y congelada (evolucion posterior).
 - T-014: **completada, verificada, integrada, publicada y congelada** (commit `c982b14`).
-- T-015: no existe; no debe crearse por anticipacion.
+- T-015: **en curso (evolucion v1.x)** — Automatizacion de puesta en marcha y
+  modelo LLM local.
 - No existe Nivel 10.
 
 ## VERSION
 
-La version del producto declarada por `condor version` es **1.0.0**.
+La linea base tecnica `v1.0.0` quedo cerrada y etiquetada (tag `v1.0.0`).
+
+La evolucion posterior (T-015) se desarrolla dentro de Condor v1.x sin modificar
+la linea base.
 
 ## EXPERIENCIA Y MASCOTA
 
@@ -53,11 +57,11 @@ El software es el resultado principal. La documentacion permanente se mantiene d
 
 ## SIGUIENTE ACCION
 
-T-014 queda cerrada y congelada.
-
-Condor 1.0 MVP queda **cerrado y congelado** (version 1.0.0). No se inician
-nuevas tareas por anticipacion; cualquier evolucion posterior debe justificarse
-con una necesidad real.
+T-015 (Automatizacion de puesta en marcha y modelo LLM local) se encuentra en
+implementacion dentro de Condor v1.x: la obtencion automatica del modelo LLM
+local durante la puesta en marcha forma parte de la experiencia esperada de
+Condor, dentro de limites, reintentos y verificacion. La linea base `v1.0.0` se
+mantiene cerrada.
 
 ## BLOQUEADORES
 
