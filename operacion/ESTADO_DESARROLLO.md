@@ -1,19 +1,20 @@
 # ESTADO_DESARROLLO
 
-Version: 3.0.0
+Version: 3.1.0
 Estado: Activo
 Modo: Evolucion Continua
 MVP: Condor 1.0
 
 ## Estado actual
 
-T-001 a T-013 estan completadas, verificadas, integradas, publicadas y congeladas.
+T-001 a T-014 estan completadas, verificadas, integradas, publicadas y congeladas.
 
-T-014 corresponde a la integracion de la verificacion semantica en el ciclo y es la tarea activa de continuidad.
+T-014 (Integracion de la verificacion semantica en el ciclo) quedo **cerrada y
+congelada** en el commit `c982b14` (T-014.md v1.1.0). No existe tarea activa.
 
-Ultimo estado confirmado antes de T-014:
+Ultimo estado confirmado:
 - Rama: main
-- HEAD == origin/main: 0a6f9d6
+- HEAD == origin/main: 274354d
 - Working tree: limpio
 
 ## Frontera funcional actual de la CLI
@@ -31,13 +32,16 @@ Condor dispone de:
 - condor preparar
 - condor verificar-semantico
 
-T-014 incorpora la evidencia semantica al flujo de `condor avanzar`, manteniendo `condor verificar-semantico` como comando independiente.
+T-014 incorporo la evidencia semantica al flujo de `condor avanzar`
+(Planificar -> Construir -> Verificar integridad -> Verificar semantica ->
+resultado), manteniendo `condor verificar-semantico` como comando independiente.
 
 ## Estado del MVP
 
 Condor 1.0 MVP = T-001..T-012 completadas y congeladas.
 
-T-013/T-014 son evolucion posterior orientada a robustecer la verificacion y cerrar el ciclo real de ingenieria.
+T-013/T-014 son evolucion posterior orientada a robustecer la verificacion y
+cerrar el ciclo real de ingenieria; ambas quedan cerradas y congeladas.
 
 ## Restricciones vigentes
 
@@ -45,12 +49,14 @@ T-013/T-014 son evolucion posterior orientada a robustecer la verificacion y cer
 - Operacion local.
 - Sin dependencia obligatoria de cloud.
 - Sin descargas automaticas de software/modelos.
-- Sin Architect/Guardian en T-014.
-- Sin integracion de vision en el ciclo en T-014.
+- Sin Architect/Guardian.
+- Sin integracion de vision en el ciclo.
 - Mantener compatibilidad de comandos existentes.
 - 1 archivo afectado = 1 commit individual.
-- No reabrir tareas congeladas salvo dependencia arquitectonica critica o solicitud explicita.
+- No reabrir tareas congeladas salvo dependencia arquitectonica critica o
+  solicitud explicita.
 
 ## Siguiente accion
 
-Completar T-014 y realizar su cierre formal.
+Con T-014 cerrada y congelada, la siguiente etapa sera evaluar formalmente el
+cierre de Condor 1.0 MVP, sin crear tareas por anticipacion.
