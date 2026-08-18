@@ -1,6 +1,6 @@
 # ESTADO_PROYECTO
 
-Version: 2.0.0
+Version: 2.2.0
 Estado: Vigente
 Clasificacion: Estado del Proyecto
 
@@ -24,14 +24,24 @@ Linea base inicial de niveles 00-09: Completada
 
 Ultimo nivel estructural cerrado: 09 - Evolucion
 
-MVP Condor 1.0: Completado (T-001..T-012)
+Condor 1.0 MVP: **COMPLETADO, VERIFICADO, PUBLICADO y CERRADO (version 1.0.0)**
 
 ## ESTADO OPERATIVO
 
-- T-001 a T-012: completadas y congeladas.
-- T-013: completada y congelada.
-- T-014: continuidad activa.
+- T-001 a T-012: completadas y congeladas (MVP funcional).
+- T-013: completada y congelada (evolucion posterior).
+- T-014: **completada, verificada, integrada, publicada y congelada** (commit `c982b14`).
+- T-015: no existe; no debe crearse por anticipacion.
 - No existe Nivel 10.
+
+## VERSION
+
+La version del producto declarada por `condor version` es **1.0.0**.
+
+## EXPERIENCIA Y MASCOTA
+
+Los mockups y la mascota (Condor Grande / Condor Ave) son referencias de
+experiencia y evolucion futura; NO forman parte del cierre funcional de 1.0.
 
 ## EVOLUCION CONTINUA
 
@@ -43,7 +53,11 @@ El software es el resultado principal. La documentacion permanente se mantiene d
 
 ## SIGUIENTE ACCION
 
-Completar y cerrar T-014.
+T-014 queda cerrada y congelada.
+
+Condor 1.0 MVP queda **cerrado y congelado** (version 1.0.0). No se inician
+nuevas tareas por anticipacion; cualquier evolucion posterior debe justificarse
+con una necesidad real.
 
 ## BLOQUEADORES
 
