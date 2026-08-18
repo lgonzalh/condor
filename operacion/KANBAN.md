@@ -1,19 +1,16 @@
 # KANBAN
 
-Version: 3.1.0
+Version: 3.2.0
 Estado: Activo
 Modo: Evolucion Continua
 
 ## PENDIENTE
 
-Ninguna tarea de desarrollo activa.
-
-La siguiente etapa sera evaluar formalmente el cierre de Condor 1.0 MVP sin crear
-tareas por anticipacion.
+Ninguna tarea nueva de desarrollo.
 
 ## EN PROGRESO
 
-Ninguna.
+- T-015 — Automatizacion de puesta en marcha y modelo LLM local (evolucion v1.x)
 
 ## REVISION
 
@@ -38,6 +35,6 @@ Ninguna.
 
 ## Frontera
 
-El MVP 1.0 esta completado. No existe Nivel 10.
+El MVP 1.0 esta completado (linea base v1.0.0 etiquetada). No existe Nivel 10.
 
-La continuidad opera mediante Evolucion Continua y no mediante expansion indefinida del backlog.
+La continuidad opera mediante Evolucion Continua; T-015 es la evolucion v1.x en curso.
