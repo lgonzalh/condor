@@ -1,33 +1,43 @@
 # BACKLOG
 
-Version: 2.7.0
+Version: 3.0.0
 Estado: Activo
 Modo: Evolucion Continua
+MVP: Condor 1.0
 
-| ID | Prioridad | Trabajo | Estado |
-|---|---|---|---|
-| T-001 | Critica | Bootstrap del MVP y Assessment inicial | Completada |
-| T-002 | Critica | Integracion local con Ollama | Completada |
-| T-003 | Critica | Recomendador de modelos | Completada |
-| T-004 | Alta | Descubrimiento de proyecto | Completada y congelada |
-| T-005 | Alta | Context Engine inicial | Completada y verificada |
-| T-006 | Alta | Flujo de intencion a plan | Completada y congelada |
-| T-007 | Alta | Builder inicial | Completada y congelada |
-| T-008 | Alta | Verificacion inicial | Completada y congelada |
-| T-009 | Alta | Documentacion y continuidad | Completada y congelada |
-| T-010 | Media | Capacidades avanzadas de desarrollo | Completada y congelada |
-| T-011 | Media | Vision local | Completada y congelada |
-| T-012 | Media | Instalador y puesta en marcha simplificada | Completada y congelada |
-| T-013 | Media | Verificacion semantica y de calidad (SD-02) | Completada y congelada |
-| T-014 | Media | Integracion de la verificacion semantica en el ciclo | Completada y congelada |
+## Estado
+
+El backlog funcional originalmente definido para el MVP 1.0 (T-001 a T-012) esta completado y congelado.
+
+T-013 y T-014 corresponden a evolucion posterior del MVP:
+- T-013: Verificacion semantica y de calidad — primera concrecion de SD-02/DE-002.
+- T-014: Integracion de la verificacion semantica en el ciclo.
+
+## Trabajo inmediato
+
+| ID | Trabajo | Estado |
+|---|---|---|
+| T-001 | Bootstrap del MVP y Assessment inicial | Completada y congelada |
+| T-002 | Integracion local con Ollama | Completada y congelada |
+| T-003 | Recomendador de modelos | Completada y congelada |
+| T-004 | Descubrimiento de proyecto | Completada y congelada |
+| T-005 | Context Engine inicial | Completada y congelada |
+| T-006 | Flujo de intencion a plan | Completada y congelada |
+| T-007 | Builder inicial | Completada y congelada |
+| T-008 | Verificacion inicial | Completada y congelada |
+| T-009 | Documentacion y continuidad | Completada y congelada |
+| T-010 | Capacidades avanzadas de desarrollo / ciclo | Completada y congelada |
+| T-011 | Vision local | Completada y congelada |
+| T-012 | Instalador y puesta en marcha simplificada | Completada y congelada |
+| T-013 | Verificacion semantica y de calidad — primera concrecion | Completada y congelada |
+| T-014 | Integracion de verificacion semantica en el ciclo | En continuidad / cierre |
+
+## Frontera de Condor 1.0
+
+El MVP 1.0 queda definido por T-001 a T-012. No se prolonga indefinidamente por la creacion de nuevas tareas.
+
+La evolucion posterior se gestiona mediante tareas explicitamente justificadas y cerrables.
 
 ## Siguiente
 
-El backlog del MVP 1.0 (T-001 a T-012) queda completado y congelado.
-
-T-013 (Verificacion semantica, SD-02) y T-014 (Integracion de la verificacion
-semantica en el ciclo) quedan completadas, verificadas, integradas, publicadas y
-congeladas.
-
-La evolucion posterior se define mediante el ciclo de Evolucion Continua,
-continuando la linea SD-02 hacia capacidades de calidad/arquitectura/coherencia.
+Completar/verificar/cerrar T-014. Posteriormente evaluar formalmente si existe una necesidad concreta para una T-015 de cierre, sin crear tareas por inercia.
