@@ -9,6 +9,7 @@ public static class PrepareCommand
 {
     public static async Task<int> ExecuteAsync(
         ISetupService setupService,
+        IModelAutoSetupService? modelAutoSetup,
         string[] args,
         CancellationToken cancellationToken = default)
     {
@@ -21,6 +22,12 @@ public static class PrepareCommand
         }
 
         var result = await setupService.PrepareAsync(refresh, cancellationToken);
+
+        ModelSelectionResult? model = null;
+        if (modelAutoSetup is not null)
+        {
+            model = await modelAutoSetup.EnsureModelAsync(null, cancellationToken);
+        }
 
         if (outputJson)
         {
@@ -40,6 +47,12 @@ public static class PrepareCommand
 
             Terminal.WriteLine();
             PrepareRenderer.RenderPrepare(result);
+
+            if (model is not null)
+            {
+                Terminal.WriteLine();
+                ModelSetupRenderer.RenderModel(model);
+            }
         }
 
         return result.Status == DetectionStatus.Detected ? 0 : 1;
@@ -50,6 +63,6 @@ public static class PrepareCommand
         Terminal.WriteInfo("Condor prepara el entorno...");
         Terminal.WriteDim("  Leyendo el Assessment del entorno");
         Terminal.WriteDim("  Verificando dependencias y estado local");
-        Terminal.WriteDim("  Confirmando la puesta en marcha");
+        Terminal.WriteDim("  Asegurando el modelo LLM local");
     }
 }
