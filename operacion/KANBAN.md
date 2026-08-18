@@ -1,16 +1,17 @@
 # KANBAN
 
-Version: 2.1.0
+Version: 3.0.0
 Estado: Activo
 Modo: Evolucion Continua
 
 ## PENDIENTE
 
-Ninguna (backlog del MVP 1.0 completado).
+- Cierre formal de T-014.
+- Evaluacion de una posible T-015 de cierre, solo si existe alcance concreto y necesario.
 
 ## EN PROGRESO
 
-Ninguna.
+- T-014 — Integracion de la verificacion semantica en el ciclo.
 
 ## REVISION
 
@@ -18,24 +19,22 @@ Ninguna.
 
 ## COMPLETADO
 
-- T-001 Bootstrap del MVP y Assessment inicial
-- T-002 Integracion local con Ollama
-- T-003 Recomendador de modelos
-- T-004 Descubrimiento de proyecto
-- T-005 Context Engine inicial
-- T-006 Flujo de intencion a plan
-- T-007 Builder inicial
-- T-008 Verificacion inicial
-- T-009 Documentacion y continuidad
-- T-010 Capacidades avanzadas de desarrollo
-- T-011 Vision local
-- T-012 Instalador y puesta en marcha simplificada
-- T-013 Verificacion semantica y de calidad (SD-02)
-- T-014 Integracion de la verificacion semantica en el ciclo
+- T-001 — Bootstrap del MVP y Assessment inicial
+- T-002 — Integracion local con Ollama
+- T-003 — Recomendador de modelos
+- T-004 — Descubrimiento de proyecto
+- T-005 — Context Engine inicial
+- T-006 — Flujo de intencion a plan
+- T-007 — Builder inicial
+- T-008 — Verificacion inicial
+- T-009 — Documentacion y continuidad
+- T-010 — Capacidades avanzadas de desarrollo / ciclo
+- T-011 — Vision local
+- T-012 — Instalador y puesta en marcha simplificada
+- T-013 — Verificacion semantica y de calidad — primera concrecion
 
-## Siguiente
+## Frontera
 
-El backlog del MVP 1.0 (T-001 a T-012) queda completado y congelado.
+El MVP 1.0 esta completado. No existe Nivel 10.
 
-La evolucion posterior se define mediante el ciclo de Evolucion Continua,
-continuando la linea SD-02 hacia capacidades de calidad/arquitectura/coherencia.
+La continuidad opera mediante Evolucion Continua y no mediante expansion indefinida del backlog.
