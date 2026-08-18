@@ -20,7 +20,7 @@ public class PrepareCommandTests
         await store.SaveAssessmentAsync(AssessmentListo());
         var service = new SetupService(store, stateDirectory: stateDir);
 
-        var exitCode = await PrepareCommand.ExecuteAsync(service, new[] { "--json" }, CancellationToken.None);
+        var exitCode = await PrepareCommand.ExecuteAsync(service, null, new[] { "--json" }, CancellationToken.None);
 
         Assert.Equal(0, exitCode);
     }
@@ -35,7 +35,7 @@ public class PrepareCommandTests
         await store.SaveAssessmentAsync(AssessmentSinDotnet());
         var service = new SetupService(store, stateDirectory: stateDir);
 
-        var exitCode = await PrepareCommand.ExecuteAsync(service, new[] { "--json" }, CancellationToken.None);
+        var exitCode = await PrepareCommand.ExecuteAsync(service, null, new[] { "--json" }, CancellationToken.None);
 
         Assert.Equal(1, exitCode);
     }
@@ -55,7 +55,7 @@ public class PrepareCommandTests
 
         try
         {
-            await PrepareCommand.ExecuteAsync(service, new[] { "preparar" }, CancellationToken.None);
+            await PrepareCommand.ExecuteAsync(service, null, new[] { "preparar" }, CancellationToken.None);
             var output = writer.ToString();
             Assert.Contains("PREPARAR", output);
             Assert.DoesNotContain(output, t => "áéíóúñÁÉÍÓÚ".Contains(t, StringComparison.Ordinal));
