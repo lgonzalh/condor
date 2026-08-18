@@ -1,6 +1,6 @@
 # BACKLOG
 
-Version: 3.1.0
+Version: 3.2.0
 Estado: Activo
 Modo: Evolucion Continua
 MVP: Condor 1.0
@@ -9,9 +9,15 @@ MVP: Condor 1.0
 
 El backlog funcional originalmente definido para el MVP 1.0 (T-001 a T-012) esta completado y congelado.
 
+La linea base tecnica **Condor v1.0.0** quedo cerrada y etiquetada (tag `v1.0.0`).
+
 T-013 y T-014 corresponden a evolucion posterior del MVP:
 - T-013: Verificacion semantica y de calidad — primera concrecion de SD-02/DE-002.
 - T-014: Integracion de la verificacion semantica en el ciclo.
+
+T-015 (Automatizacion de puesta en marcha y modelo LLM local) es la tarea activa
+de evolucion dentro de Condor v1.x: incorpora la obtencion automatica del modelo
+LLM durante la puesta en marcha.
 
 ## Trabajo inmediato
 
@@ -31,16 +37,16 @@ T-013 y T-014 corresponden a evolucion posterior del MVP:
 | T-012 | Instalador y puesta en marcha simplificada | Completada y congelada |
 | T-013 | Verificacion semantica y de calidad — primera concrecion | Completada y congelada |
 | T-014 | Integracion de verificacion semantica en el ciclo | Completada, verificada y congelada |
+| T-015 | Automatizacion de puesta en marcha y modelo LLM local | En curso (v1.x) |
 
 ## Frontera de Condor 1.0
 
-El MVP 1.0 queda definido por T-001 a T-012. No se prolonga indefinidamente por la creacion de nuevas tareas.
+El MVP 1.0 queda definido por T-001 a T-012. La linea base v1.0.0 permanece
+cerrada y etiquetada.
 
-La evolucion posterior se gestiona mediante tareas explicitamente justificadas y cerrables.
+La evolucion posterior (T-013, T-014, T-015...) se gestiona dentro de Condor
+v1.x mediante tareas explicitamente justificadas y cerrables.
 
 ## Siguiente
 
-T-014 queda completada, verificada y congelada (commit `c982b14`).
-
-Posteriormente se evaluara formalmente, sin crear tareas por inercia, si existe
-una necesidad concreta de cierre del ciclo MVP 1.0 o de una evolucion posterior.
+T-015 (Automatizacion de puesta en marcha y modelo LLM local) esta en curso.
