@@ -1,92 +1,61 @@
-# RELEVO — POST CIERRE CONDOR 1.0
+# RELEVO — EVOLUCION v1.x (T-015)
 
-Version: 3.0.0
+Version: 4.0.0
 Estado: Preparado
 Modo: Evolucion Continua
-Alcance: continuidad posterior al cierre de Condor 1.0 MVP
+Alcance: evolucion de Condor dentro de v1.x (T-015) posterior a la base v1.0.0
 
 ## Estado real
 
-- T-001 a T-013: completadas, publicadas y congeladas.
-- T-014: **implementada, verificada, integrada, publicada y formalmente congelada**
-  (commit `c982b14` "Close and freeze T-014 at v1.1.0").
-- Condor 1.0 MVP: **COMPLETADO, VERIFICADO, PUBLICADO, CERRADO Y CONGELADO**
-  (version 1.0.0).
+- T-001 a T-014: completadas, publicadas y congeladas.
+- Linea base tecnica **Condor v1.0.0**: cerrada y etiquetada (tag `v1.0.0`);
+  no se modifica ni elimina.
+- **T-015 (Automatizacion de puesta en marcha y modelo LLM local)**: tarea de
+  evolucion v1.x en curso.
 - No existe nivel activo.
 - No crear Nivel 10.
 - Condor opera en Evolucion Continua.
-- No se inician nuevas tareas por anticipacion; cualquier evolucion posterior
-  debe justificarse con una necesidad real.
 
-## T-014
+## T-015 (en curso)
 
-T-014 integro la verificacion semantica de T-013 dentro del ciclo T-010.
+T-015 incorpora la obtencion automatica del modelo LLM local durante la puesta
+en marcha, alineada con la experiencia esperada de Condor:
 
-Flujo resultante:
+1. Evaluar hardware y determinar capacidad.
+2. Seleccionar un modelo compatible del catalogo (determinista, en Core).
+3. Comprobar el inventario de Ollama.
+4. Si el modelo deseado ya existe: reutilizarlo (NO volver a descargar).
+5. Si no existe: obtenerlo mediante Ollama, con timeout, reintentos limitados y
+   verificacion posterior contra `/api/tags`.
+6. Si falla: degradar de forma segura y explicita, sin dejar estado inconsistente.
+7. Continuar el flujo una vez disponible.
 
-Planificar -> Construir -> Verificar integridad -> Verificar semantica -> resultado del ciclo.
+Flujo objetivo: Assessment -> evaluar hardware -> seleccion -> comprobar inventario
+-> (reutilizar | obtener -> verificar) -> actualizar Assessment/estado -> continuar.
 
-Se mantienen:
-- `condor verificar`
-- `condor verificar-semantico`
-- `condor avanzar`
+Extiende `condor preparar` de forma aditiva; no rompe los comandos existentes.
 
-La semantica se reutilizo; no se reimplemento.
+## Validacion de T-015
 
-## Estados semanticos
-
-- correcta: permite completar normalmente.
-- no_disponible: degrada sin atribuir fallo al objetivo.
-- incompleta/timeout: ciclo degradado, evidencia incompleta.
-- fallida: compilacion o pruebas ejecutadas con resultado negativo; no puede declararse exito.
-
-No se convierte una falla real de compilacion/pruebas en una simple indisponibilidad.
-
-## Evidencia de cierre de T-014
-
-- Commit `c982b14` (T-014.md v1.1.0 cerrada y congelada).
 - Build Release: 0 errores, 0 advertencias.
-- Pruebas unitarias (Condor.Core): 180/180 correctas.
-- Pruebas de integracion (Condor.Infrastructure): 167/168 correctas; la unica no
-  verde es la prueba de entorno de T-002 dependiente de Ollama
-  (`OllamaClientTests.CompleteAsync_ModeloInexistente`), preexistente y ajena a
-  T-014 (incidencia ambiental, no defecto de T-014).
-- Pruebas de arquitectura: 19/19 correctas.
-- E2E real sobre un proyecto .NET temporal: semantica correcta y compilacion
-  fallida reflejadas en el ciclo; no falso exito.
-- D-IN1..D-IN5 (DEC-045) y D-IC1..D-IC6 (DEC-046) cumplidas.
-- Ausencia de bloqueos funcionales.
+- Unitarias (Core): 186/186 (+ ModelSelector).
+- Arquitectura: 20/20 (+ ModelSelection).
+- Integracion (Infra): 177/177 (+ ModelAutoSetup, + Retry).
+- Prueba real desde 0 modelos: `condor preparar` selecciono `llama3.2:3b`,
+  lo obtuvo via Ollama, verifico instalacion y permitio inferencia real.
+- Prueba de reutilizacion: con el modelo instalado, `condor preparar` no vuelve a
+  descargar (se reutiliza).
+- Degradaciones y reintentos: cubiertas por pruebas de integracion y RetryPolicy.
 
-## Fronteras T-014
+## Frontera v1.x
 
-Fuera de alcance de T-014 (no incorporado):
-
-- calidad avanzada;
-- analisis arquitectonico;
-- coherencia funcional;
-- Architect;
-- Guardian;
-- vision integrada al ciclo;
-- LLM;
-- reparacion automatica;
-- nuevas capacidades de compilacion/pruebas.
-
-SD-02 queda parcialmente implementada despues de T-014.
-
-## Cierre de version
-
-Condor 1.0 MVP quedo **cerrado y congelado** (version 1.0.0). La trazabilidad del
-cierre queda establecida: T-001 -> T-014 -> Condor 1.0 MVP -> version 1.0.0 ->
-cierre/congelamiento.
-
-No se crea una T-015 por anticipacion.
-
-La evolucion posterior se define mediante el ciclo de Evolucion Continua y solo
-si existe una necesidad real justificada.
+- No se modifica ni elimina el tag `v1.0.0`.
+- No se reabre el cierre del MVP 1.0 ni se altera su alcance historico.
+- No se incorporan Architect, Guardian ni vision-en-ciclo.
+- La obtencion automatica del modelo es una evolucion v1.x, no un cambio de la
+  base v1.0.0.
 
 ## Regla de limite
 
-El objetivo es cerrar Condor 1.0, no desarrollar indefinidamente.
-
-Cualquier trabajo posterior debe justificarse como una nueva version o necesidad
-real, no como continuacion automatica de tareas.
+La evolucion v1.x se gestiona mediante tareas explicitamente justificadas y
+cerrables; no se expande indefinidamente el backlog.
