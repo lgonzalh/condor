@@ -1,12 +1,14 @@
 # INVENTARIO_PROYECTO
 
-Version: 2.1.0
+Version: 2.2.0
 Estado: Vigente
 Clasificacion: Inventario del Proyecto
 
 ## Resumen
 
 La linea base estructural 00-09 esta completada y cerrada. El desarrollo de software opera en Evolucion Continua.
+
+La linea base tecnica Condor v1.0.0 quedo cerrada y etiquetada (tag `v1.0.0`).
 
 ## Artefactos operativos principales
 
@@ -24,6 +26,7 @@ La linea base estructural 00-09 esta completada y cerrada. El desarrollo de soft
 | Ciclo de ingenieria | Implementado y en evolucion aditiva |
 | Vision local | Implementado |
 | Puesta en marcha | Implementado |
+| Seleccion/obtencion de modelo LLM (automatizacion) | Implementado (T-015, v1.x) |
 | CLI Condor 1.0 | Operativa |
 
 ## Tareas
@@ -35,6 +38,8 @@ T-013: completada y congelada; SD-02 parcialmente implementada.
 T-014: integracion de la verificacion semantica en el ciclo; **completada,
 verificada, integrada, publicada y congelada** (commit `c982b14`).
 
+T-015: Automatizacion de puesta en marcha y modelo LLM local — **en curso (v1.x)**.
+
 ## Fronteras
 
 No existe Nivel 10.
@@ -43,5 +48,5 @@ No se incorporan Architect, Guardian ni vision-en-ciclo.
 
 ## Siguiente
 
-Con T-014 cerrada y congelada, la siguiente etapa sera evaluar formalmente el
-cierre de Condor 1.0 MVP, sin crear tareas por anticipacion.
+T-015 (Automatizacion de puesta en marcha y modelo LLM local) esta en curso
+dentro de Condor v1.x.
