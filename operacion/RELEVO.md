@@ -1,83 +1,74 @@
-# RELEVO — EVOLUCION v1.x (T-015)
+# RELEVO
 
-Version: 4.1.0
-Estado: T-015 cerrada
-Modo: Evolucion Continua
-Alcance: evolucion de Condor dentro de v1.x (T-015) posterior a la base v1.0.0
+Fecha: 2026-08-19
+Tipo: Continuidad de chat
+Estado: Investigacion activa
 
-## Estado real
+## CONTEXTO
 
-- T-001 a T-014: completadas, publicadas y congeladas.
-- Linea base tecnica **Condor v1.0.0**: cerrada y etiquetada (tag `v1.0.0`);
-  no se modifica ni elimina.
-- **T-015 (Automatizacion de puesta en marcha y modelo LLM local)**: tarea de
-  evolucion v1.x **completada y cerrada** (evidencia funcional).
-- No existe nivel activo.
-- No crear Nivel 10.
-- Condor opera en Evolucion Continua.
+El chat anterior se volvio demasiado extenso. Se cerro la operacion con varios agentes y se decidio continuar con un unico agente integrador.
 
-## T-015 (cerrada)
+## ESTADO ACTUAL
 
-T-015 incorpora la seleccion y obtencion automatica del modelo LLM local durante
-la puesta en marcha, alineada con la experiencia esperada de Condor, bajo un
-presupuesto seguro de recursos:
+El usuario ya realizo push de los commits existentes.
 
-1. Evaluar hardware real (RAM total/libre, disco, GPU, Ollama).
-2. Calcular presupuesto seguro: `SafeBudgetGb = max(0, ramFree - margenOperativo)`;
-   nunca se usa un porcentaje de RAM total si la libre real es menor.
-3. Descartar preventivamente modelos cuyo pico (peso * 1.2 + KV) supera el
-   presupuesto, aunque esten instalados.
-4. Seleccionar por maxima capacidad de ingenieria dentro del presupuesto
-   (no "el mas pequeno que cabe" ni "el mas potente").
-5. Comprobar el inventario de Ollama.
-6. Si el deseado ya existe: reutilizarlo (NO volver a descargar).
-7. Si el deseado no existe y una alternativa instalada es tan capaz: reutilizar.
-8. Si no existe y cabe: obtenerlo mediante Ollama, con timeout, reintentos
-   limitados y verificacion posterior contra `/api/tags`.
-9. Si falla o no hay viable: degradar de forma segura y explicita, sin estado
-   inconsistente.
-10. Continuar el flujo una vez disponible.
+El software:
+- compila;
+- arranca;
+- puede descargar qwen2.5-coder:3b;
+- calcula presupuesto seguro;
+- muestra progreso;
+- puede ejecutar herramientas;
+- puede completar "hola".
 
-Flujo objetivo: Assessment -> evaluar hardware -> presupuesto seguro -> descartar
-inviables -> seleccion por capacidad -> comprobar inventario -> (reutilizar |
-obtener -> verificar) -> actualizar Assessment/estado -> continuar.
+## PROBLEMA REPRODUCIBLE
 
-Extiende `condor preparar` y el agente (`condor hacer`) de forma aditiva; no rompe
-los comandos existentes.
+Con qwen2.5-coder:3b listo y presupuesto Normal:
+- "hola" funciona;
+- "que modelo eres?" puede terminar con "No hay un modelo compatible disponible para la tarea";
+- una tarea de lectura/análisis de archivos puede terminar con el mismo mensaje.
 
-## Validacion de T-015
+Esto indica una inconsistencia en la ruta de seleccion/compatibilidad del modelo.
 
-- Build Release: 0 errores, 0 advertencias.
-- Unitarias (Core): 197/197 (incluye ModelMemoryBudget corregido, ModelSelector
-  por capacidad, catalogo de variantes).
-- Arquitectura: 22/22 (incluye ModelSelection y agente puro).
-- Integracion (Infra): 177/177 (+ ModelAutoSetup, + Retry, + agente).
-- Descarte preventivo: con RAM libre ~4.9 GB, un 7B (pico ~5.2) no es elegible
-  pese a estar instalado; `qwen2.5-coder:3b` si lo es.
-- E2E REAL: `condor hacer` sin `--modelo` sobre un proyecto con defecto real
-  selecciono `qwen2.5-coder:3b`, obtenido automaticamente; el agente hizo
-  read -> edit -> build -> test y el harness confimo build y pruebas; la
-  verificacion externa `dotnet test` resulto 2/2. Exito de origen externo.
-- Prueba de reutilizacion: con el modelo instalado, no se vuelve a descargar.
-- Degradaciones y reintentos: cubiertas por pruebas de integracion y RetryPolicy.
+## INSTRUCCION YA ENTREGADA AL AGENTE
 
-## Frontera v1.x
+Investigar unicamente por que qwen2.5-coder:3b, que ya fue descargado, detectado, seleccionado y utilizado exitosamente para "hola", posteriormente produce "No hay un modelo compatible disponible para la tarea" para otras entradas.
 
-- No se modifica ni elimina el tag `v1.0.0`.
-- No se reabre el cierre del MVP 1.0 ni se altera su alcance historico.
-- No se incorporan Architect, Guardian ni vision-en-ciclo.
-- La obtencion automatica del modelo es una evolucion v1.x, no un cambio de la
-  base v1.0.0.
+Debe:
+1. reproducir ambos casos;
+2. localizar exactamente donde se pierde/rechaza el modelo;
+3. revisar routing -> seleccion -> AgentService/AgentEngine;
+4. crear pruebas que reproduzcan la diferencia;
+5. no modificar presupuesto, auto-setup, progreso, CLI o documentacion mientras no exista dependencia directa;
+6. no hacer cambios especulativos.
 
-## Regla de limite
+## EVIDENCIA DE CONSOLA
 
-La evolucion v1.x se gestiona mediante tareas explicitamente justificadas y
-cerrables; no se expande indefinidamente el backlog.
+- Modelo descargado: qwen2.5-coder:3b
+- Recursos: 8,2 GB disponibles
+- Presupuesto seguro: 3,7 GB
+- Estado: Normal
+- Progreso observado: Comprendiendo -> Observando/list_dir -> Finalizando
+- "hola": OK
+- Otras intenciones: rechazo por "No hay un modelo compatible disponible para la tarea"
 
-## Nota de cierre (T-015)
+## REGLA DEL NUEVO CHAT
 
-- La E2E demuestra un ciclo agente real sobre un defecto puntual; no constituye
-  una garantia de resolucion universal de cualquier proyecto o tarea.
-- El 7B instalado fue descartado por presupuesto de memoria; `qwen2.5-coder:3b`
-  fue seleccionado por capacidad de ingenieria dentro del presupuesto seguro.
-- Vinculo: `operacion/TAREAS/T-015.md` (version 2.1.0, cerrada).
+No reiniciar el proyecto.
+No abrir varios agentes.
+No rehacer lo ya verificado.
+Primero diagnosticar la causa raiz actual.
+
+## PRIMER PASO
+
+Leer:
+AGENTE_CONDOR.md
+ESTADO_PROYECTO.md
+ESTADO_DESARROLLO.md
+BACKLOG.md
+KANBAN.md
+INVENTARIO_PROYECTO.md
+REGISTRO_CAMBIOS.md
+RELEVO.md
+
+Luego revisar Git real y continuar la investigacion activa.
