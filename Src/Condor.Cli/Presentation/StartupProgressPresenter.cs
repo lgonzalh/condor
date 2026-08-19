@@ -43,6 +43,13 @@ public sealed class StartupProgressPresenter : IStartupProgressView, IDisposable
             _bannerShown = true;
             _startedAt = DateTime.Now;
             RenderHeader();
+            // Desde el primer instante hay una etapa en curso: el spinner debe ser
+            // visible mientras se analiza y prepara el entorno. Sin esto, entre el
+            // banner y la primera etapa reportada la terminal parece congelada.
+            if (_current is null)
+            {
+                _current = StartupProgress.Of(StartupStage.PreparingEnvironment);
+            }
         }
 
         _ticker = new System.Threading.Timer(_ => Spin(), null, 200, 200);
@@ -66,7 +73,12 @@ public sealed class StartupProgressPresenter : IStartupProgressView, IDisposable
                     // Etapa concluida sin estado previo: marcar directa.
                     _completedLines.Add(CompletedLine(progress));
                 }
-                _current = null;
+
+                // Se mantiene una etapa en curso (la misma, en modo "procesando")
+                // para que el spinner nunca desaparezca mientras Condor sigue
+                // trabajando. Se sustituye cuando llegue la siguiente etapa o al
+                // detenerse con Stop; nunca deja la terminal visualmente congelada.
+                _current = StartupProgress.Of(progress.Stage);
             }
             else
             {

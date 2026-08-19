@@ -39,6 +39,9 @@ Resultado tras la correccion:
 - Si en plena tarea no hay ningun modelo viable con la RAM disponible, Condor NO se
   cierra: informa "RAM insuficiente", sugiere liberar memoria (Opcion S/N) y, si el
   usuario confirma, reevalua y continua; si no, sale limpio conservando la tarea.
+- Durante TODO el inicio hay indicador visual activo y mensajes de estado (banner,
+  spinner y etapas: revisar recursos/RAM, evaluar modelos, seleccionar/preparar/verificar
+  modelo, hasta "entorno listo"); la pantalla nunca queda aparentemente congelada.
 
 ## DIAGNOSTICO ACTIVO
 

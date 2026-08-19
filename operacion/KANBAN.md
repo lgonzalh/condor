@@ -17,6 +17,8 @@ Sin incidencias activas de seleccion de modelo.
 - Intervencion opcional de RAM: si tras evaluar no hay modelo viable, Condor informa,
   sugiere liberar memoria (Opcion S/N, nunca forzada) y, si el usuario confirma, reevalua
   y continua; si no, sale limpio conservando la tarea.
+- Progreso visible obligatorio durante todo el inicio: pantalla nunca se congela (banner,
+  spinner y etapas "Revisando recursos"/"Evaluando modelos"/"Preparando modelo" hasta listo).
 - Build sin errores/advertencias en el ultimo cierre informado.
 - Suites automatizadas verdes en el ultimo cierre informado (534 pruebas).
 - Descarga de qwen2.5-coder:3b observada.

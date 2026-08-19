@@ -51,12 +51,16 @@ public sealed class StartupPreparer
     {
         var assessment = await _stateStore.LoadAssessmentAsync(cancellationToken);
 
+        // Analizando el entorno: siempre se reporta actividad real mientras Condor
+        // observa los recursos (RAM, almacenamiento, Ollama). Con assessment previo
+        // tambien se muestra el avance, no una pantalla en negro.
+        progress?.Report(StartupProgress.Of(StartupStage.PreparingEnvironment));
+        progress?.Report(StartupProgress.Of(StartupStage.ReviewingResources));
+
         if (assessment is null)
         {
             try
             {
-                progress?.Report(StartupProgress.Of(StartupStage.PreparingEnvironment));
-                progress?.Report(StartupProgress.Of(StartupStage.ReviewingResources));
                 assessment = await _assessment.ExecuteAsync(new AssessmentRequest(), cancellationToken);
                 progress?.Report(StartupProgress.Of(StartupStage.ReviewingResources, completed: true));
                 await _stateStore.SaveAssessmentAsync(assessment, cancellationToken);
@@ -73,6 +77,7 @@ public sealed class StartupPreparer
 
         if (_modelAutoSetup is null || !IsOllamaRunning(assessment))
         {
+            progress?.Report(StartupProgress.Of(StartupStage.ReviewingResources, completed: true));
             progress?.Report(StartupProgress.Of(StartupStage.PreparingEnvironment, completed: true));
             progress?.Report(StartupProgress.Of(StartupStage.Ready, completed: true));
             return new StartupPrepResult
@@ -82,7 +87,10 @@ public sealed class StartupPreparer
             };
         }
 
+        progress?.Report(StartupProgress.Of(StartupStage.ReviewingResources, completed: true));
+        progress?.Report(StartupProgress.Of(StartupStage.EvaluatingModels));
         var selection = await _modelAutoSetup.EnsureModelAsync(null, cancellationToken, progress);
+        progress?.Report(StartupProgress.Of(StartupStage.EvaluatingModels, completed: true));
         var model = await ResolveReadyModelAsync(selection, cancellationToken);
 
         if (model is null && !selection.AlreadyInstalled)

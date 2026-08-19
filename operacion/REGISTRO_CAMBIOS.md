@@ -165,3 +165,40 @@ infinitos ni reintentos automaticos ilimitados. No hay APIs cloud.
 - La interaccion [S/N] queda demostrada por ConsoleRamConfirmationTests y por los tests de
   integracion de AgentService (SI re-evalua y continua; NO sale limpio).
 - La ejecucion exitosa con RAM suficiente se demostro previamente (6,9 GB, qwen2.5-coder:3b).
+
+---
+
+## PROGRESO VISIBLE OBLIGATORIO DURANTE TODO EL INICIO
+
+### Problema
+Al ejecutar `condor` la terminal mostraba solo el banner ("CONDOR / Observa·Comprende...")
+y quedaba visualmente en negro durante la preparacion: entre el banner y la primera etapa
+reportada, o entre etapas, no habia ninguna linea de estado activa (el spinner no se
+mostraba porque no habia una etapa "en curso").
+
+### Correcion (minima, reutiliza el presentador de progreso existente)
+- StartupProgressPresenter.cs: en Start() se inicia una etapa en curso
+  (PreparingEnvironment) para que el spinner sea visible desde el primer instante; al
+  completar una etapa se mantiene una etapa en curso (en vez de ponerse en null) para que
+  el indicador nunca desaparezca mientras Condor sigue trabajando (solo se sustituye al
+  llegar la siguiente etapa o al detenerse con Stop). No se crea una barra nueva ni un
+  sistema paralelo.
+- StartupPreparer.cs: se reportan sempre las etapas "Revisando recursos" (RAM libre) y
+  "Evaluando modelos disponibles" en todos los caminos (con o sin assessment previo), de
+  modo que el flujo emite actividad real desde el inicio.
+
+El flujo visible queda: Preparando entorno -> Revisando recursos -> ✓ Recursos detectados
+-> Evaluando modelos -> ✓ Modelos evaluados -> Seleccionando/Preparando/Verificando modelo ->
+✓ Entorno preparado -> Entorno listo. No se simula progreso falso; cada etapa es real.
+
+### Pruebas agregadas
+- StartupPreparerTests.RunAsync_ConModeloInstalado_ReportaEtapasDeProgresoVisibles:
+  con modelo instalado reporta ReviewingResources y EvaluatingModels (actividad visible).
+
+### Verificacion E2E real (recursos disponibles, sin forzar liberar memoria)
+- `condor` sin argumentos: la terminal emite secuencialmente "Preparando entorno...",
+  "Revisando recursos...", "✓ Recursos detectados", "Evaluando modelos...",
+  "✓ Modelos evaluados", "Preparando entorno..." (con Tiempo 00:19 indicando actividad
+  prolongada y spinner), "✓ Entorno preparado", "Entorno listo..." y luego la advertencia.
+  No queda pantalla en negro.
+- One-shot --json conserva su salida JSON (el inicio no usa el presentador de arranque).

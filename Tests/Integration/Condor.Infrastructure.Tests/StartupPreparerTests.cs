@@ -1,3 +1,4 @@
+using Condor.Cli.Presentation;
 using Condor.Cli.Routing;
 using Condor.Core.Contracts;
 using Condor.Core.Models;
@@ -311,6 +312,32 @@ public class StartupPreparerTests
                 Ollama = new OllamaStatus { Installed = true, ServerRunning = false }
             }
         };
+    }
+
+    [Fact]
+    public async Task RunAsync_ConModeloInstalado_ReportaEtapasDeProgresoVisibles()
+    {
+        // REGRESION "terminal en negro": aunque haya assessment persistido y modelo
+        // instalado, el arranque DEBE reportar etapas de actividad (ReviewingResources
+        // y EvaluatingModels) para que el indicador visual nunca quede congelado.
+        var storeDir = TempDir();
+        var store = new LocalStateStore(storeDir);
+        await store.SaveAssessmentAsync(ConOllamaActivaYModelo());
+
+        var view = new StubStartupProgressView();
+        var bridge = new StartupProgressObserverBridge(view);
+        var preparer = new StartupPreparer(
+            new StubAssessmentService(ConOllamaActivaYModelo()),
+            store,
+            modelAutoSetup: new StubModelAutoSetup(ModelSelectionEstancado()));
+
+        var result = await preparer.RunAsync(progress: bridge);
+
+        Assert.True(result.Ready);
+        Assert.Contains(view.Reports, r => r.Stage == StartupStage.ReviewingResources);
+        Assert.Contains(view.Reports, r => r.Stage == StartupStage.EvaluatingModels);
+        // Al menos una vez se marco "Evaluando modelos" como completado (actividad real).
+        Assert.Contains(view.Reports, r => r.Stage == StartupStage.EvaluatingModels && r.Completed);
     }
 
     private static string TempDir()
