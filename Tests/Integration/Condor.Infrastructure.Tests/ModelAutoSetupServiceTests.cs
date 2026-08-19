@@ -13,7 +13,7 @@ public class ModelAutoSetupServiceTests
     public async Task EnsureModel_ModeloDeseadoInstalado_ReutilizaSinPull()
     {
         var store = new LocalStateStore(DirectorioTemporal());
-        await store.SaveAssessmentAsync(AssessmentConModelo("qwen2.5-coder:7b"));
+        await store.SaveAssessmentAsync(AssessmentConModelo("qwen2.5-coder:7b", ramFreeGb: 10));
         var service = new ModelAutoSetupService(store);
 
         var result = await service.EnsureModelAsync(cancellationToken: CancellationToken.None);
@@ -30,7 +30,7 @@ public class ModelAutoSetupServiceTests
         // ingenieria que el deseado viable (qwen2.5-coder:7b): la seleccion
         // apunta al deseado de mayor capacidad, no a la alternativa menor.
         var store = new LocalStateStore(DirectorioTemporal());
-        await store.SaveAssessmentAsync(AssessmentConModelo("llama3.2:3b"));
+        await store.SaveAssessmentAsync(AssessmentConModelo("llama3.2:3b", ramFreeGb: 10));
         var service = new ModelAutoSetupService(store);
 
         var result = await service.EnsureModelAsync(cancellationToken: CancellationToken.None);
@@ -77,7 +77,7 @@ public class ModelAutoSetupServiceTests
         Assert.Null(result.Desired);
     }
 
-    private static AssessmentResult AssessmentConModelo(string name)
+    private static AssessmentResult AssessmentConModelo(string name, double ramFreeGb = 10)
     {
         return new AssessmentResult
         {
@@ -87,7 +87,7 @@ public class ModelAutoSetupServiceTests
                 {
                     Status = DetectionStatus.Detected,
                     TotalBytes = 16L * 1024 * 1024 * 1024,
-                    FreeBytes = 8L * 1024 * 1024 * 1024
+                    FreeBytes = (long)(ramFreeGb * 1024 * 1024 * 1024)
                 }
             },
             Tools = new ToolsProfile

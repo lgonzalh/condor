@@ -9,7 +9,7 @@ public class OllamaDetector
 {
     private const string ApiBase = "http://127.0.0.1:11434";
 
-    public async Task<OllamaStatus> DetectAsync(CancellationToken cancellationToken = default)
+    public virtual async Task<OllamaStatus> DetectAsync(CancellationToken cancellationToken = default)
     {
         var status = new OllamaStatus
         {

@@ -1,25 +1,64 @@
+using System;
 using System.Collections.Generic;
+using System.Net.Http;
 using System.Net.Http.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using Condor.Core.Contracts;
 using Condor.Core.Models;
 
 namespace Condor.Infrastructure.Llm;
 
-public class OllamaClient : ILlmClient
+/// <summary>
+/// Cliente HTTP de Ollama (http://127.0.0.1:11434). Condor NO gestiona el
+/// proceso del proveedor (llama-server.exe lo lanza Ollama internamente);
+/// por eso se distinguen los fallos por su manifestacion (conexion, timeout,
+/// respuesta) en lugar de por el proceso, y se expone un health check para
+/// comprobar disponibilidad real antes de continuar.
+/// </summary>
+public class OllamaClient : ILlmClient, ILlmProviderDiagnostics
 {
-    private const string ApiBase = "http://127.0.0.1:11434";
+    public const string DefaultApiBase = "http://127.0.0.1:11434";
     private const int DefaultTimeoutMilliseconds = 180000;
 
     private readonly HttpClient _httpClient;
+    private readonly string _apiBase;
 
     public OllamaClient()
-        : this(new HttpClient { Timeout = TimeSpan.FromMilliseconds(DefaultTimeoutMilliseconds) })
+        : this(DefaultApiBase, new HttpClient { Timeout = TimeSpan.FromMilliseconds(DefaultTimeoutMilliseconds) })
+    {
+    }
+
+    public OllamaClient(string apiBase)
+        : this(apiBase, new HttpClient { Timeout = TimeSpan.FromMilliseconds(DefaultTimeoutMilliseconds) })
     {
     }
 
     public OllamaClient(HttpClient httpClient)
+        : this(DefaultApiBase, httpClient)
     {
+    }
+
+    public OllamaClient(string apiBase, HttpClient httpClient)
+    {
+        _apiBase = string.IsNullOrWhiteSpace(apiBase) ? DefaultApiBase : apiBase;
         _httpClient = httpClient;
+    }
+
+    public string ProviderName => "Ollama";
+
+    public async Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var probe = _httpClient.GetAsync(_apiBase + "/api/version", cancellationToken);
+            var response = await probe;
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     public async Task<LlmResponse> CompleteAsync(
@@ -28,12 +67,12 @@ public class OllamaClient : ILlmClient
     {
         if (string.IsNullOrWhiteSpace(request.Model))
         {
-            return new LlmResponse { Success = false, Error = "No se especifico un modelo" };
+            return Failed(LlmOutcome.InvalidResponse, "No se especifico un modelo");
         }
 
         if (request.Messages is not { Count: > 0 } && string.IsNullOrWhiteSpace(request.Prompt))
         {
-            return new LlmResponse { Success = false, Error = "No se especifico un mensaje" };
+            return Failed(LlmOutcome.InvalidResponse, "No se especifico un mensaje");
         }
 
         try
@@ -50,62 +89,64 @@ public class OllamaClient : ILlmClient
             };
 
             using var response = await _httpClient.PostAsJsonAsync(
-                ApiBase + "/api/chat",
+                _apiBase + "/api/chat",
                 payload,
                 cancellationToken);
 
             if ((int)response.StatusCode == 404)
             {
-                return new LlmResponse
-                {
-                    Success = false,
-                    Error = "El modelo '" + request.Model + "' no existe en el servidor de Ollama. Usa 'condor analizar' para ver los modelos disponibles."
-                };
+                return Failed(LlmOutcome.InvalidResponse, "El modelo '" + request.Model + "' no existe en el servidor de Ollama.");
             }
 
             if (!response.IsSuccessStatusCode)
             {
-                return new LlmResponse
-                {
-                    Success = false,
-                    Error = "El servidor de Ollama respondio con error HTTP " + (int)response.StatusCode
-                };
+                return Failed(LlmOutcome.InvalidResponse, "El servidor de Ollama respondio con error HTTP " + (int)response.StatusCode);
             }
 
             var body = await response.Content.ReadFromJsonAsync<OllamaChatResponse>(cancellationToken);
             if (body?.Message?.Content is null)
             {
-                return new LlmResponse { Success = false, Error = "El servidor de Ollama no devolvio contenido" };
+                return Failed(LlmOutcome.InvalidResponse, "El servidor de Ollama no devolvio contenido");
             }
 
             return new LlmResponse
             {
                 Success = true,
                 Content = body.Message.Content,
-                Model = body.Model
+                Model = body.Model,
+                Outcome = LlmOutcome.Ok
             };
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException)
         {
-            return new LlmResponse { Success = false, Error = "La inferencia fue cancelada" };
+            return Failed(LlmOutcome.Timeout, "La inferencia supero el tiempo maximo de espera o fue cancelada");
         }
-        catch (TaskCanceledException)
+        catch (HttpRequestException ex)
         {
-            return new LlmResponse { Success = false, Error = "La inferencia supero el tiempo maximo de espera" };
+            // Una conexion fallida NO es evidencia suficiente de que el proceso del
+            // proveedor "termino": puede ser servidor no iniciado, firewall, DNS o
+            // un RST. Se clasifica como ServidorNoDisponible con causa honesta.
+            // Si la excepcion real es de timeout, se clasifica como Timeout.
+            var isTimeout = ex.InnerException is TaskCanceledException or OperationCanceledException;
+            return isTimeout
+                ? Failed(LlmOutcome.Timeout, "El proveedor local no respondio a tiempo en " + _apiBase)
+                : Failed(LlmOutcome.ServerUnavailable, "El proveedor local no esta disponible en " + _apiBase + "; no se puede determinar si el servidor o el proceso del modelo termino.");
         }
-        catch (HttpRequestException)
+        catch (Exception)
         {
-            return new LlmResponse
-            {
-                Success = false,
-                Error = "No fue posible comunicarse con el servidor de Ollama en 127.0.0.1:11434. Verifica que Ollama este instalado y en ejecucion."
-            };
-        }
-        catch
-        {
-            return new LlmResponse { Success = false, Error = "Error inesperado durante la inferencia" };
+            return Failed(LlmOutcome.ServerUnavailable, "Error inesperado durante la inferencia");
         }
     }
+
+    private static LlmResponse Failed(LlmOutcome outcome, string reason)
+        => new()
+        {
+            Success = false,
+            Error = reason,
+            Outcome = outcome,
+            ProcessExitCode = null,
+            FailedAtUtc = DateTime.UtcNow
+        };
 
     private static List<object> BuildMessages(LlmRequest request, object fallbackContent)
     {

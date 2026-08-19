@@ -6,5 +6,6 @@ public interface IModelAutoSetupService
 {
     Task<ModelSelectionResult> EnsureModelAsync(
         string? purpose = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        IStartupProgressObserver? progress = null);
 }
