@@ -1,44 +1,48 @@
 # KANBAN
 
-Version: 4.0.0
+Version: 2.1.0
 Estado: Activo
-Modo: Evolucion Continua
-
-## PENDIENTE
-
-Ninguna tarea nueva de desarrollo.
+Nivel: Global
+Fecha: 2026-08-19
 
 ## EN PROGRESO
 
-Ninguna.
+### Estabilizacion del agente
+Resolver la seleccion/compatibilidad de qwen2.5-coder:3b para determinadas intenciones.
 
-## REVISION
+## LISTO / VERIFICADO PARCIALMENTE
 
-Ninguna.
+- Build sin errores/advertencias en el ultimo cierre informado.
+- Suites automatizadas verdes: 527/527 en el ultimo cierre informado.
+- Descarga de qwen2.5-coder:3b observada.
+- Presupuesto seguro observado.
+- Progreso visual observado.
+- Ejecucion de herramientas observada.
+- "hola" ejecutado correctamente.
 
-## COMPLETADO
+## PENDIENTE
 
-- T-001 — Bootstrap del MVP y Assessment inicial
-- T-002 — Integracion local con Ollama
-- T-003 — Recomendador de modelos
-- T-004 — Descubrimiento de proyecto
-- T-005 — Context Engine inicial
-- T-006 — Flujo de intencion a plan
-- T-007 — Builder inicial
-- T-008 — Verificacion inicial
-- T-009 — Documentacion y continuidad
-- T-010 — Capacidades avanzadas de desarrollo / ciclo
-- T-011 — Vision local
-- T-012 — Instalador y puesta en marcha simplificada
-- T-013 — Verificacion semantica y de calidad — primera concrecion
-- T-014 — Integracion de la verificacion semantica en el ciclo (congelada, commit c982b14)
-- T-015 — Automatizacion de puesta en marcha y modelo LLM local (cerrada; presupuesto seguro, seleccion por capacidad, E2E real)
-- T-016 — Experiencia de agente de ingenieria: intencion libre, preparacion automatica, control por slash y hardcodeo del motor agente (cerrada; patch quirurgico, harness externo real build/test/restore, undo_file, guarda anti-falsos-positivos, E2E .NET)
+- Corregir rechazo falso de modelo para tareas especificas.
+- Repetir prueba cliente incognito completa.
+- Verificar seleccion por capacidad de ingenieria.
+- Verificar que el progreso represente el ciclo real.
+- Actualizar documentacion oficial una vez que el comportamiento este validado.
 
-## Frontera
+## BLOQUEO ACTUAL
 
-El MVP 1.0 esta completado (linea base v1.0.0 etiquetada). No existe Nivel 10.
+La funcionalidad no debe declararse estable mientras una misma ejecucion pueda informar "modelo listo" y posteriormente "no hay modelo compatible" para una tarea que deberia poder ejecutarse.
 
-La continuidad opera mediante Evolucion Continua; T-015 y T-016 son la evolucion
-v1.x cerrada. La validacion E2E de T-016 corresponde a proyectos .NET (L-008); el
-soporte para otros ecosistemas queda para una evolucion posterior.
+## SIGUIENTE MEJOR ACCION
+
+Diagnostico de una sola causa raiz con un solo agente integrador.
+
+## DEFINITION OF DONE
+
+- causa identificada;
+- correccion minima;
+- pruebas de regresion;
+- prueba E2E real;
+- documentacion actualizada;
+- commit limpio;
+- push autorizado;
+- estado Git verificado.
