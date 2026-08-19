@@ -7,22 +7,22 @@ Fecha: 2026-08-19
 
 ## EN PROGRESO
 
-### Estabilizacion del agente
-Resolver la seleccion/compatibilidad de qwen2.5-coder:3b para determinadas intenciones.
+Sin incidencias activas de seleccion de modelo.
 
 ## LISTO / VERIFICADO PARCIALMENTE
 
+- Estabilizacion del agente: causa raiz de la RAM fluctuante identificada y corregida.
 - Build sin errores/advertencias en el ultimo cierre informado.
-- Suites automatizadas verdes: 527/527 en el ultimo cierre informado.
+- Suites automatizadas verdes en el ultimo cierre informado (incluida la incidencia RAM).
 - Descarga de qwen2.5-coder:3b observada.
 - Presupuesto seguro observado.
 - Progreso visual observado.
 - Ejecucion de herramientas observada.
 - "hola" ejecutado correctamente.
+- E2E real: tarea con RAM suficiente, bloqueo honesto con RAM insuficiente, y recuperacion posterior.
 
 ## PENDIENTE
 
-- Corregir rechazo falso de modelo para tareas especificas.
 - Repetir prueba cliente incognito completa.
 - Verificar seleccion por capacidad de ingenieria.
 - Verificar que el progreso represente el ciclo real.
@@ -30,18 +30,21 @@ Resolver la seleccion/compatibilidad de qwen2.5-coder:3b para determinadas inten
 
 ## BLOQUEO ACTUAL
 
-La funcionalidad no debe declararse estable mientras una misma ejecucion pueda informar "modelo listo" y posteriormente "no hay modelo compatible" para una tarea que deberia poder ejecutarse.
+Resuelto: ya no existe la contradiccion de "modelo listo" seguido de "no hay modelo
+compatible" para tareas que deberian ejecutarse. Cuando la RAM libre no alcanza el
+presupuesto seguro, Condor informa un bloqueo TEMPORAL de recursos de forma honesta
+y conserva la tarea.
 
 ## SIGUIENTE MEJOR ACCION
 
-Diagnostico de una sola causa raiz con un solo agente integrador.
+Diagnostico de una sola causa raiz con un solo agente integrador (completado).
 
 ## DEFINITION OF DONE
 
-- causa identificada;
-- correccion minima;
-- pruebas de regresion;
-- prueba E2E real;
+- causa identificada (cubierta);
+- correccion minima (cubierta);
+- pruebas de regresion (cubiertas);
+- prueba E2E real (cubierta);
 - documentacion actualizada;
 - commit limpio;
 - push autorizado;

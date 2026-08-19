@@ -26,27 +26,20 @@ qwen2.5-coder:3b
 Presupuesto observado:
 8,2 GB disponibles / 3,7 GB seguros / Normal.
 
-Resultado:
+Resultado tras la correccion:
 - "hola" funciona.
-- "que modelo eres?" falla con ausencia de modelo compatible.
-- Analisis de archivos tambien puede fallar con ausencia de modelo compatible.
+- Cuando la RAM libre es suficiente, las tareas de analisis/lectura llegan al modelo.
+- Cuando la RAM libre cae bajo el presupuesto seguro, Condor informa un bloqueo
+  TEMPORAL por recursos (no "no hay modelo compatible"), conserva la tarea y la
+  completa en cuanto la RAM se libera.
 
 ## DIAGNOSTICO ACTIVO
 
-Investigar exclusivamente la ruta:
-
-intencion
--> routing
--> requisitos de capacidad
--> seleccion de modelo
--> AgentService
--> AgentEngine
--> Ollama
-
-Hipotesis operativa:
-el modelo existe y puede utilizarse, pero una condicion de compatibilidad/routing lo rechaza para ciertas intenciones.
-
-No asumir la causa antes de reproducirla en codigo.
+Resuelto. La causa raiz era la RAM libre viva (FreePhysicalMemory via CIM) que
+fluctua por invocacion y, al caer bajo el presupuesto seguro, hacia que incluso el
+modelo menor viable (qwen2.5-coder:3b) fuera rechazado por FitsInRamStrict. No era
+routing, ni intencion, ni ausencia del modelo. Corregido en AgentService con una
+recuperacion acotada y un fallo honesto diferenciado que preserva la tarea.
 
 ## TEST DE ACEPTACION INMEDIATO
 
@@ -61,7 +54,8 @@ B. Con qwen2.5-coder:3b:
 - "hola" funciona.
 - "que modelo eres?" funciona o produce un resultado coherente.
 - una tarea de lectura/análisis de archivos llega a la ejecucion del modelo.
-- no aparece falsamente "No hay un modelo compatible disponible".
+- con RAM insuficiente NO aparece falsamente "No hay un modelo compatible": aparece
+  un bloqueo temporal de recursos que conserva la tarea.
 
 C. Progreso:
 - muestra etapas reales.

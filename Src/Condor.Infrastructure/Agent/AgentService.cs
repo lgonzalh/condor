@@ -36,6 +36,14 @@ public sealed class AgentService : IAgentService
         _limits = limits ?? AgentLimits.Default;
     }
 
+    /// <summary>
+    /// Intentos acotados de recuperacion cuando el modelo instalado no cabe por
+    /// RAM libre en el presupuesto seguro. Se evita un reintento infinito:
+    /// tras este numero de re-evaluaciones, Condor comunica el bloqueo de forma
+    /// honesta y conserva la tarea.
+    /// </summary>
+    private const int MaxResourceRecoveryAttempts = 3;
+
     public async Task<AgentResult> RunAsync(string intention, IAgentProgressObserver? progress = null, CancellationToken cancellationToken = default)
     {
         var checkpoint = new AgentCheckpoint { Task = intention, GeneratedAtUtc = DateTime.UtcNow };
@@ -48,11 +56,63 @@ public sealed class AgentService : IAgentService
             return Fail("No hay un directorio de trabajo util. Ejecuta desde el proyecto.", "", intention, steps, checkpoint);
         }
 
-        // Seleccion automatica del modelo (preparado).
+        // Seleccion automatica del modelo (preparado). La RAM es una instantanea
+        // viva que fluctua entre invocaciones: si el modelo instalado no cabe en el
+        // presupuesto seguro en este instante, se intenta recuperar de forma
+        // ACOTADA (sin bucle infinito) y, si aun sigue bloqueado, se comunica de
+        // forma honesta sin afirmar que el modelo no existe.
         var modelSetup = new ModelAutoSetupService(_stateStore, _assessmentService);
         var selection = await modelSetup.EnsureModelAsync(cancellationToken: cancellationToken);
-        if (selection.Desired is null)
+
+        if (selection.Desired is null && !selection.BlockedByResources)
             return Fail("No hay un modelo compatible disponible para la tarea.", "", intention, steps, checkpoint);
+
+        if (selection.Desired is null)
+        {
+            // El modelo EXISTE (instalado/conocido) pero la RAM libre actual no
+            // permite cargarlo segun el presupuesto seguro. Se espera un numero
+            // limitado de veces (delay corto + re-evaluacion viva) para dar
+            // oportunidad a que la RAM se libere; NUNCA en bucle infinito.
+            progress?.Report(AgentProgress.Of(
+                AgentPhase.Verifying,
+                message: "Modelo instalado, pero la RAM libre no permite cargarlo por ahora; comprobando de nuevo...",
+                resourceState: selection.Resources?.PressureLabel,
+                availableGb: selection.Resources?.FreeGb,
+                safeBudgetGb: selection.Resources?.SafeBudgetGb,
+                flag: ProgressFlag.Recovering));
+
+            var recovered = false;
+            for (var attempt = 0; attempt < MaxResourceRecoveryAttempts && !recovered; attempt++)
+            {
+                await ResourceRecoveryDelayAsync(cancellationToken);
+
+                selection = await modelSetup.EnsureModelAsync(cancellationToken: cancellationToken);
+                recovered = selection.Desired is not null;
+            }
+
+            if (!recovered)
+            {
+                var blocked = selection.Resources;
+                var reason = BuildResourceBlockedReason(blocked);
+                progress?.Report(AgentProgress.Of(
+                    AgentPhase.Verifying,
+                    message: reason,
+                    resourceState: blocked?.PressureLabel,
+                    availableGb: blocked?.FreeGb,
+                    safeBudgetGb: blocked?.SafeBudgetGb,
+                    flag: ProgressFlag.ProviderError));
+                // La intencion se conserva en el resultado (Objective + Checkpoint):
+                // no se pierde la tarea y, al liberarse RAM, se puede reintentar de
+                // una manera natural desde el mismo flujo.
+                return Fail(reason, "", intention, steps, checkpoint);
+            }
+        }
+
+        // Invariante: en este punto Desired es obligatoriamente no-nulo (los
+        // caminos con Desired == null ya retornaron arriba, bien por ausencia de
+        // modelo compatible o por bloqueo temporal de recursos).
+        if (selection.Desired is null)
+            return Fail("No se pudo resolver un modelo utilizable para la tarea.", "", intention, steps, checkpoint);
 
         var model = selection.InstalledName ?? selection.Desired.PullName;
         checkpoint.Model = model;
@@ -732,6 +792,36 @@ public sealed class AgentService : IAgentService
         var cause = LlmOutcomeLabel(outcome);
         var detailText = string.IsNullOrWhiteSpace(detail) ? "" : " (" + detail + ")";
         return "El proveedor del modelo fallo: " + cause + detailText + ". Condor detuvo la tarea para no consumir mas iteraciones. Revisa el diagnostico del servidor local.";
+    }
+
+    private static async Task ResourceRecoveryDelayAsync(CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(700, ct);
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancelacion cooperativa: el gate abandona la espera.
+        }
+    }
+
+    private static string BuildResourceBlockedReason(Condor.Core.Models.ResourceSnapshot? resources)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.Append("El modelo instalado no se pudo cargar ahora: la RAM libre (" +
+                  (resources?.FreeGb.ToString("0.0") ?? "-") + " GB) no alcanza el presupuesto seguro (" +
+                  (resources?.SafeBudgetGb.ToString("0.0") ?? "-") + " GB) para el modelo minimo compatible.");
+        sb.Append(" Es un bloqueo TEMPORAL por recursos, no la ausencia de un modelo: libera memoria");
+        sb.Append(" (por ejemplo cerrando procesos de alto consumo) y reintenta la misma tarea.");
+        if (resources is not null && resources.TopConsumers.Count > 0)
+        {
+            var top = string.Join(", ", resources.TopConsumers.Select(c => c.ProcessName + " ~" + c.WorkingSetGb.ToString("0.0") + " GB"));
+            sb.Append(" Consumidores actuales: " + top + ".");
+        }
+
+        sb.Append(" Estado: " + (resources?.PressureLabel ?? "sin datos") + ".");
+        return sb.ToString();
     }
 
     private static string? VerifyTestIntegrity(string workingDir, RepoSnapshot snapshot)
