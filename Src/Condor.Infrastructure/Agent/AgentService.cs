@@ -6,7 +6,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Condor.Core.Agent;
 using Condor.Core.Contracts;
+using Condor.Core.Evaluation;
 using Condor.Core.Models;
+using Condor.Infrastructure.Detection;
 using Condor.Infrastructure.Llm;
 using Condor.Infrastructure.Setup;
 
@@ -16,18 +18,25 @@ public sealed class AgentService : IAgentService
 {
     private readonly IStateStore _stateStore;
     private readonly IAssessmentService? _assessmentService;
-    private readonly OllamaClient _llm;
+    private readonly ILlmClient _llm;
+    private readonly ILlmProviderDiagnostics _provider;
     private readonly AgentLimits _limits;
 
-    public AgentService(IStateStore stateStore, IAssessmentService? assessmentService = null, AgentLimits? limits = null)
+    public AgentService(
+        IStateStore stateStore,
+        IAssessmentService? assessmentService = null,
+        AgentLimits? limits = null,
+        ILlmClient? llm = null,
+        ILlmProviderDiagnostics? provider = null)
     {
         _stateStore = stateStore;
         _assessmentService = assessmentService;
-        _llm = new OllamaClient();
+        _llm = llm ?? new OllamaClient();
+        _provider = provider ?? (_llm as ILlmProviderDiagnostics) ?? new OllamaClient();
         _limits = limits ?? AgentLimits.Default;
     }
 
-    public async Task<AgentResult> RunAsync(string intention, CancellationToken cancellationToken)
+    public async Task<AgentResult> RunAsync(string intention, IAgentProgressObserver? progress = null, CancellationToken cancellationToken = default)
     {
         var checkpoint = new AgentCheckpoint { Task = intention, GeneratedAtUtc = DateTime.UtcNow };
         var steps = new List<AgentStep>();
@@ -54,46 +63,143 @@ public sealed class AgentService : IAgentService
         var harness = new AgentHarness(workingDir, _limits, steps);
         var originalSnapshot = RepoSnapshot.Capture(workingDir);
 
-        var manifest = FindManifest(workingDir);
-        if (string.IsNullOrWhiteSpace(manifest))
-            return Fail("No se encontro un proyecto .NET en el directorio de trabajo.", model, intention, steps, checkpoint);
-
+        // Observar el directorio real primero. El manifest .NET es OPCIONAL:
+        // solo informa de la capacidad de build/test disponible; NO es un
+        // requisito de entrada. Para intenciones abiertas (analisis, ""de que
+        // va"") el agente razona sobre lo que realmente existe en el directorio.
         var snapshot = await ListRootSnapshotAsync(toolset, workingDir, cancellationToken);
+        var manifest = FindManifest(workingDir);
 
         var messages = new List<LlmMessage>
         {
             new() { Role = "system", Content = BuildSystemPrompt(workingDir, manifest) },
-            new() { Role = "user", Content = "Contexto inicial del repositorio (estructura de la raiz):\n" + snapshot + "\n\nTarea: " + intention }
+            new() { Role = "user", Content = "Contexto inicial del repositorio (estructura de la raiz):\n" + snapshot + "\n\nTarea: " + intention + "\n\nCONTEXTO ESTRICTO: no respondas con texto libre. Emite SIEMPRE una accion estructurada JSON (ver system). Para una solicitud de comprension (\"que tenemos aqui\"), primero observa con list_dir/read_file y cuando tengas suficiente evidencia responde usando done, colocando tu sintesis en el campo 'reason'. Nunca respondas fuera del JSON." }
         };
 
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutCts.CancelAfter(_limits.TimeoutMilliseconds);
 
+        string? lastDoneReason = null;
+
         try
         {
             var invalidOutputs = 0;
+            var redundantObservations = 0;
+            var resourcesWarned = false;
+
+            var initialResources = EvaluateResources();
+            progress?.Report(AgentProgress.Of(AgentPhase.Understanding,
+                message: "Comprendiendo la solicitud",
+                resourceState: initialResources?.PressureLabel,
+                availableGb: initialResources?.FreeGb,
+                safeBudgetGb: initialResources?.SafeBudgetGb));
 
             for (var iteration = 0; iteration < _limits.MaxIterations; iteration++)
             {
                 checkpoint.Iteration = iteration + 1;
 
-                // 1. Modelo produce una decision estructurada.
-                var action = await RequestActionAsync(model, messages, timeoutCts.Token);
-                if (action is null)
+                // 1. Modelo produce una decision estructurada. Se distingue el
+                //    fallo del proveedor (crash/caida/timeout) del protocolo del
+                //    modelo (respuesta no-JSON), para no consumir iteraciones
+                //    como si el modelo siguiera disponible cuando no lo esta.
+                var call = await RequestActionAsync(model, messages, timeoutCts.Token);
+
+                if (call.ProviderFailure is not null)
+                {
+                    checkpoint.NextAction = "revisar";
+                    progress?.Report(AgentProgress.Of(
+                        AgentPhase.Verifying,
+                        message: "Modelo local · " + LlmOutcomeLabel(call.ProviderFailure.Value) + " · " + call.Error,
+                        flag: ProgressFlag.ProviderError));
+
+                    var recovered = await TryRecoverProviderAsync(model, messages, progress, timeoutCts.Token);
+                    if (recovered is not null)
+                    {
+                        call = recovered.Value;
+                        // Si tras la recuperacion el proveedor sigue fallando (p. ej.
+                        // HTTP 500 persistente o timeout), NO se degrada a "respuesta
+                        // del modelo invalida": es un fallo del proveedor y se detiene
+                        // sin gastar mas iteraciones.
+                        if (call.ProviderFailure is not null && call.Action is null)
+                        {
+                            checkpoint.LastDecision = "detener";
+                            checkpoint.LastError = BuildProviderFailureReason(call.ProviderFailure.Value, call.Error);
+                            progress?.Report(AgentProgress.Of(
+                                AgentPhase.Finalizing,
+                                message: "Modelo local no disponible tras reintentos · Condor detuvo la tarea",
+                                flag: ProgressFlag.ProviderError));
+                            return Fail(checkpoint.LastError, model, intention, steps, checkpoint);
+                        }
+
+                        if (call.Action is null && call.ProviderFailure is null)
+                        {
+                            // El proveedor volvio pero la salida no fue JSON: protocolo, no proveedor.
+                            invalidOutputs++;
+                            messages.Add(new LlmMessage { Role = "user", Content = "El modelo respondio pero no como JSON; reintenta con una accion estructurada valida." });
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        checkpoint.LastDecision = "detener";
+                        checkpoint.LastError = BuildProviderFailureReason(call.ProviderFailure.Value, call.Error);
+                        progress?.Report(AgentProgress.Of(
+                            AgentPhase.Finalizing,
+                            message: "Modelo local no disponible · Condor detuvo la tarea",
+                            flag: ProgressFlag.ProviderError));
+                        return Fail(checkpoint.LastError, model, intention, steps, checkpoint);
+                    }
+                }
+
+                if (call.Action is null)
                 {
                     invalidOutputs++;
-                    if (invalidOutputs >= 3)
+                    if (invalidOutputs >= _limits.MaxInvalidOutputs)
                     {
-                        checkpoint.LastError = "El modelo no produjo acciones validas en intentos repetidos.";
                         checkpoint.NextAction = "revisar";
+                        // Para una solicitud informativa de comprension, Condor
+                        // observa por si mismo (list_dir real + lee archivos
+                        // representativos) y entrega una descripcion fundamentada
+                        // en EVIDENCIA REAL, sin inventar exito ni codigo.
+                        if (IsInformationalRequest(intention))
+                        {
+                            checkpoint.LastDecision = "describir";
+                            progress?.Report(AgentProgress.Of(AgentPhase.Finalizing, message: "Preparando respuesta"));
+                            var grounded = await GroundInformationalAsync(toolset, workingDir, steps, timeoutCts.Token);
+                            return grounded is null
+                                ? Fail(checkpoint.LastError ?? "No fue posible describir el directorio.", model, intention, steps, checkpoint)
+                                : new AgentResult { Success = true, Reason = grounded, Model = model, Objective = intention, Steps = steps, Checkpoint = checkpoint };
+                        }
+
+                        checkpoint.LastError = "El modelo no produjo acciones estructuradas validas tras varios intentos.";
                         return Fail(checkpoint.LastError, model, intention, steps, checkpoint);
                     }
 
-                    messages.Add(new LlmMessage { Role = "user", Content = "Tu respuesta no fue un JSON valido. Devuelve UNICAMENTE un JSON con la forma {\"action\":\"...\",\"path\":\"...\",\"original\":\"...\",\"replacement\":\"...\",\"content\":\"...\"}." });
+                    // Guiado situacional (no lista rigida): segun cuanto se ha
+                    // observado, se sugiere el siguiente paso concreto en formato
+                    // JSON para que el modelo entre al protocolo estructurado.
+                    string hint;
+                    if (steps.Count == 0)
+                    {
+                        hint = "Todavia no has observado el directorio. Emite exactamente: {\"action\":\"list_dir\",\"path\":\"\",\"reason\":\"observar el proyecto\"}";
+                    }
+                    else if (!steps.Any(s => s.Success && s.Action == AgentAction.ActionReadFile))
+                    {
+                        hint = "Ya listaste pero aun no lees ningun archivo. Emite read_file sobre uno de los archivos que viste en list_dir.";
+                    }
+                    else
+                    {
+                        hint = "Ya observas contenido. Si tienes suficiente evidencia, responde con done usando 'reason' para tu sintesis; si no, continua leyendo/comprendiendo.";
+                    }
+
+                    messages.Add(new LlmMessage { Role = "user", Content = "Tu texto no fue un JSON valido. No respondas con prosa: emite un JSON de accion. " + hint + ". Forma valida: {\"action\":\"<accion>\",\"path\":\"<ruta>\",\"original\":\"\",\"replacement\":\"\",\"content\":\"\",\"reason\":\"<justificacion o sintesis>\"}." });
                     continue;
                 }
 
                 invalidOutputs = 0;
+
+                // A partir de aqui hay una accion util; el caso nulo ya hizo continue.
+                var action = call.Action!;
 
                 // 2. Valida la accion.
                 var validation = AgentEngine.ValidateAction(action);
@@ -103,9 +209,12 @@ public sealed class AgentService : IAgentService
                     continue;
                 }
 
-                // 3. Pre-condicion: si es build/test y no hay restauracion previa, intenta restore primero.
-                //    La restauracion bajo demanda ocurre en AgentHarness cuando build/test fallan por
-                //    ausencia de restauracion (NETSDK1004 / project.assets.json).
+                // 3. Notifica la accion que esta por ejecutar.
+                progress?.Report(AgentProgress.Of(
+                    PhaseForAction(action.Action),
+                    action: action.Action,
+                    path: action.Path,
+                    iteration: iteration + 1));
 
                 // 4. Ejecuta la herramienta real.
                 var step = await toolset.ExecuteAsync(action, iteration + 1, timeoutCts.Token);
@@ -122,9 +231,53 @@ public sealed class AgentService : IAgentService
                     Content = "Resultado de " + action.Action + "(" + (action.Path ?? "") + "):\n" + (step.Success ? (step.ResultPreview ?? "ok") : ("ERROR: " + (step.ResultPreview ?? "sin detalle")))
                 });
 
-                // 5. Harness externo tras un cambio de codigo.
+                // 4b. Reevaluacion de recursos en cada accion (presupuesto dinamico):
+                //     si la presion empeora (Presion/Insuficiente), se advierte una vez
+                //     (sin saturar), y se reduce la carga propia al no lanzar build/test
+                //     pesado en ese instante si estamos en Presion.
+                EvaluateResourcesAndWarn(checkpoint, progress, ref resourcesWarned, iteration + 1);
+
+                // 5. Redundancia de observacion: si el modelo repite la MISMA
+                //    observacion (accion+ruta) y obtiene el MISMO resultado (no
+                //    aporta informacion nueva), se orienta para avanzar. Si
+                //    persiste sin informacion nueva, se entrega o falla de forma
+                //    honesta segun el tipo de tarea.
+                if (step.Success && (action.Action is AgentAction.ActionListDir or AgentAction.ActionReadFile or AgentAction.ActionSearch))
+                {
+                    var observationSignal = AgentEngine.AssessObservation(step, steps.Take(steps.Count - 1).ToList());
+                    if (observationSignal == ObservationSignal.Redundant)
+                    {
+                        redundantObservations++;
+                        if (redundantObservations > _limits.MaxRedundantObservations)
+                        {
+                            // Sin informacion nueva y repitiendo: entregar (si es
+                            // informativo/analisis) o fallar honestamente (si se
+                            // esperaba un cambio de codigo).
+                            if (modifications == 0)
+                            {
+                                checkpoint.NextAction = "entregar";
+                                checkpoint.LastDecision = "describir";
+                                var summary = BuildObservedSummary(steps, workingDir);
+                                return new AgentResult { Success = true, Reason = summary, Model = model, Objective = intention, Steps = steps, Checkpoint = checkpoint };
+                            }
+
+                            checkpoint.LastError = "Observaciones redundantes sin informacion nueva y sin un cambio de codigo verificado.";
+                            checkpoint.NextAction = "detener";
+                            return Fail(checkpoint.LastError, model, intention, steps, checkpoint);
+                        }
+
+                        messages.Add(new LlmMessage { Role = "user", Content = "Ya observaste esto exactamente antes y el resultado no cambio; repetir la misma observacion no aporta informacion nueva. Si la solicitud es de comprension/analisis, sintetiza lo visto y responde con done. Si la tarea requiere un cambio de codigo, edita con patch/edit_file y verifica con build/test." });
+                    }
+                    else
+                    {
+                        redundantObservations = 0;
+                    }
+                }
+
+                // 5b. Harness externo tras un cambio de codigo.
                 if (IsModification(action.Action) && step.Success)
                 {
+                    progress?.Report(AgentProgress.Of(AgentPhase.Verifying, action: "build/test", iteration: iteration + 1));
                     var result = await harness.VerifyAsync(timeoutCts.Token);
                     checkpoint.HarnessState = result.Done ? "exito" : result.Reason;
                     checkpoint.LastError = result.Done ? null : result.Reason;
@@ -141,6 +294,7 @@ public sealed class AgentService : IAgentService
 
                         checkpoint.NextAction = "entregar";
                         checkpoint.LastDecision = "verificar";
+                        progress?.Report(AgentProgress.Of(AgentPhase.Finalizing, message: "Finalizando"));
                         return new AgentResult { Success = true, Reason = "El harness confirmo build y pruebas tras la correccion.", Model = model, Objective = intention, Steps = steps, Checkpoint = checkpoint };
                     }
 
@@ -148,15 +302,46 @@ public sealed class AgentService : IAgentService
                     messages.Add(new LlmMessage { Role = "user", Content = buildErrorPreamble(result) + result.Detail });
                 }
 
-                // 6. Si el modelo dice 'done', verificar harness y decidir.
+                // 6. Si el modelo dice 'done', decidir la entrega:
+                //    - Con modificaciones: exigir harness .NET (autoridad externa).
+                //    - Sin modificaciones pero con exploracion real: tarea
+                //      informativa/analisis, se entrega la descripcion observada
+                //      (sin inventar exito de harness).
+                //    - Sin nada hecho: pedir que explore/actue.
                 if (action.Action == AgentAction.ActionDone)
                 {
                     if (modifications == 0)
                     {
-                        messages.Add(new LlmMessage { Role = "user", Content = "No hubo modificaciones validadas. Modifica el codigo con 'patch'/'edit_file' o usa 'build'/'test' para verificar." });
-                        continue;
+                        // Evaluador general (no lista rigida) de evidencia suficiente
+                        // para 'done' segun el matiz de la intencion (describir,
+                        // diagnosticar, construir). Evita tanto el 'done' prematuro
+                        // como el ciclo forzado de read_file cuando ya hay base.
+                        var (sufficient, hint) = AgentEngine.HasSufficientEvidenceForDone(intention, steps);
+                        if (!sufficient)
+                        {
+                            // Conservamos la sintesis del 'done' rechazado para, si
+                            // agotamos iteraciones, poder entregarla honestamente
+                            // (no un crptico "limite de iteraciones") cuando la
+                            // intencion es de comprension/diagnostico.
+                            lastDoneReason = action.Reason ?? action.Content ?? lastDoneReason;
+                            messages.Add(new LlmMessage { Role = "user", Content = hint ?? "No tienes evidencia suficiente aun; observa o actua, y luego concluye." });
+                            continue;
+                        }
+
+                        checkpoint.NextAction = "entregar";
+                        checkpoint.LastDecision = "describir";
+                        progress?.Report(AgentProgress.Of(AgentPhase.Finalizing, message: "Preparando respuesta"));
+                        var summary = action.Reason ?? action.Content ?? "";
+                        return new AgentResult {
+                            Success = true,
+                            Reason = string.IsNullOrWhiteSpace(summary)
+                                ? "Condor observo el directorio y describio lo encontrado."
+                                : summary,
+                            Model = model, Objective = intention, Steps = steps, Checkpoint = checkpoint
+                        };
                     }
 
+                    progress?.Report(AgentProgress.Of(AgentPhase.Verifying, action: "build/test", iteration: iteration + 1));
                     var r = await harness.VerifyAsync(timeoutCts.Token);
                     checkpoint.HarnessState = r.Done ? "exito" : r.Reason;
                     checkpoint.LastError = r.Done ? null : r.Reason;
@@ -173,6 +358,7 @@ public sealed class AgentService : IAgentService
 
                         checkpoint.NextAction = "entregar";
                         checkpoint.LastDecision = "verificar";
+                        progress?.Report(AgentProgress.Of(AgentPhase.Finalizing, message: "Finalizando"));
                         return new AgentResult { Success = true, Reason = "El harness confirmo build y pruebas.", Model = model, Objective = intention, Steps = steps, Checkpoint = checkpoint };
                     }
 
@@ -181,12 +367,22 @@ public sealed class AgentService : IAgentService
                 }
 
                 // 7. Progress check.
-                var progress = AgentEngine.CheckProgress(iteration + 1, steps, _limits);
-                if (progress.Fail)
+                var progressCheck = AgentEngine.CheckProgress(iteration + 1, steps, _limits);
+                if (progressCheck.Fail)
                 {
-                    checkpoint.LastError = progress.Reason;
+                    checkpoint.LastError = progressCheck.Reason;
+
+                    // Si la intencion es de comprension/diagnostico y hay evidencia,
+                    // se entrega la respuesta observada en vez de un crptico fallo
+                    // por limite de iteraciones.
+                    var delivered = TryDeliverInformational(checkpoint, steps, workingDir, model, intention, progress, lastDoneReason);
+                    if (delivered is not null)
+                    {
+                        return delivered;
+                    }
+
                     checkpoint.NextAction = "detener";
-                    return Fail(progress.Reason ?? "Limite sin progreso.", model, intention, steps, checkpoint);
+                    return Fail(progressCheck.Reason ?? "Limite sin progreso.", model, intention, steps, checkpoint);
                 }
 
                 checkpoint.NextAction = "siguiente";
@@ -201,11 +397,238 @@ public sealed class AgentService : IAgentService
             return Fail("Error interno del agente: " + ex.Message, model, intention, steps, checkpoint);
         }
 
-        return Fail("El agente no pudo completar la tarea dentro de los limites.", model, intention, steps, checkpoint);
+        // Agotadas/progreso-limitado: si la intencion es de comprension/diagnostico y el
+        // agente recolecto evidencia, se entrega una respuesta fundamentada (no un
+        // crptico "limite de iteraciones"). Para una intencion de CONSTRUIR, sin
+        // cambio verificado no hay respuesta que entregar.
+        return TryDeliverInformational(checkpoint, steps, workingDir, model, intention, progress, lastDoneReason)
+            ?? Fail("El agente no pudo completar la tarea dentro de los limites.", model, intention, steps, checkpoint);
+    }
+
+    private static AgentResult? TryDeliverInformational(
+        AgentCheckpoint checkpoint,
+        IReadOnlyList<AgentStep> steps,
+        string workingDir,
+        string model,
+        string intention,
+        IAgentProgressObserver? progress,
+        string? lastDoneReason)
+    {
+        var flavor = AgentEngine.ClassifyIntent(intention);
+        if (flavor == IntentFlavor.Build)
+        {
+            return null;
+        }
+
+        bool hasRealEvidence = steps.Any(s =>
+            s.Success &&
+            (s.Action == AgentAction.ActionListDir || s.Action == AgentAction.ActionReadFile || s.Action == AgentAction.ActionSearch));
+        if (!hasRealEvidence)
+        {
+            return null;
+        }
+
+        checkpoint.NextAction = "entregar";
+        checkpoint.LastDecision = "describir";
+        progress?.Report(AgentProgress.Of(AgentPhase.Finalizing, message: "Preparando respuesta"));
+
+        var baseSummary = DescribeObserved(workingDir, steps);
+        var summary = string.IsNullOrWhiteSpace(lastDoneReason)
+            ? baseSummary
+            : baseSummary + "\n" + lastDoneReason.Trim();
+
+        return new AgentResult
+        {
+            Success = true,
+            Reason = summary,
+            Model = model,
+            Objective = intention,
+            Steps = steps.ToList(),
+            Checkpoint = checkpoint
+        };
+    }
+
+    private static bool IsInformationalRequest(string intention)
+    {
+        if (string.IsNullOrWhiteSpace(intention)) return true;
+        var t = intention.ToLowerInvariant();
+        return t.Contains("revisa") ||
+               t.Contains("cuentame") ||
+               t.Contains("describe") ||
+               t.Contains("explime") ||
+               t.Contains("explica") ||
+               t.Contains("que es") ||
+               t.Contains("que contiene") ||
+               t.Contains("analiza") ||
+               t.Contains("resumen") ||
+               t.Contains("contenido") ||
+               t.Contains("what is") ||
+               t.Contains("tell me");
+    }
+
+    private static async Task<string?> GroundInformationalAsync(AgentToolset toolset, string workingDir, List<AgentStep> steps, CancellationToken ct)
+    {
+        try
+        {
+            AgentStep list = await toolset.ExecuteAsync(new AgentAction { Action = AgentAction.ActionListDir, Path = "" }, 0, ct);
+            steps.Add(list);
+            if (!list.Success) return null;
+
+            var files = UnreadContentFiles(workingDir, steps).Take(2).ToList();
+            foreach (var f in files)
+            {
+                var read = await toolset.ExecuteAsync(new AgentAction { Action = AgentAction.ActionReadFile, Path = f }, 0, ct);
+                if (read.Success) steps.Add(read);
+            }
+
+            return DescribeObserved(workingDir, steps);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string DescribeObserved(string workingDir, IReadOnlyList<AgentStep> steps)
+    {
+        var dirs = steps.Where(s => s.Success && s.Action == AgentAction.ActionListDir)
+            .Select(s => s.Path ?? ".")
+            .Distinct(System.StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var files = steps.Where(s => s.Success && s.Action == AgentAction.ActionReadFile)
+            .Select(s => s.Path ?? "")
+            .Distinct(System.StringComparer.OrdinalIgnoreCase)
+            .Where(p => p.Length > 0)
+            .ToList();
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append("Condor observo el directorio " + workingDir + ".");
+        if (files.Count > 0)
+            sb.Append(" Archivos revisados: " + string.Join(", ", files) + ".");
+        else
+            sb.Append(" No se leyo contenido de archivos.");
+
+        if (dirs.Count > 0)
+            sb.Append(" Estructura observada: " + string.Join(", ", dirs) + ".");
+        return sb.ToString();
+    }
+
+    private static List<string> UnreadContentFiles(string workingDir, IReadOnlyList<AgentStep> steps)
+    {
+        var readPaths = steps
+            .Where(s => s.Success && s.Action == AgentAction.ActionReadFile)
+            .Select(s => NormalizeRel(s.Path))
+            .ToHashSet(System.StringComparer.OrdinalIgnoreCase);
+
+        var candidates = new List<string>();
+        try
+        {
+            foreach (var file in Directory.EnumerateFiles(workingDir, "*", SearchOption.AllDirectories))
+            {
+                var name = Path.GetFileName(file);
+                if (name.StartsWith(".", StringComparison.Ordinal)) continue;
+                if (file.Contains("\\bin\\") || file.Contains("\\obj\\") || file.Contains("\\.git\\") ||
+                    file.Contains("\\node_modules\\") || file.Contains("\\.vs\\") || file.Contains("\\.artifacts\\"))
+                    continue;
+
+                var ext = Path.GetExtension(file);
+                if (!IsContentExtension(ext)) continue;
+
+                var rel = Path.GetRelativePath(workingDir, file).Replace('\\', '/');
+                if (readPaths.Contains(NormalizeRel(rel))) continue;
+
+                candidates.Add(rel);
+                if (candidates.Count >= 12) break;
+            }
+        }
+        catch
+        {
+            // Si falla la enumeracion del sistema de archivos, no se bloquea.
+        }
+
+        return candidates;
+    }
+
+    // Extensiones de contenido/codigo que un agente debe poder inspeccionar.
+    // Amplia e independiente del ecosistema (no esta sesgada a .NET): incluye
+    // codigo, marcado, estilo, documentos y manifiestos comunes. No implica una
+    // regla de "leer X": solo indica evidencia de contenido pendiente.
+    private static bool IsContentExtension(string ext)
+    {
+        switch (ext.ToLowerInvariant())
+        {
+            case ".cs": case ".vb": case ".fs": case ".ts": case ".js": case ".mjs": case ".cjs":
+            case ".py": case ".go": case ".rs": case ".java": case ".kt": case ".swift": case ".rb": case ".php":
+            case ".html": case ".htm": case ".css": case ".scss": case ".sass": case ".less":
+            case ".csproj": case ".fsproj": case ".vbproj": case ".sln": case ".slnx": case ".csx": case ".json":
+            case ".yaml": case ".yml": case ".xml": case ".ini": case ".cfg": case ".toml":
+            case ".md": case ".markdown": case ".txt":
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static string NormalizeRel(string? p) => (p ?? "").Replace('\\', '/');
+
+    private static string BuildObservedSummary(IReadOnlyList<AgentStep> steps, string workingDir)
+    {
+        var dirs = steps.Where(s => s.Success && s.Action == AgentAction.ActionListDir)
+            .Select(s => s.Path ?? ".")
+            .Distinct(System.StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var files = steps.Where(s => s.Success && s.Action == AgentAction.ActionReadFile)
+            .Select(s => s.Path ?? "")
+            .Distinct(System.StringComparer.OrdinalIgnoreCase)
+            .Where(p => p.Length > 0)
+            .ToList();
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append("Condor observo el directorio " + workingDir);
+
+        if (files.Count > 0)
+            sb.Append(" y reviso " + files.Count + " archivo(s): " + string.Join(", ", files) + ".");
+        else
+            sb.Append(". No llego a leer archivos.");
+
+        if (dirs.Count > 0)
+            sb.Append(" Estructura explorada: " + string.Join(", ", dirs) + ".");
+
+        sb.Append(" Describe lo encontrado segun la evidencia observada.");
+        return sb.ToString();
     }
 
     private static bool IsModification(string action)
         => action is AgentAction.ActionEditFile or AgentAction.ActionCreateFile or AgentAction.ActionPatch;
+
+    /// <summary>Mapa (puro) de accion a fase de progreso, para observabilidad.</summary>
+    public static AgentPhase PhaseForAction(string action)
+    {
+        switch (action)
+        {
+            case AgentAction.ActionListDir:
+            case AgentAction.ActionReadFile:
+            case AgentAction.ActionSearch:
+                return AgentPhase.Observing;
+
+            case AgentAction.ActionPatch:
+            case AgentAction.ActionEditFile:
+            case AgentAction.ActionCreateFile:
+            case AgentAction.ActionUndoFile:
+                return AgentPhase.Building;
+
+            case AgentAction.ActionBuild:
+            case AgentAction.ActionTest:
+            case AgentAction.ActionRestore:
+                return AgentPhase.Verifying;
+
+            case AgentAction.ActionDone:
+                return AgentPhase.Finalizing;
+
+            default:
+                return AgentPhase.Analyzing;
+        }
+    }
 
     private static string buildErrorPreamble(HarnessVerifyResult r)
         => "El harness reporto un error real tras la correccion: " + r.Reason + ".\nPuedes leer de nuevo el archivo con read_file o revertir la ultima edicion con undo_file, luego corregir con patch y volver a intentar.\nEvidencia real de build/test:\n";
@@ -216,12 +639,99 @@ public sealed class AgentService : IAgentService
         return step.ResultPreview ?? "";
     }
 
-    private async Task<AgentAction?> RequestActionAsync(string model, List<LlmMessage> messages, CancellationToken ct)
+    private async Task<AgentModelCall> RequestActionAsync(string model, List<LlmMessage> messages, CancellationToken ct)
     {
         var resp = await _llm.CompleteAsync(new LlmRequest { Model = model, Messages = messages }, ct);
-        if (!resp.Success) return null;
 
-        return AgentActionParser.Parse(resp.Content);
+        // Fallo a nivel del proveedor (proceso terminado, server no disponible,
+        // timeout real). Se devuelve el estado para que el ciclo decida recuperar
+        // o detenerse sin gastar mas iteraciones como si el modelo siguiera activo.
+        if (!resp.Success && resp.Outcome is not LlmOutcome.Ok)
+        {
+            return new AgentModelCall(null, resp.Outcome, resp.Error);
+        }
+
+        if (!resp.Success)
+        {
+            return new AgentModelCall(null, null, resp.Error);
+        }
+
+        var parsed = AgentActionParser.Parse(resp.Content);
+        if (parsed is null)
+        {
+            return new AgentModelCall(null, LlmOutcome.InvalidResponse, "El modelo devolvio un JSON que no es una accion valida");
+        }
+
+        return new AgentModelCall(parsed, null, null);
+    }
+
+    private readonly record struct AgentModelCall(AgentAction? Action, LlmOutcome? ProviderFailure, string? Error);
+
+    /// <summary>Recuperacion limitada del proveedor: comprueba health y reintenta UNA solicitud si el servidor volvio. Devuelve null si no se recupero.</summary>
+    private async Task<AgentModelCall?> TryRecoverProviderAsync(string model, List<LlmMessage> messages, IAgentProgressObserver? progress, CancellationToken ct)
+    {
+        const int maxProbes = 3;
+
+        for (var attempt = 0; attempt < maxProbes; attempt++)
+        {
+            progress?.Report(AgentProgress.Of(
+                AgentPhase.Verifying,
+                message: "Modelo local: intentando recuperacion (" + (attempt + 1) + "/" + maxProbes + ")",
+                flag: ProgressFlag.Recovering));
+
+            bool available;
+            try
+            {
+                available = await _provider.IsAvailableAsync(ct);
+            }
+            catch
+            {
+                available = false;
+            }
+
+            if (available)
+            {
+                // El proveedor volvio: reintentar la solicitud actual una sola vez mas.
+                progress?.Report(AgentProgress.Of(
+                    AgentPhase.Verifying,
+                    message: "Modelo local recuperado; reintentando la solicitud",
+                    flag: ProgressFlag.Recovering));
+                var retried = await RequestActionAsync(model, messages, ct);
+                return retried;
+            }
+
+            // Pequena pausa antes de volver a comprobar.
+            try
+            {
+                await Task.Delay(700, ct);
+            }
+            catch (OperationCanceledException)
+            {
+                return null;
+            }
+        }
+
+        return null;
+    }
+
+    private static string LlmOutcomeLabel(LlmOutcome outcome)
+    {
+        return outcome switch
+        {
+            LlmOutcome.Thinking => "modelo pensando (respuesta lenta)",
+            LlmOutcome.ServerUnavailable => "servidor temporalmente no disponible",
+            LlmOutcome.ProcessEnded => "proceso del modelo terminado inesperadamente",
+            LlmOutcome.Timeout => "timeout real de la solicitud",
+            LlmOutcome.InvalidResponse => "respuesta invalida del modelo",
+            _ => outcome.ToString()
+        };
+    }
+
+    private static string BuildProviderFailureReason(LlmOutcome outcome, string? detail)
+    {
+        var cause = LlmOutcomeLabel(outcome);
+        var detailText = string.IsNullOrWhiteSpace(detail) ? "" : " (" + detail + ")";
+        return "El proveedor del modelo fallo: " + cause + detailText + ". Condor detuvo la tarea para no consumir mas iteraciones. Revisa el diagnostico del servidor local.";
     }
 
     private static string? VerifyTestIntegrity(string workingDir, RepoSnapshot snapshot)
@@ -236,10 +746,68 @@ public sealed class AgentService : IAgentService
                "). Condor no puede confirmar exito contra las pruebas originales; revierte los cambios de prueba (undo_file) y corrige el codigo de produccion en lugar de las pruebas.";
     }
 
-    private static string BuildSystemPrompt(string workingDir, string manifest)
+    private static ResourceSnapshot? EvaluateResources()
+    {
+        try
+        {
+            var memory = new MemoryDetector().DetectAsync(CancellationToken.None).GetAwaiter().GetResult();
+            var consumers = new ProcessRamDetector().DetectTopConsumers();
+            return ModelMemoryBudget.Snapshot(memory, candidatePeakGb: null, consumers);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static void EvaluateResourcesAndWarn(AgentCheckpoint checkpoint, IAgentProgressObserver? progress, ref bool warned, int iteration)
+    {
+        var snapshot = EvaluateResources();
+        if (snapshot is null)
+        {
+            return;
+        }
+
+        checkpoint.ResourcesPressure = snapshot.PressureLabel;
+        checkpoint.HeadroomGb = snapshot.HeadroomGb;
+
+        if (snapshot.Pressure is ResourcePressure.Normal or ResourcePressure.Adjusted || warned)
+        {
+            return;
+        }
+
+        var builder = new System.Text.StringBuilder("Presion de memoria: " + snapshot.FreeGb + " GB libres · estado " + snapshot.PressureLabel + ".");
+        builder.Append(" Condor reducirá temporalmente su carga.");
+
+        if (snapshot.TopConsumers.Count > 0)
+        {
+            builder.Append(" Consumidores relevantes: ");
+            for (var i = 0; i < snapshot.TopConsumers.Count; i++)
+            {
+                var c = snapshot.TopConsumers[i];
+                builder.Append(c.ProcessName + " ~" + c.WorkingSetGb + " GB" + (i < snapshot.TopConsumers.Count - 1 ? ", " : "."));
+            }
+
+            builder.Append(" Cerrar aplicaciones no necesarias podria liberar memoria (Condor no cierra procesos).");
+        }
+
+        warned = true;
+        progress?.Report(AgentProgress.Of(
+            AgentPhase.Verifying,
+            message: builder.ToString(),
+            iteration: iteration,
+            flag: ProgressFlag.Recovering));
+    }
+
+    private static string BuildSystemPrompt(string workingDir, string? manifest)
     {
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine("Eres el agente de ingenieria local de Condor. Resuelves la tarea sobre el proyecto en " + workingDir + " (manifiesto: " + manifest + ").");
+        sb.AppendLine("Eres el agente de ingenieria local de Condor. Resuelves la tarea sobre el directorio " + workingDir + ".");
+        if (!string.IsNullOrWhiteSpace(manifest))
+            sb.AppendLine("Se detecto un proyecto .NET (manifiesto: " + manifest + "); si la tarea requiere compilar/probar, usa las acciones build/test sobre el, y para modificaciones usalas las herramientas de edicion sobre los archivos reales.");
+        else
+            sb.AppendLine("No se detecto de antemano un proyecto .NET en la raiz. NO asumas que es un proyecto .NET: observa el contenido real con list_dir y read_file para descubrir que existe (manifiestos, estructura, lenguaje/ecosistema, documentacion, senales de proyecto). Una solicitud de comprension/analisis no requiere un manifiesto .NET para comenzar: describe lo que realmente encuentres; si hay un ecosistema, identificalo; si no hay proyecto reconocible, explicalo tras haber inspeccionado.");
+        sb.AppendLine();
         sb.AppendLine();
         sb.AppendLine("Devuelve UNICAMENTE un JSON valido por paso, sin texto extra, con esta forma:");
         sb.AppendLine("{\"action\": \"<accion>\", \"path\": \"<ruta relativa>\", \"original\": \"<texto exacto a localizar>\", \"replacement\": \"<texto nuevo>\", \"content\": \"<contenido o vacio>\", \"reason\": \"<breve explicacion>\"}");
@@ -260,6 +828,8 @@ public sealed class AgentService : IAgentService
         sb.AppendLine();
         sb.AppendLine("FLUJO: primero usa list_dir y read_file para conocer la estructura real y leer el contenido exacto de los archivos. Para corregir, usa patch con 'original' copiado literalmente del archivo. No uses rutas inventadas: usa siempre rutas relativas reales que hayas visto en list_dir/read_file. Las rutas no existen si list_dir no las mostro.");
         sb.AppendLine("Si con patch/edit_file dejas el archivo roto y el build falla, puedes revertir el cambio con undo_file (igual ruta) y volver a intentar. Tambien puedes leer de nuevo el archivo con read_file para ver su estado actual despues de un fallo.");
+        sb.AppendLine();
+        sb.AppendLine("SOLICITUDES DE COMPRENSION/ANALISIS (no de codigo): si la respuesta esperada es explicar que contiene el directorio, observa (list_dir/read_file) lo necesario y, cuando tengas suficiente evidencia para responder, sintetiza lo que has visto y haz done sin necesidad de build/test ni de editar nada. No repitas observaciones que ya hiciste: una misma ruta no aporta informacion nueva dos veces.");
         sb.AppendLine();
         sb.AppendLine("IMPORTANTE - HONESTIDAD Y VERIFICACION:");
         sb.AppendLine("  - NUNCA inventes ni simules exito. El harness ejecutara realmente build y test de forma externa.");

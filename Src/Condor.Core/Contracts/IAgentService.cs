@@ -6,5 +6,5 @@ namespace Condor.Core.Contracts;
 
 public interface IAgentService
 {
-    Task<AgentResult> RunAsync(string intention, CancellationToken cancellationToken = default);
+    Task<AgentResult> RunAsync(string intention, IAgentProgressObserver? progress = null, CancellationToken cancellationToken = default);
 }

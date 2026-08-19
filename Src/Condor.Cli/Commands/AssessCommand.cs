@@ -21,12 +21,16 @@ public static class AssessCommand
     {
         var outputJson = args.Contains("--json", StringComparer.OrdinalIgnoreCase);
 
-        var result = await stateStore.LoadAssessmentAsync(cancellationToken);
-        if (result is null)
+        // Analiza el directorio actual (CWD) donde se invoca, no un working dir
+        // de una sesion anterior. El analisis describe el contenido real del
+        // directorio; no exige ningun lenguaje/ecosistema concreto.
+        var request = new AssessmentRequest
         {
-            result = await assessmentService.ExecuteAsync(new AssessmentRequest(), cancellationToken);
-            await stateStore.SaveAssessmentAsync(result, cancellationToken);
-        }
+            WorkingDirectory = Environment.CurrentDirectory
+        };
+
+        var result = await assessmentService.ExecuteAsync(request, cancellationToken);
+        await stateStore.SaveAssessmentAsync(result, cancellationToken);
 
         if (outputJson)
         {

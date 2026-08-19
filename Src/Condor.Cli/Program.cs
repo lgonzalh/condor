@@ -21,6 +21,17 @@ public static class Program
 {
     public static async Task<int> Main(string[] args)
     {
+        // UTF-8 para que caracteres como "·" y "α" se muestren fielmente en
+        // consolas modernas independientemente de la pagina de codigos activa.
+        try
+        {
+            Console.OutputEncoding = System.Text.Encoding.UTF8;
+        }
+        catch
+        {
+            // Si el entorno no permite cambiarlo, seguir con la codificacion activa.
+        }
+
         var assessmentService = new AssessmentService();
         var stateStore = new LocalStateStore();
         var llmClient = new OllamaClient();
@@ -28,7 +39,7 @@ public static class Program
         // Comandos triviales no requieren preparacion.
         if (IsVersion(args))
         {
-            Console.WriteLine(VersionInfo.Product + " " + VersionInfo.Version);
+            Console.WriteLine(VersionInfo.Product + " " + VersionInfo.DisplayName);
             return 0;
         }
 
@@ -80,10 +91,25 @@ public static class Program
         IStateStore stateStore,
         ILlmClient llmClient)
     {
-        // Preparacion automatica: evalua hardware, RAM, almacenamiento, GPU,
-        // Ollama y modelos; selecciona y prepara el modelo adecuado. Silenciosa
-        // salvo informacion relevante, errores o decisiones de intervencion.
-        var prep = await PrepareOnceAsync(assessmentService, stateStore);
+        // Preparacion automatica con feedback visual continuo y honesto: desde
+        // el arranque hasta el prompt muestra las etapas reales (recursos,
+        // Ollama, modelos, descarga, verificacion). Independiente del progreso
+        // de tareas del agente.
+        using var presenter = new StartupProgressPresenter();
+        presenter.Start();
+        var bridge = new StartupProgressObserverBridge(presenter);
+
+        var prep = await PrepareOnceAsync(assessmentService, stateStore, bridge);
+
+        presenter.Stop(prep.Ready, prep.Reason ?? (prep.NeedsIntervention ? "Preparacion pendiente." : "Condor esta listo."));
+
+        // Sin un modelo utilizable no se muestra el prompt ni se arranca la
+        // sesion: Cóndor no puede operar. Se informa el motivo y se sale.
+        if (!prep.Ready)
+        {
+            RenderStartupFailure(prep.Reason);
+            return 1;
+        }
 
         RenderWelcome(prep);
         Terminal.WriteLine();
@@ -109,12 +135,13 @@ public static class Program
 
     private static async Task<StartupPrepResult> PrepareOnceAsync(
         IAssessmentService assessmentService,
-        IStateStore stateStore)
+        IStateStore stateStore,
+        IStartupProgressObserver? progress = null)
     {
         return await new StartupPreparer(
             assessmentService,
             stateStore,
-            modelAutoSetup: new ModelAutoSetupService(stateStore, assessmentService)).RunAsync();
+            modelAutoSetup: new ModelAutoSetupService(stateStore, assessmentService)).RunAsync(progress);
     }
 
     private static async Task<int> HandleSlashAsync(
@@ -158,6 +185,7 @@ public static class Program
                 args,
                 CancellationToken.None),
             SlashCommandKind.Ayuda => await RenderHelpAndReturn(),
+            SlashCommandKind.Version => await RenderVersionAndReturn(),
             _ => await RenderHelpAndReturn()
         };
     }
@@ -168,10 +196,18 @@ public static class Program
         return Task.FromResult(0);
     }
 
+    private static Task<int> RenderVersionAndReturn()
+    {
+        Console.WriteLine(VersionInfo.Product + " " + VersionInfo.DisplayName);
+        return Task.FromResult(0);
+    }
+
     private static bool IsVersion(string[] args)
     {
         return args.Length == 1 &&
                (args[0].Equals("version", StringComparison.OrdinalIgnoreCase) ||
+                args[0].Equals("/version", StringComparison.OrdinalIgnoreCase) ||
+                args[0].Equals("/v", StringComparison.OrdinalIgnoreCase) ||
                 args[0].Equals("--version", StringComparison.OrdinalIgnoreCase) ||
                 args[0].Equals("-v", StringComparison.OrdinalIgnoreCase));
     }
@@ -186,28 +222,50 @@ public static class Program
                 args[0].Equals("/help", StringComparison.OrdinalIgnoreCase));
     }
 
-    private static void RenderWelcome(StartupPrepResult prep)
+    /// <summary>
+    /// Bloque honesto de fallo al arrancar: sin un modelo utilizable Condor no
+    /// puede iniciar. Se explica el motivo y se indica la salida, sin dejar que
+    /// aparezca el prompt &gt; como si todo estuviera funcionando.
+    /// </summary>
+    private static void RenderStartupFailure(string? reason)
     {
         Terminal.WriteLine();
-        Terminal.WriteInfo("C O N D O R");
-        Terminal.WriteDim(VersionInfo.Tagline);
+        Terminal.WriteWarning("⚠ Cóndor no puede iniciar.");
         Terminal.WriteLine();
-        Terminal.WriteLine("Condor dejo el entorno preparado y esta listo.");
+        Terminal.WriteDim("  No hay modelos locales disponibles.");
+        Terminal.WriteDim("  Se intentó preparar un modelo compatible, pero no fue posible.");
+        Terminal.WriteLine();
+        if (!string.IsNullOrWhiteSpace(reason))
+        {
+            Terminal.WriteDim("  Motivo: " + reason);
+        }
+        Terminal.WriteLine();
+        Terminal.WriteDim("  Puedes intentarlo de nuevo con 'condor /preparar' una vez que haya");
+        Terminal.WriteDim("  un modelo capaz o recursos disponibles.");
+        Terminal.WriteLine();
+    }
+
+    private static void RenderWelcome(StartupPrepResult prep)
+    {
+        // El banner de arranque (CONDOR / Observa·Comprende·Planifica·Construye·
+        // Verifica) ya lo mostro el presentador de arranque; aqui se muestra el
+        // build interno y el estado del entorno, antes de la invitacion al prompt.
+        Terminal.WriteDim(VersionInfo.DisplayName);
         if (!string.IsNullOrWhiteSpace(prep.Model))
         {
-            Terminal.WriteDim("  Modelo local listo: " + prep.Model);
+            Terminal.WriteSuccess("Modelo local listo: " + prep.Model);
         }
         else if (!string.IsNullOrWhiteSpace(prep.Reason))
         {
             Terminal.WriteDim("  " + prep.Reason);
         }
+        Terminal.WriteLine();
 
         if (prep.NeedsIntervention && !string.IsNullOrWhiteSpace(prep.Reason))
         {
             Terminal.WriteWarning("  " + prep.Reason);
         }
 
-        Terminal.WriteLine();
         Terminal.WriteDim("Escribe libremente lo que necesitas, por ejemplo:");
         Terminal.WriteDim("  'revisa por que no compila este proyecto'");
         Terminal.WriteDim("  'crea una pagina web sencilla para este proyecto'");
@@ -219,6 +277,7 @@ public static class Program
         Terminal.WriteLine();
         Terminal.WriteInfo("C O N D O R");
         Terminal.WriteDim(VersionInfo.Tagline);
+        Terminal.WriteDim(VersionInfo.DisplayName);
         Terminal.WriteLine();
         Terminal.WriteLine("Condor es un agente de ingenieria. Escribe con palabras la intencion");
         Terminal.WriteLine("y Condor comprende, analiza, selecciona estrategia y modelo, actua con");
@@ -241,6 +300,7 @@ public static class Program
         Terminal.WriteLine("  /verificar-semantico         Compila y ejecuta las pruebas del proyecto.");
         Terminal.WriteLine("  /preparar                    Refresca la preparacion del entorno.");
         Terminal.WriteLine("  /ayuda                       Muestra esta ayuda.");
+        Terminal.WriteLine("  /version                     Muestra la version.");
         Terminal.WriteLine("  /salir                       Termina la sesion interactiva.");
         Terminal.WriteLine();
         Terminal.WriteLine("Contracciones:");

@@ -1,5 +1,6 @@
 using Condor.Cli.Presentation;
 using Condor.Core.Contracts;
+using Condor.Core.Models;
 using Condor.Core.Serialization;
 
 namespace Condor.Cli.Commands;
@@ -25,31 +26,45 @@ public static class AgentCommand
             return 1;
         }
 
-        if (!string.IsNullOrWhiteSpace(intent) && !outputJson)
+        // Progreso visual solo en modo interactivo (no con --json, para no contaminar la salida).
+        AgentProgressPresenter? presenter = null;
+        try
         {
-            Terminal.WriteInfo("Condor analiza tu solicitud y actua sobre el proyecto...");
-            Terminal.WriteDim("  Comprendiendo la intencion");
-            Terminal.WriteDim("  Seleccionando modelo y estrategia");
-            Terminal.WriteDim("  Usando herramientas reales y harness");
+            AgentProgressObserverBridge? bridge = null;
+            if (!outputJson)
+            {
+                presenter = new AgentProgressPresenter();
+                bridge = new AgentProgressObserverBridge(presenter);
+                presenter.Start(intent);
+            }
+
+            var result = await agentService.RunAsync(intent, bridge, cancellationToken);
+
+            if (outputJson)
+            {
+                Console.WriteLine(AgentJson.Serialize(result));
+            }
+            else
+            {
+                var finalLine = result.Success
+                    ? (IsInformational(result) ? "Condor termino." : "Cambios verificados.")
+                    : "Condor no pudo completar la tarea.";
+                presenter?.Stop(result.Success, finalLine);
+
+                Terminal.WriteLine();
+                AgentRenderer.RenderResult(result);
+            }
+
+            return result.Success ? 0 : 1;
         }
-
-        var result = await agentService.RunAsync(intent, cancellationToken);
-
-        if (outputJson)
+        finally
         {
-            Console.WriteLine(AgentJson.Serialize(result));
+            presenter?.Dispose();
         }
-        else
-        {
-            Terminal.WriteLine();
-            if (result.Success) Terminal.WriteSuccess("Condor completo la tarea con evidencia verificada.");
-            else Terminal.WriteWarning("Condor no pudo completar la tarea.");
-            Terminal.WriteLine();
-            AgentRenderer.RenderResult(result);
-        }
-
-        return result.Success ? 0 : 1;
     }
+
+    private static bool IsInformational(AgentResult result)
+        => result.Checkpoint?.LastDecision == "describir";
 
     private static string BuildIntent(string[] args, bool outputJson)
     {

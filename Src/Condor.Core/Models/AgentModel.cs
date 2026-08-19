@@ -26,6 +26,13 @@ public class AgentCheckpoint
     public string? HarnessState { get; set; }
     public string? LastError { get; set; }
     public string? NextAction { get; set; }
+
+    /// <summary>Estado de presion de recursos en el ultimo punto evaluado (informativo).</summary>
+    public string? ResourcesPressure { get; set; }
+
+    /// <summary>Headroom de RAM (GB) en el ultimo punto evaluado (informativo).</summary>
+    public double? HeadroomGb { get; set; }
+
     public DateTime GeneratedAtUtc { get; set; }
 }
 
@@ -45,11 +52,15 @@ public sealed class AgentLimits
     public const string LimitTimeout = "agent-timeout";
     public const string LimitModifications = "agent-modifications";
     public const string LimitRepeated = "agent-repeated-action";
+    public const string LimitRedundantObservations = "agent-redundant-observations";
+    public const string LimitInvalidOutputs = "agent-invalid-outputs";
 
     public int MaxIterations { get; init; } = 8;
     public int TimeoutMilliseconds { get; init; } = 300_000;
     public int MaxModifications { get; init; } = 8;
     public int MaxRepeatedAction { get; init; } = 3;
+    public int MaxRedundantObservations { get; init; } = 2;
+    public int MaxInvalidOutputs { get; init; } = 8;
     public int MaxContentLength { get; init; } = 200_000;
 
     public static AgentLimits Default { get; } = new();
