@@ -33,4 +33,10 @@ public class ModelSelectionResult
     public string? Reason { get; set; }
     public List<string> Alternatives { get; set; } = new();
     public List<string> Limitations { get; set; } = new();
+
+    /// <summary>Instantanea de recursos usada para la seleccion (informativa).</summary>
+    public ResourceSnapshot? Resources { get; set; }
+
+    /// <summary>True si la seleccion quedo bloqueada por recursos (ningun modelo cabe).</summary>
+    public bool BlockedByResources { get; set; }
 }
