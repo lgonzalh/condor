@@ -29,6 +29,9 @@ public static class ModelSelector
             result.Limitations.Add("La memoria RAM no esta disponible; la seleccion es incierta.");
         }
 
+        // Instantanea de recursos con desglose y veredicto de presion (sin contar la cache).
+        result.Resources = ModelMemoryBudget.Snapshot(memory, candidatePeakGb: null);
+
         List<ModelCandidate> ordered;
 
         try
@@ -49,9 +52,51 @@ public static class ModelSelector
 
         if (desired is null)
         {
-            result.Limitations.Add("No hay un modelo compatible en el catalogo para este equipo.");
+            // Distinguimos "catalogo vacio" de "ninguno cabe por recursos".
+            var hasCandidates = catalog.Count > 0;
+            if (hasCandidates)
+            {
+                // Ninguno cabe: veredicto basado en el modelo mas pequeno del catalogo.
+                // El estado debe reflejar el motivo real: porcentaje de RAM total y
+                // presupuesto seguro, nunca ambos-reintentos.
+                var smallestPeak = catalog
+                    .Where(c => c.WeightGb > 0)
+                    .Select(c => ModelMemoryBudget.EstimatePeakGb(c.WeightGb, EstimateContextKbGb(c)))
+                    .DefaultIfEmpty(1.0)
+                    .Min();
+                result.Resources = ModelMemoryBudget.Snapshot(memory, smallestPeak);
+                result.BlockedByResources = result.Resources.Pressure == ResourcePressure.Insufficient;
+                if (result.Resources.Pressure == ResourcePressure.Insufficient)
+                {
+                    result.Limitations.Add(
+                        "Ningun modelo del catalogo cumple ambas condiciones: el porcentaje de RAM total permitido y el presupuesto seguro (" +
+                        result.Resources.PressureLabel + ", " + result.Resources.CandidatePercentage?.ToString("0") + "% de la RAM total). No se intenta cargar repetidamente; libera memoria o usa un modelo mas pequeno.");
+                    result.Limitations.Add("Presupuesto seguro (RAM libre real - reservas): " + result.Resources.SafeBudgetGb + " GB; la cache no se cuenta como garantia.");
+                }
+                else
+                {
+                    result.Limitations.Add("El catalogo de modelos esta vacio o ningun modelo es viable para este equipo.");
+                }
+            }
+            else
+            {
+                result.Limitations.Add("El catalogo de modelos esta vacio; no hay candidatos.");
+            }
+
             return result;
         }
+
+        // Clasificar la presion respecto al candidato elegido (para alertas honestas).
+        // En este punto el candidato YA cumplio ambas condiciones (porcentaje + presupuesto
+        // seguro), asi que su estado es Normal/Ajustado/Presion segun su porcentaje de RAM.
+        var candidatePeak = (double)catalog
+            .Where(c => c.Name.Equals(desired.Name, StringComparison.OrdinalIgnoreCase) ||
+                        c.PullName.Equals(desired.PullName, StringComparison.OrdinalIgnoreCase))
+            .Select(c => ModelMemoryBudget.EstimatePeakGb(c.WeightGb, EstimateContextKbGb(c)))
+            .FirstOrDefault();
+        result.Resources = ModelMemoryBudget.Snapshot(memory, candidatePeak);
+
+        AddPressureGuidance(result, desired);
 
         // Instalado: buscar el deseado primero (reutilizar sin descargar).
         if (installed.Contains(desired.Name) || installed.Contains(desired.PullName))
@@ -90,6 +135,40 @@ public static class ModelSelector
         return result;
     }
 
+    /// <summary>Orienta segun el estado de presion del candidato elegido (advertencias honestas).</summary>
+    private static void AddPressureGuidance(ModelSelectionResult result, ModelCandidate desired)
+    {
+        var resources = result.Resources;
+        if (resources is null)
+        {
+            return;
+        }
+
+        switch (resources.Pressure)
+        {
+            case ResourcePressure.Adjusted:
+                result.Limitations.Add(
+                    "El modelo " + desired.PullName + " esta en estado Ajustado (" +
+                    resources.CandidatePercentage?.ToString("0") + "% de la RAM total). Se permite porque el margen es suficiente, pero vigila la memoria.");
+                break;
+            case ResourcePressure.Pressure:
+                result.Limitations.Add(
+                    "El modelo " + desired.PullName + " esta en estado Presion (" +
+                    resources.CandidatePercentage?.ToString("0") + "% de la RAM total). Condor degradara la carga y recomienda cerrar los procesos de alto consumo para estabilidad.");
+                if (resources.TopConsumers.Count > 0)
+                {
+                    var names = string.Join(", ", resources.TopConsumers.Select(c => c.ProcessName));
+                    result.Limitations.Add("Consumidores relevantes detectados (solo lectura; Condor no cierra procesos): " + names + ".");
+                }
+                break;
+            case ResourcePressure.Insufficient:
+                result.Limitations.Add(
+                    "El modelo " + desired.PullName + " es insuficiente (" +
+                    resources.CandidatePercentage?.ToString("0") + "% de la RAM total); no cumple ambas condiciones. No se descarga ni se carga y no se reintenta en bucle.");
+                break;
+        }
+    }
+
     private static bool IsAtLeastAsCapable(ModelCandidate candidate, ModelCandidate reference)
     {
         if (candidate.MultiFileLevel != reference.MultiFileLevel)
@@ -125,7 +204,9 @@ public static class ModelSelector
                 var totalGb = memory.TotalBytes / (double)ModelMemoryBudget.BytesPerGb;
                 var freeGb = memory.FreeBytes / (double)ModelMemoryBudget.BytesPerGb;
 
-                if (!ModelMemoryBudget.FitsInRam(candidate.WeightGb, contextGb, totalGb, freeGb))
+                // Ambas condiciones de carga: porcentaje de RAM total permitido Y
+                // presupuesto seguro (RAM libre real - reservas - margen).
+                if (!ModelMemoryBudget.FitsInRamStrict(candidate.WeightGb, contextGb, totalGb, freeGb))
                 {
                     continue;
                 }
