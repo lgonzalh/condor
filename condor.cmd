@@ -19,12 +19,31 @@ set "ROOT=%~dp0"
 set "ROOT=%ROOT:~0,-1%"
 set "OUT=%ROOT%\.artifacts\condor"
 set "EXE=%OUT%\condor.exe"
+set "NEED_PUBLISH=0"
 
-REM Publicar la primera vez si el ejecutable no existe.
-if not exist "%EXE%" (
-    echo [Condor] Preparando Condor en la primera ejecucion, puede tardar unos segundos...
+REM Republicar cuando el fuente de la CLI es mas reciente que el ejecutable
+REM (evita ejecutar un binario desactualizado sin que el usuario tenga que
+REM recordar reconstruir a mano).
+set "SRC=%ROOT%\Src\Condor.Cli\Condor.Cli.csproj"
+if not exist "%SRC%" (
+    echo [Condor] ERROR: no se encontro el proyecto de la CLI en %SRC%
+    exit /b 1
+)
+
+for %%F in ("%SRC%" "%ROOT%\Src\Condor.Core\Condor.Core.csproj" "%ROOT%\Src\Condor.Infrastructure\Condor.Infrastructure.csproj") do (
+    if not exist "%EXE%" (
+        set "NEED_PUBLISH=1"
+    ) else (
+        for %%B in ("%EXE%") do for %%S in ("%%F") do (
+            if "%%~tS" GTR "%%~tB" set "NEED_PUBLISH=1"
+        )
+    )
+)
+
+if "%NEED_PUBLISH%"=="1" (
+    echo [Condor] Actualizando Condor...
     if not exist "%OUT%" mkdir "%OUT%"
-    dotnet publish "%ROOT%\Src\Condor.Cli\Condor.Cli.csproj" -c Release -o "%OUT%" --nologo -v q
+    dotnet publish "%SRC%" -c Release -o "%OUT%" --nologo -v q
     if errorlevel 1 (
         echo [Condor] ERROR: no se pudo preparar Condor. Revisa que el SDK de .NET este instalado.
         exit /b 1
