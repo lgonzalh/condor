@@ -1,79 +1,63 @@
 # AGENTE_CONDOR
 
-Version: 3.0.0
+Version: 4.0.0
 Estado: Vigente
 Modo: Evolucion Continua
+Fecha de continuidad: 2026-08-19
 
 ## Proposito
 
-Definir el comportamiento operativo del agente que desarrolla y mantiene Condor.
+Definir el comportamiento operativo del agente que mantiene Condor.
 
-## Fuente operativa
+## Regla de entrada
 
-El agente debe consultar primero la documentacion oficial del repositorio y el estado Git real.
+Antes de modificar codigo:
+1. Leer ESTADO_PROYECTO.md.
+2. Leer ESTADO_DESARROLLO.md.
+3. Leer BACKLOG.md.
+4. Leer KANBAN.md.
+5. Leer INVENTARIO_PROYECTO.md.
+6. Revisar Git real.
+7. Identificar la tarea activa.
+8. No asumir contexto no documentado.
 
-La fuente oficial para el nivel activo es ESTADO_PROYECTO.md. Actualmente no existe nivel activo: Condor opera en Evolucion Continua.
+## Regla actual de trabajo
 
-## Reglas de continuidad
+Trabajar con UN SOLO AGENTE INTEGRADOR.
 
-- T-001..T-012 constituyen el MVP 1.0 completado.
-- T-013 y T-014 son evolucion posterior, no una redefinicion del MVP.
-- No crear tareas indefinidamente sin necesidad concreta.
-- No crear Nivel 10.
-- No reabrir tareas congeladas salvo solicitud explicita o dependencia arquitectonica critica.
-- Mantener 1 archivo afectado = 1 commit individual.
-- Verificar build, pruebas, arquitectura y E2E cuando corresponda.
-- Publicar cambios en main y comprobar HEAD == origin/main y working tree limpio al cierre.
-- Mantener la CLI publica en espanol y sin tildes.
-- Operacion local; no introducir descargas automaticas ni dependencia cloud obligatoria.
+No repartir la estabilizacion actual entre varios agentes. La coordinacion de varios agentes produjo trabajo entrelazado y costo innecesario.
 
-## Frontera T-014
+## Restricciones
 
-T-014 integra la verificacion semantica T-013 en `condor avanzar`.
+- Operacion local.
+- Ollama como proveedor local inicial.
+- Sin dependencia cloud obligatoria.
+- No modificar trabajo ajeno.
+- No usar git add -p, git add -A, reset, restore, checkout o clean salvo autorizacion explicita.
+- No hacer commits o push sin autorizacion del usuario, salvo que la tarea lo indique expresamente.
+- No declarar una funcionalidad terminada solo porque compila.
+- Toda afirmacion funcional debe tener prueba reproducible.
+- La CLI publica debe conservar el espanol sin tildes.
 
-Debe:
-- reutilizar ISemanticVerificationService;
-- mantener `condor verificar-semantico` independiente;
-- conservar `condor verificar` intacto;
-- degradar cuando la semantica no sea aplicable;
-- no introducir Architect, Guardian ni vision-en-ciclo.
+## Prioridad inmediata
 
-## Criterio de continuidad
+Resolver la inconsistencia de seleccion/compatibilidad del modelo:
 
-Al finalizar una tarea, primero determinar si el objetivo definido esta realmente completo.
+- qwen2.5-coder:3b fue descargado.
+- Condor mostro "Modelo local listo: qwen2.5-coder:3b".
+- Presupuesto observado: 8,2 GB disponibles; presupuesto seguro 3,7 GB; estado Normal.
+- La tarea "hola" logra ejecutarse.
+- Otras tareas como "que modelo eres?" y el analisis de archivos terminan con "No hay un modelo compatible disponible para la tarea."
+- El agente debe encontrar la causa exacta antes de modificar codigo.
 
-No crear una nueva T por inercia. Una nueva tarea requiere:
-1. necesidad concreta;
-2. alcance delimitado;
-3. beneficio verificable;
-4. fronteras claras;
-5. criterio de cierre.
+## Prohibicion temporal
 
-## Inicio de un nuevo chat
+No modificar presupuesto, descarga, progreso, CLI ni documentacion mientras se investiga la causa de seleccion/compatibilidad, salvo que la causa demuestre una dependencia directa.
 
-1. Leer este documento.
-2. Leer ESTADO_PROYECTO.md, ESTADO_DESARROLLO.md, BACKLOG.md, KANBAN.md e INVENTARIO_PROYECTO.md.
-3. Verificar Git.
-4. Identificar la tarea activa.
-5. No asumir contexto no documentado.
-6. Comenzar por reconocimiento si la tarea no esta formalizada.
+## Criterio de cierre
 
-## Comandos Condor
+Primero:
+Comprender -> reproducir -> localizar causa -> corregir -> probar.
 
-Los comandos operan sobre el nivel activo. Como actualmente no existe nivel activo, cualquier operacion que deba abarcar el proyecto completo requiere el sufijo `Global` cuando corresponda a las reglas del proyecto.
-
-## Modelo de interaccion (T-016)
-
-Condor se usa por intencion libre (via principal) y por comandos de control `/`:
-
-- `condor` -> prepara el entorno automaticamente y abre sesion interactiva.
-- `condor "<intencion>"` -> intencion libre al motor agente.
-- `/analizar`, `/contexto`, `/planear`, `/construir`, `/verificar`, `/avanzar`,
-  `/examinar`, `/recomendar`, `/consultar`, `/verificar-semantico`, `/preparar`,
-  `/ayuda`, `/salir`.
-
-El exito del motor agente depende exclusivamente del harness externo real
-(build/test/restore); jamas de la declaracion del modelo, y se protege contra
-modificacion de archivos de prueba para obtener un falso PASS. La validacion E2E
-de T-016 corresponde a proyectos .NET (L-008); el soporte para otros ecosistemas
-queda para evolucion posterior sin ser defecto ni promesa.
+Despues:
+Documentar -> congelar -> continuar.
