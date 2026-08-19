@@ -5,6 +5,9 @@ obj/
 *.suo
 .vs/
 
+# Ejecutable publicado / artefactos de empaquetado
+.artifacts/
+
 # Resultados de pruebas
 TestResults/
 [Tt]est[Rr]esult*/
