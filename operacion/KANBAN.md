@@ -12,14 +12,17 @@ Sin incidencias activas de seleccion de modelo.
 ## LISTO / VERIFICADO PARCIALMENTE
 
 - Estabilizacion del agente: causa raiz de la RAM fluctuante identificada y corregida.
+- Promesa fundamental de inicio: con modelos instalados pero RAM baja, la sesion arranca
+  igual (no se bloquea); Condor decide el modelo en cada tarea con recuperacion acotada.
 - Build sin errores/advertencias en el ultimo cierre informado.
-- Suites automatizadas verdes en el ultimo cierre informado (incluida la incidencia RAM).
+- Suites automatizadas verdes en el ultimo cierre informado (534 pruebas).
 - Descarga de qwen2.5-coder:3b observada.
 - Presupuesto seguro observado.
-- Progreso visual observado.
+- Progreso visual observado (arranque y agente; nunca pantalla en negro).
 - Ejecucion de herramientas observada.
 - "hola" ejecutado correctamente.
-- E2E real: tarea con RAM suficiente, bloqueo honesto con RAM insuficiente, y recuperacion posterior.
+- E2E real: tarea con RAM suficiente, bloqueo honesto con RAM insuficiente, recuperacion
+  posterior, e inicio no-bloqueante con modelos instalados y RAM baja.
 
 ## PENDIENTE
 
@@ -33,7 +36,9 @@ Sin incidencias activas de seleccion de modelo.
 Resuelto: ya no existe la contradiccion de "modelo listo" seguido de "no hay modelo
 compatible" para tareas que deberian ejecutarse. Cuando la RAM libre no alcanza el
 presupuesto seguro, Condor informa un bloqueo TEMPORAL de recursos de forma honesta
-y conserva la tarea.
+y conserva la tarea. Ademas, el inicio ya no se bloquea cuando HAY modelos instalados:
+la sesion arranca, se explica la RAM con honestidad y Condor decide/recupera el modelo
+en cada tarea.
 
 ## SIGUIENTE MEJOR ACCION
 

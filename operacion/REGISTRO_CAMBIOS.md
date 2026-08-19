@@ -81,3 +81,45 @@ Cuando ModelAutoSetupService informa que el modelo esta bloqueado por recursos
   tarea conservada, exit 1, termino en tiempo finito (sin bucle).
 - (c) recuperacion posterior -> la misma tarea completada al liberarse RAM (exit 0).
 - (d) tarea no perdida -> objective y checkpoint.task conservan la intencion.
+
+---
+
+## PROMESA FUNDAMENTAL: Condor no se bloquea al inicio si hay modelos instalados
+
+### Problema
+Aunque se corrigió el fallo del AgentService ante RAM fluctuante, el flujo de INICIO
+todavia bloqueaba la sesion cuando no quedaba un modelo verificable-ahora: si la RAM
+libre no alcanzaba el presupuesto seguro, StartupPreparer devolvia `Ready=false` y
+Program.cs mostraba "Condor no puede iniciar" aun con qwen2.5-coder:3b/7b instalados.
+Eso violaba la promesa: "Hay modelos instalados pero no puedo usarlos -> no inicio".
+
+### Correcion (minima, dos archivos de produccion)
+- StartupPreparer.cs: al no quedar un modelo "listo" ahora, condor distingue si el
+  inventario REAL de Ollama (/api/tags) contiene al menos un modelo instalado.
+  * Si HAY modelos instalados -> `Ready=true` (la sesion arranca), `NeedsIntervention=true`
+    con un motivo honesto: RAM momentaneamente insuficiente, se decide el modelo en
+    cada tarea y se recupera de forma acotada al liberarse memoria. Cerrar apps es
+    una sugerencia OPCIONAL, no obligatoria.
+  * Si NO hay ningun modelo instalado -> se mantiene `Ready=false` (sin capacidad
+    operativa no se entra a la sesion en silencio).
+- Program.cs: RenderWelcome evita duplicar el aviso de intervencion (una sola
+  advertencia clara). El gate de inicio (`!prep.Ready`) solo bloquea cuando
+  realmente no hay ningun modelo instalado/obtenible.
+
+### Presupuestos
+La decision autonoma conserva las reglas de presupuesto seguro (FitsInRamStrict no
+se relaja): se reutiliza el modelo instalado si cabe, se descarga si falta, se elige
+el modelo menor viable con RAM limitada, y si nada cabe se explica y se sugiere
+liberar memoria de forma opcional sin bloquear.
+
+### Prueba agregada
+- Tests/Integration/Condor.Infrastructure.Tests/StartupPreparerTests.cs:
+  RunAsync_ModelosInstaladosPeroRamaBaja_ArrancaSesionSinBloquear (la sesion arranca
+  con modelos instalados pese a RAM baja, con advertencia honesta y sin afirmar modelo listo).
+
+### Verificacion E2E real (Ollama local, qwen2.5-coder:3b y 7b instalados)
+- Inicio sin argumentos con RAM baja (5,6-5,9 GB): EXITCODE=0, la sesion arranca, se
+  muestran la etapa de arranque y la advertencia honesta; no se bloquea.
+- One-shot con RAM baja: fallo honesto temporal, tarea conservada (exit 1).
+- One-shot con RAM suficiente (6,9 GB): la misma tarea completada con
+  qwen2.5-coder:3b (exit 0) -> recuperacion posterior demostrada.

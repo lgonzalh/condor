@@ -32,6 +32,10 @@ Resultado tras la correccion:
 - Cuando la RAM libre cae bajo el presupuesto seguro, Condor informa un bloqueo
   TEMPORAL por recursos (no "no hay modelo compatible"), conserva la tarea y la
   completa en cuanto la RAM se libera.
+- Al INICIO, si hay modelos instalados (qwen2.5-coder:3b/7b) aunque la RAM no alcance
+  el presupuesto seguro, la sesion ARRANCA igual (no se bloquea): se explica la RAM,
+  Condor decide el modelo en cada tarea y lo recupera de forma acotada al liberarse
+  memoria; cerrar aplicaciones es una sugerencia opcional, no obligatoria.
 
 ## DIAGNOSTICO ACTIVO
 

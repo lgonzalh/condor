@@ -151,6 +151,66 @@ public class StartupPreparerTests
         Assert.Contains("recursos", result.Reason, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task RunAsync_ModelosInstaladosPeroRamaBaja_ArrancaSesionSinBloquear()
+    {
+        // PROMESA FUNDAMENTAL: hay modelos instalados en el inventario real de
+        // Ollama pero la RAM libre actual no alcanza el presupuesto seguro.
+        // Condor NO debe bloquear el inicio ("hay modelos pero no puedo usarlos");
+        // debe arrancar la sesion, informar la RAM con honestidad y dejar que el
+        // AgentService decida/recupere el modelo en cada tarea.
+        var storeDir = TempDir();
+        var store = new LocalStateStore(storeDir);
+        await store.SaveAssessmentAsync(ConOllamaConModelosYRamaBaja());
+
+        var oklahomaReal = new StubAssessmentService(ConOllamaConModelosYRamaBaja());
+        var autoSetupBloqueado = new StubModelAutoSetup(ModelSelectionBloqueadaPorRecursos());
+
+        var preparer = new StartupPreparer(
+            oklahomaReal,
+            store,
+            modelAutoSetup: autoSetupBloqueado);
+
+        var result = await preparer.RunAsync();
+
+        Assert.True(result.Ready);            // la sesion arranca
+        Assert.True(result.NeedsIntervention); // pero se advierte la RAM
+        Assert.Null(result.Model);             // no se afirma un modelo listo que no lo esta
+        Assert.True(result.Reason?.IndexOf("Hay modelos instalados", StringComparison.OrdinalIgnoreCase) >= 0);
+        Assert.True(result.Reason?.IndexOf("liberar", StringComparison.OrdinalIgnoreCase) >= 0);
+    }
+
+    private static AssessmentResult ConOllamaConModelosYRamaBaja()
+    {
+        // Inventario real de Ollama con modelos instalados, pero RAM libre baja.
+        return new AssessmentResult
+        {
+            SchemaVersion = "1.0.0",
+            Environment = new EnvironmentProfile
+            {
+                Memory = new MemoryInfo
+                {
+                    Status = DetectionStatus.Detected,
+                    TotalBytes = 16L * 1024 * 1024 * 1024,
+                    FreeBytes = (long)(4.0 * 1024 * 1024 * 1024)
+                }
+            },
+            Tools = new ToolsProfile
+            {
+                Ollama = new OllamaStatus
+                {
+                    Installed = true,
+                    ServerRunning = true,
+                    Models = new List<ModelInfo>
+                    {
+                        new() { Name = "qwen2.5-coder:3b" },
+                        new() { Name = "qwen2.5-coder:7b" }
+                    }
+                }
+            }
+        };
+    }
+
     private static ModelSelectionResult ModelSelectionDescargaFallida()
     {
         return new ModelSelectionResult

@@ -255,7 +255,7 @@ public static class Program
         {
             Terminal.WriteSuccess("Modelo local listo: " + prep.Model);
         }
-        else if (!string.IsNullOrWhiteSpace(prep.Reason))
+        else if (!string.IsNullOrWhiteSpace(prep.Reason) && !prep.NeedsIntervention)
         {
             Terminal.WriteDim("  " + prep.Reason);
         }

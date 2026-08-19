@@ -87,12 +87,34 @@ public sealed class StartupPreparer
 
         if (model is null && !selection.AlreadyInstalled)
         {
-            // Ollama esta activo pero no quedó un modelo utilizable. Aunque se
-            // evaluaron recursos y se intentó una preparacion/descarga acotada,
-            // no se obtuvo un modelo compatible: NO se reporta listo ni se deja
-            // que la sesion arranque sin capacidad operativa.
+            // No quedo un modelo "listo" y verificado AHORA (p. ej. por RAM libre
+            // insuficiente en el presupuesto seguro). Antes de bloquear el inicio,
+            // Condor distingue si EXISTEN modelos instalados en el inventario real
+            // de Ollama (/api/tags):
+            //
+            //   * Si hay AL MENOS UN modelo instalado -> la sesion ARRANCA igual:
+            //     el AgentService decidira e intentara cargar el modelo adecuado en
+            //     cada tarea (con su recuperacion acotada al liberarse RAM). NO se
+            //     bloquea el inicio por una RAM momentaneamente baja. Se informa el
+            //     motivo con honestidad (no se afirma que el modelo este listo).
+            //
+            //   * Si NO hay ningun modelo instalado -> no hay capacidad operativa:
+            //     se reporta el motivo y se solicita intervencion, sin entrar a la
+            //     sesion en silencio.
+            var hasModelsInstalled = await AnyModelInstalledAsync(cancellationToken);
             progress?.Report(StartupProgress.Of(StartupStage.PreparingEnvironment, completed: true));
             progress?.Report(StartupProgress.Of(StartupStage.Ready, completed: true));
+
+            if (hasModelsInstalled)
+            {
+                return new StartupPrepResult
+                {
+                    Ready = true,
+                    NeedsIntervention = true,
+                    Model = null,
+                    Reason = BuildTemporaryBlockedReason(selection)
+                };
+            }
 
             return new StartupPrepResult
             {
@@ -177,5 +199,41 @@ public sealed class StartupPreparer
     private static bool IsOllamaRunning(AssessmentResult? assessment)
     {
         return assessment?.Tools?.Ollama is { ServerRunning: true };
+    }
+
+    /// <summary>
+    /// Autoridad: hay modelos instalados si el inventario REAL de Ollama (/api/tags),
+    /// consultado al momento, contiene al menos un modelo. Nunca se infiere de la
+    /// RAM ni del estado persistido (que podria estar desactualizado).
+    /// </summary>
+    private async Task<bool> AnyModelInstalledAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var live = await _assessment.ExecuteAsync(new AssessmentRequest(), cancellationToken);
+            return live.Tools?.Ollama?.Models is { Count: > 0 };
+        }
+        catch
+        {
+            // Si no se puede sondear Ollama, no afirmamos que haya modelos.
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Motivo honesto cuando HAY modelos instalados pero la RAM libre actual no
+    /// alcanza el presupuesto seguro para cargarlos en este instante. Explica que
+    /// es un bloqueo temporal por recursos (no ausencia de modelo), que la sesion
+    /// arranca igual y que Condor reintentara de forma acotada al liberarse RAM.
+    /// </summary>
+    private static string BuildTemporaryBlockedReason(ModelSelectionResult selection)
+    {
+        var resources = selection.Resources;
+        var detail = resources is not null
+            ? "RAM libre " + resources.FreeGb.ToString("0.0") + " GB · presupuesto seguro " + resources.SafeBudgetGb.ToString("0.0") + " GB · " + resources.PressureLabel + "."
+            : "RAM disponible momentaneamente insuficiente.";
+        return "Hay modelos instalados, pero la RAM libre actual no alcanza el presupuesto seguro para cargarlos ahora (" + detail + "). " +
+               "Cóndor arranco la sesion igualmente: decidira el modelo adecuado en cada tarea y lo cargara con una recuperacion acotada al liberarse memoria. " +
+               "Opcional: para liberar RAM puedes cerrar aplicaciones/procesos de alto consumo; no es obligatorio para continuar.";
     }
 }
