@@ -1,69 +1,71 @@
 # ESTADO_PROYECTO
 
-Version: 2.3.0
+Version: 2.1.0
 Estado: Vigente
 Clasificacion: Estado del Proyecto
+Fecha: 2026-08-19
 
-## FUENTE OFICIAL DEL NIVEL ACTIVO
+## FUENTE OFICIAL
 
-Actualmente no existe un nivel activo.
-
-El Proyecto Condor opera en modo Evolucion Continua.
+Actualmente no existe un nivel estructural activo.
+Condor opera en Evolucion Continua.
 
 ## RESUMEN
 
 Proyecto: Condor
+MVP Condor 1.0: completado en la linea documental T-001..T-012.
+T-013: completada/congelada.
+T-014: integracion posterior del ciclo.
+La evolucion actual corresponde a estabilizacion y verificacion del producto real.
 
-Estado general: Desarrollo del software / Evolucion Continua
+## ESTADO REAL OBSERVADO
 
-Nivel activo: Ninguno
+La aplicacion compila y el CLI arranca.
 
-Modo operativo: Evolucion Continua
+Se verifico:
+- deteccion/preparacion de entorno;
+- descarga automatica de qwen2.5-coder:3b en un escenario sin modelo;
+- calculo de presupuesto seguro;
+- mensajes de progreso durante una tarea;
+- ejecucion de al menos una tarea sencilla ("hola").
 
-Linea base inicial de niveles 00-09: Completada
+Problema actual:
+- Condor puede informar que qwen2.5-coder:3b esta listo;
+- sin embargo, determinadas tareas terminan con "No hay un modelo compatible disponible para la tarea.";
+- esto contradice el estado de modelo listo y debe resolverse antes de declarar estable el ciclo de agente.
 
-Ultimo nivel estructural cerrado: 09 - Evolucion
+## EVIDENCIA RECIENTE
 
-Condor 1.0 MVP: **COMPLETADO, VERIFICADO, PUBLICADO y CERRADO (version 1.0.0, tag `v1.0.0`)**
+Hardware/ejecucion observada:
+- RAM disponible mostrada por Condor: 8,2 GB.
+- Presupuesto seguro mostrado: 3,7 GB.
+- Estado: Normal.
+- Modelo descargado: qwen2.5-coder:3b.
+- Progreso observado: Comprendiendo -> Observando/list_dir -> Finalizando.
+- Una tarea "hola" finalizo correctamente.
+- Otras tareas no seleccionan modelo compatible.
 
-## ESTADO OPERATIVO
+## ESTADO GIT
 
-- T-001 a T-012: completadas y congeladas (MVP funcional).
-- T-013: completada y congelada (evolucion posterior).
-- T-014: **completada, verificada, integrada, publicada y congelada** (commit `c982b14`).
-- T-015: **completada y cerrada (evolucion v1.x)** — Automatizacion de puesta en
-  marcha y modelo LLM local; presupuesto seguro, seleccion por capacidad de
-  ingenieria, obtencion/reutilizacion del modelo y agente `condor hacer`.
-- No existe Nivel 10.
+El usuario realizo push despues de la integracion.
+El ultimo estado informado por el agente fue working tree limpio.
+No se fija aqui un hash HEAD porque no fue proporcionado en el ultimo relevo.
 
-## VERSION
+## PRIORIDAD
 
-La linea base tecnica `v1.0.0` quedo cerrada y etiquetada (tag `v1.0.0`).
+Resolver la causa de seleccion/compatibilidad del modelo.
 
-La evolucion posterior (T-015) se desarrolla dentro de Condor v1.x sin modificar
-la linea base.
+## NO PRIORITARIO AHORA
 
-## EXPERIENCIA Y MASCOTA
+- nuevas funcionalidades;
+- comercializacion;
+- API de pago;
+- traduccion al ingles;
+- vision nueva;
+- nuevos agentes;
+- ampliacion documental por burocracia.
 
-Los mockups y la mascota (Condor Grande / Condor Ave) son referencias de
-experiencia y evolucion futura; NO forman parte del cierre funcional de 1.0.
+## CRITERIO DE SALIDA
 
-## EVOLUCION CONTINUA
-
-La continuidad posterior al cierre de los niveles estructurales opera mediante ciclos de:
-
-Comprender → Planificar → Disenar → Implementar → Verificar → Documentar → Congelar → Continuar
-
-El software es el resultado principal. La documentacion permanente se mantiene de forma proporcional para decisiones, arquitectura, contratos, requisitos y cambios relevantes.
-
-## SIGUIENTE ACCION
-
-T-015 (Automatizacion de puesta en marcha y modelo LLM local) esta completada y
-cerrada dentro de Condor v1.x (evidencia funcional: suites verdes y E2E real con
-`qwen2.5-coder:3b` con verificacion externa). La continuidad opera en evolucion
-continua sobre tareas explicitamente justificadas. La linea base `v1.0.0` se
-mantiene cerrada.
-
-## BLOQUEADORES
-
-No se identifican bloqueadores documentales para la continuidad.
+El flujo cliente incognito debe funcionar de extremo a extremo antes de declarar estable la version real de Condor 1.0:
+entorno nuevo -> Ollama/modelo -> presupuesto -> seleccion -> ejecucion -> progreso -> resultado.
