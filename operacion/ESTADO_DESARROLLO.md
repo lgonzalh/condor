@@ -36,6 +36,9 @@ Resultado tras la correccion:
   el presupuesto seguro, la sesion ARRANCA igual (no se bloquea): se explica la RAM,
   Condor decide el modelo en cada tarea y lo recupera de forma acotada al liberarse
   memoria; cerrar aplicaciones es una sugerencia opcional, no obligatoria.
+- Si en plena tarea no hay ningun modelo viable con la RAM disponible, Condor NO se
+  cierra: informa "RAM insuficiente", sugiere liberar memoria (Opcion S/N) y, si el
+  usuario confirma, reevalua y continua; si no, sale limpio conservando la tarea.
 
 ## DIAGNOSTICO ACTIVO
 

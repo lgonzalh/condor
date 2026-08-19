@@ -77,7 +77,7 @@ public static class Program
             // Intencion natural en una sola linea: se entrega al motor agente,
             // que ya ejecuta su propia preparacion interna y actua con herramientas.
             return await AgentCommand.ExecuteAsync(
-                new AgentService(stateStore, assessmentService),
+                new AgentService(stateStore, assessmentService, confirmation: PromptIfInteractive(args)),
                 args,
                 CancellationToken.None);
         }
@@ -123,7 +123,7 @@ public static class Program
         var interpreter = new Interpreter(
             slash => HandleSlashAsync(slash, assessmentService, stateStore, llmClient),
             free => AgentCommand.ExecuteAsync(
-                new AgentService(stateStore, assessmentService),
+                new AgentService(stateStore, assessmentService, confirmation: PromptIfInteractive()),
                 free.Intention.Split(' ', System.StringSplitOptions.RemoveEmptyEntries | System.StringSplitOptions.TrimEntries),
                 CancellationToken.None));
 
@@ -142,6 +142,27 @@ public static class Program
             assessmentService,
             stateStore,
             modelAutoSetup: new ModelAutoSetupService(stateStore, assessmentService)).RunAsync(progress);
+    }
+
+    /// <summary>
+    /// Confirmador interactivo de RAM solo cuando hay una consola real (no JSON,
+    /// no entrada redirigida). En one-shot --json o con entrada redirigida no se
+    /// pregunta, para no contaminar la salida ni bloquear procesos no interactivos.
+    /// </summary>
+    private static IUserConfirmation? PromptIfInteractive(string[]? args = null)
+    {
+        if (Console.IsInputRedirected || Console.IsOutputRedirected)
+        {
+            return null;
+        }
+
+        if (args is not null &&
+            args.Contains("--json", StringComparer.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return new Presentation.ConsoleRamConfirmation();
     }
 
     private static async Task<int> HandleSlashAsync(

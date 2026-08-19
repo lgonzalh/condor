@@ -54,6 +54,67 @@ public class AgentServiceResourceBlockTests
         Assert.True(assessment.ExecuteCount <= 12, "La recuperacion de recursos debe ser acotada.");
     }
 
+    [Fact]
+    public async Task RunAsync_RamBaja_UsuarioNiegaConfirmacion_SaleLimpioYConservaTarea()
+    {
+        // Respuesta NO a la pregunta opcional de RAM: Condor conserva la tarea,
+        // termina de forma limpia y NO cierra aplicaciones por su cuenta.
+        var store = new LocalStateStore(Path.Combine(TempDir(), "state-" + Guid.NewGuid().ToString("N")));
+        var assessment = new StubAssessmentService(ramTotalGb: 16, ramFreeGb: 5, installedModel: "qwen2.5-coder:3b");
+        var confirmation = new StubConfirmation(response: false);
+        var service = new AgentService(store, assessment, confirmation: confirmation);
+
+        var result = await service.RunAsync("analiza", cancellationToken: CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal(1, confirmation.AskCount);        // se pregunto una vez
+        Assert.Contains("RAM libre", result.Reason, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("analiza", result.Objective);      // no se pierde la tarea
+        Assert.Equal("analiza", result.Checkpoint?.Task);
+    }
+
+    [Fact]
+    public async Task RunAsync_RamBaja_UsuarioConfirmaPeroRamaSigueBaja_SaleSinBucle()
+    {
+        // Respuesta SI, pero la RAM sigue insuficiente tras la re-evaluacion:
+        // Condor re-evalua UNA vez mas (contabilizable) y luego sale limpio,
+        // sin bucles de reintento ilimitados y sin perder la tarea.
+        var store = new LocalStateStore(Path.Combine(TempDir(), "state-" + Guid.NewGuid().ToString("N")));
+        var assessment = new StubAssessmentService(ramTotalGb: 16, ramFreeGb: 5, installedModel: "qwen2.5-coder:3b");
+        var confirmation = new StubConfirmation(response: true);
+        var service = new AgentService(store, assessment, confirmation: confirmation);
+
+        var result = await service.RunAsync("analiza", cancellationToken: CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal(1, confirmation.AskCount);
+        Assert.Contains("RAM libre", result.Reason, StringComparison.OrdinalIgnoreCase);
+        // Reintentos acotados: la confirmacion añade una re-evaluacion por encima
+        // de la recuperacion automatica, pero queda limitada (sin bucle infinito).
+        Assert.True(assessment.ExecuteCount <= 14, "La reevaluacion tras confirmacion debe ser acotada.");
+        Assert.Equal("analiza", result.Objective);
+    }
+
+    [Fact]
+    public async Task RunAsync_RamBaja_UsuarioConfirmaYRamaSeLibera_Reevalua()
+    {
+        // Respuesta SI y la RAM se libera (estado compartido subido al confirmar):
+        // Condor re-evalua y continúa en lugar de rendirse con el error de RAM.
+        // Cóndor NUNCA cierra apps; simula que el usuario si libero memoria.
+        var store = new LocalStateStore(Path.Combine(TempDir(), "state-" + Guid.NewGuid().ToString("N")));
+        var ram = new RamState { FreeGb = 5.0 };
+        var assessment = new StubAssessmentService(ramTotalGb: 16, ramFreeGb: 5, installedModel: "qwen2.5-coder:3b", ram: ram);
+        var confirmation = new StubConfirmation(response: true, ram: ram, releasedGb: 9.0);
+        var service = new AgentService(store, assessment, confirmation: confirmation);
+
+        var result = await service.RunAsync("analiza", cancellationToken: CancellationToken.None);
+
+        Assert.Equal(1, confirmation.AskCount);          // se pregunto
+        Assert.Equal(9.0, ram.FreeGb);                    // el usuario libero RAM
+        Assert.True(assessment.ExecuteCount > 6, "Debe re-evaluarse tras la confirmacion");
+        Assert.DoesNotContain("no se pudo cargar", result.Reason, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static string TempDir()
     {
         return Path.Combine(Path.GetTempPath(), "condor-agent-resource-" + Guid.NewGuid().ToString("N"));
@@ -64,18 +125,23 @@ public class AgentServiceResourceBlockTests
         private readonly double _ramTotalGb;
         private readonly double _ramFreeGb;
         private readonly string _installedModel;
+        public RamState? Ram { get; }
         public int ExecuteCount { get; private set; }
 
-        public StubAssessmentService(double ramTotalGb, double ramFreeGb, string installedModel)
+        public StubAssessmentService(double ramTotalGb, double ramFreeGb, string installedModel, RamState? ram = null)
         {
             _ramTotalGb = ramTotalGb;
             _ramFreeGb = ramFreeGb;
             _installedModel = installedModel;
+            Ram = ram;
         }
+
+        private double CurrentFreeGb => Ram?.FreeGb ?? _ramFreeGb;
 
         public Task<AssessmentResult> ExecuteAsync(AssessmentRequest request, CancellationToken cancellationToken = default)
         {
             ExecuteCount++;
+            var ramFree = CurrentFreeGb;
             return Task.FromResult(new AssessmentResult
             {
                 Environment = new EnvironmentProfile
@@ -84,8 +150,8 @@ public class AgentServiceResourceBlockTests
                     {
                         Status = DetectionStatus.Detected,
                         TotalBytes = (long)(_ramTotalGb * 1024d * 1024 * 1024),
-                        FreeBytes = (long)(_ramFreeGb * 1024d * 1024 * 1024),
-                        AvailableBytes = (long)(_ramFreeGb * 1024d * 1024 * 1024)
+                        FreeBytes = (long)(ramFree * 1024d * 1024 * 1024),
+                        AvailableBytes = (long)(ramFree * 1024d * 1024 * 1024)
                     }
                 },
                 Tools = new ToolsProfile
@@ -102,6 +168,42 @@ public class AgentServiceResourceBlockTests
                 },
                 Capabilities = new CapabilitiesSummary { ModelsCount = 1, OllamaReady = true }
             });
+        }
+    }
+
+    private sealed class RamState
+    {
+        public double FreeGb { get; set; }
+    }
+
+    /// <summary>
+    /// Confirmador configurable. Cuando confirma y SeLiberaRamaAlConfirmar es true,
+    /// libera RAM (sube el valor del estado compartido) para simular que el usuario
+    /// cerro aplicaciones: la re-evaluacion posterior vera RAM suficiente.
+    /// </summary>
+    private sealed class StubConfirmation : IUserConfirmation
+    {
+        private readonly bool _response;
+        private readonly RamState? _ram;
+        private readonly double _releasedGb;
+        public int AskCount { get; private set; }
+
+        public StubConfirmation(bool response, RamState? ram = null, double releasedGb = 0)
+        {
+            _response = response;
+            _ram = ram;
+            _releasedGb = releasedGb;
+        }
+
+        public Task<bool> AskToReleaseRamAsync(string prompt, CancellationToken cancellationToken = default)
+        {
+            AskCount++;
+            if (_response && _ram is not null && _releasedGb > 0)
+            {
+                _ram.FreeGb = _releasedGb; // el usuario "libero" RAM
+            }
+
+            return Task.FromResult(_response);
         }
     }
 }

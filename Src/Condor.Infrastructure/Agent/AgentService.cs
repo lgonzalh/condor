@@ -21,19 +21,22 @@ public sealed class AgentService : IAgentService
     private readonly ILlmClient _llm;
     private readonly ILlmProviderDiagnostics _provider;
     private readonly AgentLimits _limits;
+    private readonly IUserConfirmation? _confirmation;
 
     public AgentService(
         IStateStore stateStore,
         IAssessmentService? assessmentService = null,
         AgentLimits? limits = null,
         ILlmClient? llm = null,
-        ILlmProviderDiagnostics? provider = null)
+        ILlmProviderDiagnostics? provider = null,
+        IUserConfirmation? confirmation = null)
     {
         _stateStore = stateStore;
         _assessmentService = assessmentService;
         _llm = llm ?? new OllamaClient();
         _provider = provider ?? (_llm as ILlmProviderDiagnostics) ?? new OllamaClient();
         _limits = limits ?? AgentLimits.Default;
+        _confirmation = confirmation;
     }
 
     /// <summary>
@@ -94,17 +97,51 @@ public sealed class AgentService : IAgentService
             {
                 var blocked = selection.Resources;
                 var reason = BuildResourceBlockedReason(blocked);
-                progress?.Report(AgentProgress.Of(
-                    AgentPhase.Verifying,
-                    message: reason,
-                    resourceState: blocked?.PressureLabel,
-                    availableGb: blocked?.FreeGb,
-                    safeBudgetGb: blocked?.SafeBudgetGb,
-                    flag: ProgressFlag.ProviderError));
-                // La intencion se conserva en el resultado (Objective + Checkpoint):
-                // no se pierde la tarea y, al liberarse RAM, se puede reintentar de
-                // una manera natural desde el mismo flujo.
-                return Fail(reason, "", intention, steps, checkpoint);
+
+                // Intervencion OPCIONAL de RAM: si hay un confirmador interactivo
+                // (consola) y el usuario confirma liberar memoria, se re-evalua UNA
+                // vez mas de forma acotada y, si ahora existe un modelo viable, se
+                // continua automaticamente. Cóndor NUNCA cierra aplicaciones por su
+                // cuenta; si el usuario no confirma, se conserva la tarea y se sale
+                // de forma limpia. Sin confirmador, el comportamiento sigue siendo
+                // la salida limpia honesta actual.
+                var confirmed = _confirmation is not null &&
+                    await _confirmation.AskToReleaseRamAsync(
+                        "La RAM disponible actualmente no permite ejecutar un modelo seguro. " +
+                        "¿Quieres liberar memoria y que Cóndor vuelva a intentarlo? [S/N]",
+                        cancellationToken);
+
+                if (confirmed)
+                {
+                    progress?.Report(AgentProgress.Of(
+                        AgentPhase.Verifying,
+                        message: "Usuario confirmo liberar memoria; reevaluando RAM y seleccionando modelo...",
+                        flag: ProgressFlag.Recovering));
+
+                    selection = await modelSetup.EnsureModelAsync(cancellationToken: cancellationToken);
+                    if (selection.Desired is not null)
+                    {
+                        progress?.Report(AgentProgress.Of(
+                            AgentPhase.Verifying,
+                            message: "RAM liberada; modelo " + (selection.InstalledName ?? selection.Desired.PullName) + " disponible.",
+                            flag: ProgressFlag.Recovering));
+                    }
+                }
+
+                if (selection.Desired is null)
+                {
+                    progress?.Report(AgentProgress.Of(
+                        AgentPhase.Verifying,
+                        message: reason,
+                        resourceState: blocked?.PressureLabel,
+                        availableGb: blocked?.FreeGb,
+                        safeBudgetGb: blocked?.SafeBudgetGb,
+                        flag: ProgressFlag.ProviderError));
+                    // Promesa: la tarea no se pierde. La intencion queda conservada en
+                    // Objective + Checkpoint; el usuario puede reintentar cuando haya
+                    // recursos. Sin reintentos automaticos ilimitados.
+                    return Fail(reason, "", intention, steps, checkpoint);
+                }
             }
         }
 

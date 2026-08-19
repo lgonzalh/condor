@@ -123,3 +123,45 @@ liberar memoria de forma opcional sin bloquear.
 - One-shot con RAM baja: fallo honesto temporal, tarea conservada (exit 1).
 - One-shot con RAM suficiente (6,9 GB): la misma tarea completada con
   qwen2.5-coder:3b (exit 0) -> recuperacion posterior demostrada.
+
+---
+
+## INTERVENCION OPCIONAL DE RAM (promesa de Condor)
+
+### Problema cubierto
+Cuando Condor ya inicio, hay modelos instalados, y tras evaluar/re-evaluar recursos NO
+existe ningun modelo que pueda ejecutarse con la RAM disponible, Condor NO debe terminar
+con exit 1 ni cerrarse: debe informar, sugerir liberar memoria de forma OPCIONAL y, si
+el usuario confirma, volver a evaluar y continuar.
+
+### Correcion (minima)
+- Src/Condor.Core/Contracts/IUserConfirmation.cs (nuevo): contrato de confirmacion
+  interactiva opcional (`AskToReleaseRamAsync`). Cóndor NUNCA cierra aplicaciones por
+  su cuenta.
+- Src/Condor.Cli/Presentation/ConsoleRamConfirmation.cs (nuevo): confirmador de consola
+  que lee [S/N], con reintentos acotados (sin bucle infinito). Solo en consola real.
+- Src/Condor.Infrastructure/Agent/AgentService.cs: tras la recuperacion acotada, si no
+  queda modelo viable, si hay confirmador pregunta [S/N]; SI -> re-evalua UNA vez mas y,
+  si ahora hay modelo viable, continua automaticamente; NO -> salida limpia conservando
+  la tarea (Objective + Checkpoint). Sin confirmador, el comportamiento por defecto es
+  la salida limpia honesta actual.
+- Src/Condor.Cli/Program.cs: conecta el confirmador solo en consola interactiva (no JSON,
+  no entrada redirigida), via PromptIfInteractive.
+
+### Presupuestos
+FitsInRamStrict y los presupuestos de seguridad permanecen intactos. No hay bucles
+infinitos ni reintentos automaticos ilimitados. No hay APIs cloud.
+
+### Pruebas agregadas
+- AgentServiceResourceBlockTests (3): NO -> sale limpio y conserva la tarea; SI -> re-evalua
+  una vez mas y (se sigue RAM baja) sale acotado sin bucle; SI + RAM liberada -> re-evalua y
+  continua (no aparece el motivo de RAM).
+- ConsoleRamConfirmationTests (4): S -> true; N -> false; s minuscula -> true; sin respuesta
+  valida tras reintentos acotados -> false.
+
+### Verificacion E2E real (recursos disponibles, sin forzar liberar memoria)
+- One-shot con RAM baja (2,3-2,4 GB): mensaje honesto "bloqueo temporal por recursos",
+  tarea conservada, exit 1, sin bucle. En --json no pregunta (no contamina la salida).
+- La interaccion [S/N] queda demostrada por ConsoleRamConfirmationTests y por los tests de
+  integracion de AgentService (SI re-evalua y continua; NO sale limpio).
+- La ejecucion exitosa con RAM suficiente se demostro previamente (6,9 GB, qwen2.5-coder:3b).

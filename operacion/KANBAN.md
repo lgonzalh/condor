@@ -14,6 +14,9 @@ Sin incidencias activas de seleccion de modelo.
 - Estabilizacion del agente: causa raiz de la RAM fluctuante identificada y corregida.
 - Promesa fundamental de inicio: con modelos instalados pero RAM baja, la sesion arranca
   igual (no se bloquea); Condor decide el modelo en cada tarea con recuperacion acotada.
+- Intervencion opcional de RAM: si tras evaluar no hay modelo viable, Condor informa,
+  sugiere liberar memoria (Opcion S/N, nunca forzada) y, si el usuario confirma, reevalua
+  y continua; si no, sale limpio conservando la tarea.
 - Build sin errores/advertencias en el ultimo cierre informado.
 - Suites automatizadas verdes en el ultimo cierre informado (534 pruebas).
 - Descarga de qwen2.5-coder:3b observada.
