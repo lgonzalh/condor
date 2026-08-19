@@ -13,10 +13,11 @@ public static class AgentEngine
     private static readonly HashSet<string> AllowedActions = new()
     {
         AgentAction.ActionListDir, AgentAction.ActionReadFile,
-        AgentAction.ActionEditFile, AgentAction.ActionCreateFile,
+        AgentAction.ActionPatch, AgentAction.ActionEditFile,
+        AgentAction.ActionCreateFile,
         AgentAction.ActionBuild, AgentAction.ActionTest,
-        AgentAction.ActionGitStatus, AgentAction.ActionSearch,
-        AgentAction.ActionDone
+        AgentAction.ActionRestore, AgentAction.ActionGitStatus,
+        AgentAction.ActionSearch, AgentAction.ActionUndoFile, AgentAction.ActionDone
     };
 
     public static ActionValidation ValidateAction(AgentAction action)
@@ -33,6 +34,16 @@ public static class AgentEngine
                 return new ActionValidation(false, "Se requiere 'path' para la accion de archivo.");
             if (string.IsNullOrWhiteSpace(action.Content))
                 return new ActionValidation(false, "Se requiere 'content' para la accion de archivo.");
+        }
+
+        if (action.Action == AgentAction.ActionPatch)
+        {
+            if (string.IsNullOrWhiteSpace(action.Path))
+                return new ActionValidation(false, "Se requiere 'path' para la accion patch.");
+            if (string.IsNullOrEmpty(action.Original) && string.IsNullOrWhiteSpace(action.Content))
+                return new ActionValidation(false, "Se requiere 'original' (texto a localizar) para la accion patch.");
+            if (action.Replacement is null && action.Content is null)
+                return new ActionValidation(false, "Se requiere 'replacement' (texto nuevo) para la accion patch.");
         }
 
         return new ActionValidation(true, null);
