@@ -61,3 +61,19 @@ No crear una nueva T por inercia. Una nueva tarea requiere:
 ## Comandos Condor
 
 Los comandos operan sobre el nivel activo. Como actualmente no existe nivel activo, cualquier operacion que deba abarcar el proyecto completo requiere el sufijo `Global` cuando corresponda a las reglas del proyecto.
+
+## Modelo de interaccion (T-016)
+
+Condor se usa por intencion libre (via principal) y por comandos de control `/`:
+
+- `condor` -> prepara el entorno automaticamente y abre sesion interactiva.
+- `condor "<intencion>"` -> intencion libre al motor agente.
+- `/analizar`, `/contexto`, `/planear`, `/construir`, `/verificar`, `/avanzar`,
+  `/examinar`, `/recomendar`, `/consultar`, `/verificar-semantico`, `/preparar`,
+  `/ayuda`, `/salir`.
+
+El exito del motor agente depende exclusivamente del harness externo real
+(build/test/restore); jamas de la declaracion del modelo, y se protege contra
+modificacion de archivos de prueba para obtener un falso PASS. La validacion E2E
+de T-016 corresponde a proyectos .NET (L-008); el soporte para otros ecosistemas
+queda para evolucion posterior sin ser defecto ni promesa.

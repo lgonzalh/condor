@@ -15,17 +15,22 @@ Registrar cambios de implementacion y decisiones relevantes que necesiten contex
 | CH-021 | 2026-08-13 | T-013 | Primera concrecion de SD-02/DE-002: compilacion y pruebas | Completado | Serie T-013 |
 | CH-022 | 2026-08-13 | T-014 | Integracion de la verificacion semantica en el ciclo | Completado | Serie T-014 |
 | CH-023 | 2026-08-14 | T-014 | Cierre y congelacion de T-014 (T-014.md v1.1.0) | Completado | `c982b14` |
+| CH-024 | 2026-08-18 | T-015 | Automatizacion de puesta en marcha y modelo LLM local | Completado | Serie T-015 (`4c4a38e`) |
+| CH-025 | 2026-08-18 | T-016 | Correccion arquitectonica + hardcodeo del motor agente (intencion libre, preparacion automatica, slash, patch quirurgico, harness real build/test/restore, undo_file, guarda anti-falsos-positivos) | Completado | Serie T-016 |
 
 ## Estado
 
-T-001 a T-014 completadas, verificadas, integradas, publicadas y congeladas.
+T-001 a T-016 completadas, verificadas, integradas, publicadas y congeladas.
 
-T-014 (Integracion de la verificacion semantica en el ciclo) quedo cerrada y
-congelada. Evidencia: commit `c982b14`; build Release sin errores ni
-advertencias; unitarias 180/180; integracion 167/168 (la unica no verde es la
-prueba de entorno de T-002 dependiente de Ollama, preexistente y ajena a T-014);
-arquitectura 19/19; E2E real sobre proyecto .NET temporal; ausencia de bloqueos
-funcionales.
+T-015 y T-016 quedan cerradas. Evidencia de T-016: build Release sin errores ni
+advertencias; arquitectura 22/22; unitarias 197/197; integracion 226/226 (total
+445/445); E2E real sobre proyecto .NET temporal verificado externamente
+(`dotnet test` independiente 1/1), incluidos restore-on-demand y guarda
+anti-falsos-positivos.
+
+La validacion E2E de T-016 corresponde a proyectos .NET (L-008). El soporte
+especializado para otros ecosistemas (TypeScript/Python, etc.) queda para una
+evolucion posterior, sin considerarse defecto ni promesa implicita.
 
 ## Regla de commits
 

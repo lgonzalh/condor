@@ -1,6 +1,6 @@
 # BACKLOG
 
-Version: 3.2.0
+Version: 4.0.0
 Estado: Activo
 Modo: Evolucion Continua
 MVP: Condor 1.0
@@ -15,11 +15,17 @@ T-013 y T-014 corresponden a evolucion posterior del MVP:
 - T-013: Verificacion semantica y de calidad — primera concrecion de SD-02/DE-002.
 - T-014: Integracion de la verificacion semantica en el ciclo.
 
-T-015 (Automatizacion de puesta en marcha y modelo LLM local) fue la tarea activa
-de evolucion dentro de Condor v1.x: incorpora la seleccion automatica del modelo
-LLM por capacidad de ingenieria dentro de un presupuesto seguro de recursos, su
-obtencion durante la puesta en marcha y el agente `condor hacer` (edit/build/test
-con verificacion externa). **Completada y cerrada.**
+T-015 (Automatizacion de puesta en marcha y modelo LLM local): incorpora la
+seleccion automatica del modelo LLM por capacidad de ingenieria dentro de un
+presupuesto seguro de recursos y su obtencion durante la puesta en marcha.
+**Completada y cerrada.**
+
+T-016 (Experiencia de agente de ingenieria): correccion arquitectonica y
+hardcodeo del motor agente. La CLI deja de ser un interprete de comandos: via
+principal de intencion libre, preparacion automatica al iniciar, control por
+slash, y motor agente robusto (patch quirurgico, harness externo real
+build/test/restore, undo_file, resolucion de rutas, guarda anti-falsos-positivos).
+**Completada y cerrada** (E2E real en proyectos .NET).
 
 ## Trabajo inmediato
 
@@ -40,17 +46,23 @@ con verificacion externa). **Completada y cerrada.**
 | T-013 | Verificacion semantica y de calidad — primera concrecion | Completada y congelada |
 | T-014 | Integracion de verificacion semantica en el ciclo | Completada, verificada y congelada |
 | T-015 | Automatizacion de puesta en marcha y modelo LLM local | Completada y cerrada (v1.x) |
+| T-016 | Experiencia de agente de ingenieria (intencion libre, preparacion automatica, slash, motor agente) | Completada y cerrada (v1.x; E2E .NET) |
 
 ## Frontera de Condor 1.0
 
 El MVP 1.0 queda definido por T-001 a T-012. La linea base v1.0.0 permanece
 cerrada y etiquetada.
 
-La evolucion posterior (T-013, T-014, T-015...) se gestiona dentro de Condor
-v1.x mediante tareas explicitamente justificadas y cerrables.
+La evolucion posterior (T-013, T-014, T-015, T-016...) se gestiona dentro de
+Condor v1.x mediante tareas explicitamente justificadas y cerrables.
+
+La validacion E2E de T-016 corresponde a proyectos .NET (L-008). El soporte
+especializado para otros ecosistemas (TypeScript/Python, etc.) queda para una
+evolucion posterior, sin considerarse defecto ni promesa implicita.
 
 ## Siguiente
 
-T-015 (Automatizacion de puesta en marcha y modelo LLM local) completada y
-cerrada; E2E real con `qwen2.5-coder:3b` demostrado. La evolucion continua opera
-sobre tareas explicitamente justificadas posteriores.
+T-015 y T-016 completadas y cerradas. La evolucion continua opera sobre tareas
+explicitamente justificadas posteriores. El motor agente ya no se limita a
+enrutar: corrige codigo real con harness externo como autoridad y guarda
+anti-falsos-positivos.
