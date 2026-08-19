@@ -4,6 +4,11 @@ using Condor.Core.Serialization;
 
 namespace Condor.Cli.Commands;
 
+/// <summary>
+/// Entrada de intencion libre: recibe el texto natural del usuario y lo entrega
+/// al motor agente. No es un comando interno; es la via principal de Condor
+/// cuando el usuario expresa con palabras lo que necesita.
+/// </summary>
 public static class AgentCommand
 {
     public static async Task<int> ExecuteAsync(
@@ -16,11 +21,17 @@ public static class AgentCommand
 
         if (string.IsNullOrWhiteSpace(intent))
         {
-            Terminal.WriteError("Uso: condor hacer \"<intencion>\" [--json]");
+            Terminal.WriteError("Indica que quieres que Condor haga.");
             return 1;
         }
 
-        if (!outputJson) RenderActivity();
+        if (!string.IsNullOrWhiteSpace(intent) && !outputJson)
+        {
+            Terminal.WriteInfo("Condor analiza tu solicitud y actua sobre el proyecto...");
+            Terminal.WriteDim("  Comprendiendo la intencion");
+            Terminal.WriteDim("  Seleccionando modelo y estrategia");
+            Terminal.WriteDim("  Usando herramientas reales y harness");
+        }
 
         var result = await agentService.RunAsync(intent, cancellationToken);
 
@@ -51,13 +62,5 @@ public static class AgentCommand
         }
 
         return sb.ToString().Trim();
-    }
-
-    private static void RenderActivity()
-    {
-        Terminal.WriteInfo("Condor ejecuta la tarea de ingenieria...");
-        Terminal.WriteDim("  Seleccionando modelo y estrategia");
-        Terminal.WriteDim("  Comprendiendo el proyecto");
-        Terminal.WriteDim("  Utilizando herramientas y harness");
     }
 }

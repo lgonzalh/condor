@@ -5,6 +5,12 @@ using Condor.Cli.Presentation;
 
 namespace Condor.Cli.Commands;
 
+/// <summary>
+/// /analizar: analiza el proyecto/directorio actual (estructura, contenido,
+/// senales, estado, intencion probable y contexto). El analisis de hardware y
+/// modelos NO pertenece a este comando: forma parte de la preparacion
+/// automatica de Condor al iniciar.
+/// </summary>
 public static class AssessCommand
 {
     public static async Task<int> ExecuteAsync(
@@ -15,19 +21,12 @@ public static class AssessCommand
     {
         var outputJson = args.Contains("--json", StringComparer.OrdinalIgnoreCase);
 
-        if (!outputJson)
+        var result = await stateStore.LoadAssessmentAsync(cancellationToken);
+        if (result is null)
         {
-            RenderActivity();
+            result = await assessmentService.ExecuteAsync(new AssessmentRequest(), cancellationToken);
+            await stateStore.SaveAssessmentAsync(result, cancellationToken);
         }
-
-        var request = new AssessmentRequest
-        {
-            WorkingDirectory = Environment.CurrentDirectory
-        };
-
-        var result = await assessmentService.ExecuteAsync(request, cancellationToken);
-
-        await stateStore.SaveAssessmentAsync(result, cancellationToken);
 
         if (outputJson)
         {
@@ -36,25 +35,9 @@ public static class AssessCommand
         else
         {
             Terminal.WriteLine();
-            Terminal.WriteSuccess("Condor observo el entorno.");
-            Terminal.WriteLine();
-            AssessmentRenderer.RenderSummary(result);
-            Terminal.WriteLine();
-            Terminal.WriteDim("Condor quedo preparado para recomendar un modelo compatible (T-003).");
+            ProjectAnalysisRenderer.Render(result);
         }
 
         return result.Project is { Status: DetectionStatus.NotDetected } ? 1 : 0;
-    }
-
-    private static void RenderActivity()
-    {
-        Terminal.WriteInfo("Condor observa el entorno...");
-        Terminal.WriteDim("  Detectando sistema operativo");
-        Terminal.WriteDim("  Analizando CPU y memoria");
-        Terminal.WriteDim("  Buscando GPU");
-        Terminal.WriteDim("  Revisando almacenamiento");
-        Terminal.WriteDim("  Verificando Git y herramientas");
-        Terminal.WriteDim("  Descubriendo el proyecto local");
-        Terminal.WriteDim("  Verificando Ollama y modelos locales");
     }
 }

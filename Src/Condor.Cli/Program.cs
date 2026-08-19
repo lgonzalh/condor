@@ -1,7 +1,9 @@
 using Condor.Cli.Commands;
 using Condor.Cli.Presentation;
+using Condor.Cli.Routing;
 using Condor.Core.Contracts;
 using Condor.Infrastructure;
+using Condor.Infrastructure.Agent;
 using Condor.Infrastructure.Context;
 using Condor.Infrastructure.Building;
 using Condor.Infrastructure.Cycle;
@@ -12,7 +14,6 @@ using Condor.Infrastructure.Verification;
 using Condor.Infrastructure.Vision;
 using Condor.Infrastructure.Setup;
 using Condor.Infrastructure.SemanticVerification;
-using Condor.Infrastructure.Agent;
 
 namespace Condor.Cli;
 
@@ -20,147 +21,197 @@ public static class Program
 {
     public static async Task<int> Main(string[] args)
     {
-        IAssessmentService assessmentService = new AssessmentService();
-        IStateStore stateStore = new LocalStateStore();
-        ILlmClient llmClient = new OllamaClient();
+        var assessmentService = new AssessmentService();
+        var stateStore = new LocalStateStore();
+        var llmClient = new OllamaClient();
 
-        if (args.Length == 0)
+        // Comandos triviales no requieren preparacion.
+        if (IsVersion(args))
         {
-            RenderInitialState();
+            Console.WriteLine(VersionInfo.Product + " " + VersionInfo.Version);
             return 0;
         }
 
-        var command = args[0].ToLowerInvariant();
-
-        switch (command)
+        if (IsHelp(args))
         {
-            case "ayuda":
-            case "--help":
-            case "-h":
-                RenderHelp();
-                return 0;
-
-            case "version":
-            case "--version":
-            case "-v":
-                Console.WriteLine(VersionInfo.Product + " " + VersionInfo.Version);
-                return 0;
-
-            case "analizar":
-                return await AssessCommand.ExecuteAsync(
-                    assessmentService,
-                    stateStore,
-                    args.Skip(1).ToArray(),
-                    CancellationToken.None);
-
-            case "consultar":
-                return await AskCommand.ExecuteAsync(
-                    llmClient,
-                    stateStore,
-                    args.Skip(1).ToArray(),
-                    CancellationToken.None);
-
-            case "recomendar":
-                return await RecommendCommand.ExecuteAsync(
-                    stateStore,
-                    args.Skip(1).ToArray(),
-                    CancellationToken.None);
-
-            case "contexto":
-                return await ContextCommand.ExecuteAsync(
-                    new ContextService(stateStore),
-                    stateStore,
-                    args.Skip(1).ToArray(),
-                    CancellationToken.None);
-
-            case "planear":
-                return await PlanCommand.ExecuteAsync(
-                    new PlanService(stateStore),
-                    stateStore,
-                    args.Skip(1).ToArray(),
-                    CancellationToken.None);
-
-            case "construir":
-                return await BuildCommand.ExecuteAsync(
-                    new BuildService(stateStore),
-                    stateStore,
-                    args.Skip(1).ToArray(),
-                    CancellationToken.None);
-
-            case "verificar":
-                return await VerifyCommand.ExecuteAsync(
-                    new VerificationService(stateStore),
-                    stateStore,
-                    args.Skip(1).ToArray(),
-                    CancellationToken.None);
-
-            case "avanzar":
-                return await AdvanceCommand.ExecuteAsync(
-                    new CycleService(
-                        new PlanService(stateStore),
-                        new BuildService(stateStore),
-                        new VerificationService(stateStore),
-                        stateStore,
-                        semanticService: new SemanticVerificationService(stateStore)),
-                    stateStore,
-                    args.Skip(1).ToArray(),
-                    CancellationToken.None);
-
-            case "examinar":
-                return await ExamineCommand.ExecuteAsync(
-                    new VisionService(stateStore),
-                    stateStore,
-                    args.Skip(1).ToArray(),
-                    CancellationToken.None);
-
-            case "preparar":
-                return await PrepareCommand.ExecuteAsync(
-                    new SetupService(stateStore, assessmentService),
-                    new ModelAutoSetupService(stateStore, assessmentService),
-                    args.Skip(1).ToArray(),
-                    CancellationToken.None);
-
-            case "verificar-semantico":
-                return await CheckCommand.ExecuteAsync(
-                    new SemanticVerificationService(stateStore),
-                    stateStore,
-                    args.Skip(1).ToArray(),
-                    CancellationToken.None);
-
-            case "hacer":
-                return await AgentCommand.ExecuteAsync(
-                    new AgentService(stateStore, assessmentService),
-                    args.Skip(1).ToArray(),
-                    CancellationToken.None);
-
-            default:
-                Terminal.WriteError("Comando desconocido: " + args[0]);
-                RenderHelp();
-                return 1;
+            RenderHelp();
+            return 0;
         }
+
+        if (args.Length == 0)
+        {
+            return await RunInteractiveAsync(assessmentService, stateStore, llmClient);
+        }
+
+        // Entrada con parametros (one-shot).
+        var first = string.Join(" ", args);
+        var route = IntentionRouter.Route(first);
+
+        if (route is SlashRoute slash)
+        {
+            if (slash.Kind != SlashCommandKind.Ayuda)
+            {
+                var prep = await PrepareOnceAsync(assessmentService, stateStore);
+                if (prep.NeedsIntervention)
+                {
+                    Terminal.WriteWarning(prep.Reason ?? "Preparacion pendiente.");
+                }
+            }
+
+            return await HandleSlashAsync(slash, assessmentService, stateStore, llmClient);
+        }
+
+        if (route is FreeIntentionRoute free && !string.IsNullOrWhiteSpace(free.Intention))
+        {
+            // Intencion natural en una sola linea: se entrega al motor agente,
+            // que ya ejecuta su propia preparacion interna y actua con herramientas.
+            return await AgentCommand.ExecuteAsync(
+                new AgentService(stateStore, assessmentService),
+                args,
+                CancellationToken.None);
+        }
+
+        // Texto vacio: presentar el flujo interactivo.
+        return await RunInteractiveAsync(assessmentService, stateStore, llmClient);
     }
 
-    private static void RenderInitialState()
+    private static async Task<int> RunInteractiveAsync(
+        IAssessmentService assessmentService,
+        IStateStore stateStore,
+        ILlmClient llmClient)
+    {
+        // Preparacion automatica: evalua hardware, RAM, almacenamiento, GPU,
+        // Ollama y modelos; selecciona y prepara el modelo adecuado. Silenciosa
+        // salvo informacion relevante, errores o decisiones de intervencion.
+        var prep = await PrepareOnceAsync(assessmentService, stateStore);
+
+        RenderWelcome(prep);
+        Terminal.WriteLine();
+
+        if (Console.IsInputRedirected)
+        {
+            // Modo no interactivo: solo se deja el entorno preparado.
+            return 0;
+        }
+
+        var interpreter = new Interpreter(
+            slash => HandleSlashAsync(slash, assessmentService, stateStore, llmClient),
+            free => AgentCommand.ExecuteAsync(
+                new AgentService(stateStore, assessmentService),
+                free.Intention.Split(' ', System.StringSplitOptions.RemoveEmptyEntries | System.StringSplitOptions.TrimEntries),
+                CancellationToken.None));
+
+        Terminal.WriteDim("Escribe '/ayuda' para los comandos de control o '/salir' para terminar.");
+        Terminal.WriteLine();
+
+        return await interpreter.RunAsync();
+    }
+
+    private static async Task<StartupPrepResult> PrepareOnceAsync(
+        IAssessmentService assessmentService,
+        IStateStore stateStore)
+    {
+        return await new StartupPreparer(
+            assessmentService,
+            stateStore,
+            modelAutoSetup: new ModelAutoSetupService(stateStore, assessmentService)).RunAsync();
+    }
+
+    private static async Task<int> HandleSlashAsync(
+        SlashRoute route,
+        IAssessmentService assessmentService,
+        IStateStore stateStore,
+        ILlmClient llmClient)
+    {
+        var args = route.Arguments;
+
+        return route.Kind switch
+        {
+            SlashCommandKind.Analizar => await AssessCommand.ExecuteAsync(assessmentService, stateStore, args, CancellationToken.None),
+            SlashCommandKind.Contexto => await ContextCommand.ExecuteAsync(
+                new ContextService(stateStore), stateStore, args, CancellationToken.None),
+            SlashCommandKind.Planear => await PlanCommand.ExecuteAsync(
+                new PlanService(stateStore), stateStore, args, CancellationToken.None),
+            SlashCommandKind.Construir => await BuildCommand.ExecuteAsync(
+                new BuildService(stateStore), stateStore, args, CancellationToken.None),
+            SlashCommandKind.Verificar => await VerifyCommand.ExecuteAsync(
+                new VerificationService(stateStore), stateStore, args, CancellationToken.None),
+            SlashCommandKind.Examinar => await ExamineCommand.ExecuteAsync(
+                new VisionService(stateStore), stateStore, args, CancellationToken.None),
+            SlashCommandKind.Recomendar => await RecommendCommand.ExecuteAsync(stateStore, args, CancellationToken.None),
+            SlashCommandKind.Consultar => await AskCommand.ExecuteAsync(llmClient, stateStore, args, CancellationToken.None),
+            SlashCommandKind.VerificarSemantico => await CheckCommand.ExecuteAsync(
+                new SemanticVerificationService(stateStore), stateStore, args, CancellationToken.None),
+            SlashCommandKind.Preparar => await PrepareCommand.ExecuteAsync(
+                new SetupService(stateStore, assessmentService),
+                new ModelAutoSetupService(stateStore, assessmentService),
+                args,
+                CancellationToken.None),
+            SlashCommandKind.Avanzar => await AdvanceCommand.ExecuteAsync(
+                new CycleService(
+                    new PlanService(stateStore),
+                    new BuildService(stateStore),
+                    new VerificationService(stateStore),
+                    stateStore,
+                    semanticService: new SemanticVerificationService(stateStore)),
+                stateStore,
+                args,
+                CancellationToken.None),
+            SlashCommandKind.Ayuda => await RenderHelpAndReturn(),
+            _ => await RenderHelpAndReturn()
+        };
+    }
+
+    private static Task<int> RenderHelpAndReturn()
+    {
+        RenderHelp();
+        return Task.FromResult(0);
+    }
+
+    private static bool IsVersion(string[] args)
+    {
+        return args.Length == 1 &&
+               (args[0].Equals("version", StringComparison.OrdinalIgnoreCase) ||
+                args[0].Equals("--version", StringComparison.OrdinalIgnoreCase) ||
+                args[0].Equals("-v", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool IsHelp(string[] args)
+    {
+        return args.Length == 1 &&
+               (args[0].Equals("ayuda", StringComparison.OrdinalIgnoreCase) ||
+                args[0].Equals("/ayuda", StringComparison.OrdinalIgnoreCase) ||
+                args[0].Equals("--help", StringComparison.OrdinalIgnoreCase) ||
+                args[0].Equals("-h", StringComparison.OrdinalIgnoreCase) ||
+                args[0].Equals("/help", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static void RenderWelcome(StartupPrepResult prep)
     {
         Terminal.WriteLine();
         Terminal.WriteInfo("C O N D O R");
         Terminal.WriteDim(VersionInfo.Tagline);
         Terminal.WriteLine();
-        Terminal.WriteLine("Que quieres construir?");
+        Terminal.WriteLine("Condor dejo el entorno preparado y esta listo.");
+        if (!string.IsNullOrWhiteSpace(prep.Model))
+        {
+            Terminal.WriteDim("  Modelo local listo: " + prep.Model);
+        }
+        else if (!string.IsNullOrWhiteSpace(prep.Reason))
+        {
+            Terminal.WriteDim("  " + prep.Reason);
+        }
+
+        if (prep.NeedsIntervention && !string.IsNullOrWhiteSpace(prep.Reason))
+        {
+            Terminal.WriteWarning("  " + prep.Reason);
+        }
+
         Terminal.WriteLine();
-        Terminal.WriteDim("Usa 'condor analizar' para analizar el entorno.");
-        Terminal.WriteDim("Usa 'condor contexto' para reconstruir el contexto del proyecto.");
-        Terminal.WriteDim("Usa 'condor planear \"<solicitud>\"' para generar un plan de trabajo.");
-        Terminal.WriteDim("Usa 'condor construir' para aplicar los cambios del plan.");
-        Terminal.WriteDim("Usa 'condor verificar' para comprobar los cambios aplicados.");
-        Terminal.WriteDim("Usa 'condor avanzar \"<solicitud>\"' para ejecutar el ciclo de ingenieria.");
-        Terminal.WriteDim("Usa 'condor examinar \"<imagen>\"' para analizar una imagen localmente.");
-        Terminal.WriteDim("Usa 'condor preparar' para verificar la puesta en marcha.");
-        Terminal.WriteDim("Usa 'condor hacer \"<intencion>\"' para ejecutar una tarea de ingenieria.");
-        Terminal.WriteDim("Usa 'condor verificar-semantico' para compilar y probar el proyecto.");
-        Terminal.WriteDim("Usa 'condor recomendar' para elegir un modelo local.");
-        Terminal.WriteDim("Usa 'condor consultar' para consultar al modelo local.");
-        Terminal.WriteDim("Usa 'condor ayuda' para ver los comandos disponibles.");
+        Terminal.WriteDim("Escribe libremente lo que necesitas, por ejemplo:");
+        Terminal.WriteDim("  'revisa por que no compila este proyecto'");
+        Terminal.WriteDim("  'crea una pagina web sencilla para este proyecto'");
+        Terminal.WriteDim("  'continua el desarrollo de esta aplicacion'");
     }
 
     private static void RenderHelp()
@@ -169,43 +220,34 @@ public static class Program
         Terminal.WriteInfo("C O N D O R");
         Terminal.WriteDim(VersionInfo.Tagline);
         Terminal.WriteLine();
-        Terminal.WriteLine("Uso:");
-        Terminal.WriteLine("  condor                     Muestra el estado inicial.");
-        Terminal.WriteLine("  condor analizar            Analiza el entorno y muestra el resumen.");
-        Terminal.WriteLine("  condor analizar --json     Genera el resultado en formato JSON.");
-        Terminal.WriteLine("  condor contexto            Reconstruye el contexto del proyecto.");
-        Terminal.WriteLine("  condor contexto --json     Genera el contexto en formato JSON.");
-        Terminal.WriteLine("  condor planear \"<solicitud>\" Genera un plan de trabajo.");
-        Terminal.WriteLine("  condor planear \"<solicitud>\" --json");
-        Terminal.WriteLine("                             Genera el plan en formato JSON.");
-        Terminal.WriteLine("  condor construir           Aplica los cambios del plan.");
-        Terminal.WriteLine("  condor construir --json    Genera el resultado en formato JSON.");
-        Terminal.WriteLine("  condor verificar           Comprueba los cambios aplicados.");
-        Terminal.WriteLine("  condor verificar --json    Genera el resultado en formato JSON.");
-        Terminal.WriteLine("  condor avanzar \"<solicitud>\"  Ejecuta el ciclo de ingenieria.");
-        Terminal.WriteLine("  condor avanzar \"<solicitud>\" --json");
-        Terminal.WriteLine("  condor examinar \"<imagen>\"      Analiza una imagen localmente.");
-        Terminal.WriteLine("  condor examinar \"<imagen>\" --json");
-        Terminal.WriteLine("  condor preparar                Verifica la puesta en marcha.");
-        Terminal.WriteLine("  condor hacer \"<intencion>\"\tEjecuta una tarea de ingenieria.");
-        Terminal.WriteLine("  condor hacer \"<intencion>\" --json");
-        Terminal.WriteLine("  condor preparar --json");
-        Terminal.WriteLine("  condor preparar --actualizar   Refresca el Assessment antes de preparar.");
-        Terminal.WriteLine("  condor verificar-semantico     Compila y ejecuta las pruebas del proyecto.");
-        Terminal.WriteLine("  condor verificar-semantico --compilar");
-        Terminal.WriteLine("  condor verificar-semantico --probar");
-        Terminal.WriteLine("  condor verificar-semantico --json");
-        Terminal.WriteLine("  condor recomendar          Recomienda un modelo para el equipo.");
-        Terminal.WriteLine("  condor recomendar --proposito <tipo>");
-        Terminal.WriteLine("                             tipo: desarrollo, general o vision.");
-        Terminal.WriteLine("  condor consultar \"<mensaje>\"  Consulta al modelo local.");
-        Terminal.WriteLine("  condor consultar \"<mensaje>\" --modelo <modelo>");
-        Terminal.WriteLine("                             Consulta usando un modelo especifico.");
-        Terminal.WriteLine("  condor version             Muestra la version.");
-        Terminal.WriteLine("  condor ayuda               Muestra esta ayuda.");
+        Terminal.WriteLine("Condor es un agente de ingenieria. Escribe con palabras la intencion");
+        Terminal.WriteLine("y Condor comprende, analiza, selecciona estrategia y modelo, actua con");
+        Terminal.WriteLine("herramientas reales, verifica y entrega el resultado.");
         Terminal.WriteLine();
-        Terminal.WriteLine("Alias:");
-        Terminal.WriteLine("  condor -h, --help          Muestra esta ayuda.");
-        Terminal.WriteLine("  condor -v, --version       Muestra la version.");
+        Terminal.WriteLine("Uso:");
+        Terminal.WriteLine("  condor                       Prepara el entorno y abre la sesion interactiva.");
+        Terminal.WriteLine("  condor <tu intencion>        Ejecuta la intencion con el motor agente.");
+        Terminal.WriteLine();
+        Terminal.WriteLine("Comandos de control (con /):");
+        Terminal.WriteLine("  /analizar                    Analiza el proyecto o directorio actual.");
+        Terminal.WriteLine("  /contexto                    Reconstruye el contexto del proyecto.");
+        Terminal.WriteLine("  /planear \"<solicitud>\"       Genera un plan de trabajo.");
+        Terminal.WriteLine("  /construir                   Aplica los cambios del plan.");
+        Terminal.WriteLine("  /verificar                   Comprueba los cambios aplicados.");
+        Terminal.WriteLine("  /avanzar \"<solicitud>\"        Ejecuta el ciclo de ingenieria parcial.");
+        Terminal.WriteLine("  /examinar \"<imagen>\"         Analiza una imagen localmente.");
+        Terminal.WriteLine("  /recomendar \"<tipo>\"         Recomienda un modelo para el equipo.");
+        Terminal.WriteLine("  /consultar \"<mensaje>\"       Consulta al modelo local.");
+        Terminal.WriteLine("  /verificar-semantico         Compila y ejecuta las pruebas del proyecto.");
+        Terminal.WriteLine("  /preparar                    Refresca la preparacion del entorno.");
+        Terminal.WriteLine("  /ayuda                       Muestra esta ayuda.");
+        Terminal.WriteLine("  /salir                       Termina la sesion interactiva.");
+        Terminal.WriteLine();
+        Terminal.WriteLine("Contracciones:");
+        Terminal.WriteLine("  -v, --version                Muestra la version.");
+        Terminal.WriteLine("  -h, --help                   Muestra esta ayuda.");
+        Terminal.WriteLine();
+        Terminal.WriteDim("No necesitas conocer modelos, herramientas, fases internas ni rutas.");
+        Terminal.WriteDim("Escribe lo que necesitas y Condor se encarga del resto.");
     }
 }
