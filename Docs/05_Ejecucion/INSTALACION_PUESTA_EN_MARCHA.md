@@ -66,23 +66,35 @@ Acciones de Condor (automaticas):
 
 # Modelos locales
 
-En la puesta en marcha, Condor puede obtener automaticamente el modelo LLM local
-compatible cuando es tecnicamente posible (Ollama utilizable, existe un modelo
-compatible en el catalogo y el equipo tiene capacidad suficiente).
+En la puesta en marcha, Condor selecciona el modelo LLM local mas adecuado dentro
+de un presupuesto seguro de recursos y lo obtiene automaticamente cuando es
+tecnicamente posible (Ollama utilizable, existe una variante plausible en el
+catalogo, el equipo tiene presupuesto seguro de RAM y disco, y la capacidad de
+ingenieria cubre la tarea).
 
-Acciones de Condor (automaticas, durante `condor preparar`):
+Acciones de Condor (automaticas, durante `condor preparar` y `condor hacer`):
 
-- Evaluar el hardware y determinar la capacidad del equipo.
-- Seleccionar un modelo compatible del catalogo.
+- Evaluar el hardware (RAM total/libre, disco, GPU) y calcular el presupuesto
+  seguro: `RAM libre - margen operativo` (SO + Ollama + Condor + colchon
+  anti-swapping). Nunca se usa un porcentaje de RAM total si la RAM libre real
+  es menor, y el presupuesto nunca supera la RAM libre.
+- Descartar preventivamente modelos cuyo pico de memoria (peso + KV/contexto +
+  overhead) supera el presupuesto seguro, aunque ya esten instalados.
+- Seleccionar el modelo de maxima capacidad de ingenieria viable dentro del
+  presupuesto (parametros, cuantizacion, contexto, capacidades de codigo,
+  structured output, tool use), no "el mas pequeno que cabe" ni "el mas potente".
 - Comprobar el inventario de Ollama.
 - Si el modelo deseado ya existe: reutilizarlo sin volver a descargarlo.
+- Si el deseado no existe y una alternativa instalada tiene capacidad equivalente
+  o mayor: reutilizarla.
 - Si no existe: obtenerlo mediante Ollama, con limite de tiempo, reintentos
   controlados y verificacion posterior de que quedo instalado.
 - Continuar el flujo una vez el modelo este disponible.
 
-Cuando la obtencion automatica no es posible (Ollama apagado/ausente, sin modelo
-compatible, hardware insuficiente o descarga fallida tras reintentos), Condor
-degrada de forma explicita y segura e indica el motivo.
+Cuando la obtencion automatica no es posible (Ollama apagado/ausente, sin variante
+compatible, presupuesto seguro insuficiente o descarga fallida tras reintentos),
+Condor degrada de forma explicita y segura e indica el motivo, sin forza un modelo
+inviable ni declarar exito sin evidencia.
 
 Acciones manuales (alternativa/fallback):
 

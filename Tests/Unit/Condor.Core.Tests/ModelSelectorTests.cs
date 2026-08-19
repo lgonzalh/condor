@@ -41,15 +41,18 @@ public class ModelSelectorTests
     }
 
     [Fact]
-    public void Recommend_AlternativaInstalada_LaReutiliza()
+    public void Recommend_AlternativaMenosCapazNoPisaAlDeseadoMasCapaz()
     {
-        // El deseado (qwen2.5-coder) no esta; pero llama3.2:3b esta instalada.
+        // La alternativa instalada (llama3.2:3b, general) es MENOS capaz en
+        // ingenieria que el deseado de mayor capacidad viable. No debe
+        // reutilizarse la menos capaz si el deseado es viable y obtenible.
         var assessment = AssessmentConModelo("llama3.2:3b", ramFreeGb: 8, ramTotalGb: 16);
 
         var r = ModelSelector.RecommendFromCatalog(assessment, ModelCatalog.Default);
 
-        Assert.True(r.AlreadyInstalled);
-        Assert.Equal("llama3.2:3b", r.InstalledName);
+        Assert.NotNull(r.Desired);
+        Assert.False(r.AlreadyInstalled);
+        Assert.Equal("qwen2.5-coder:7b", r.Desired.PullName);
     }
 
     [Fact]

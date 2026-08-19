@@ -15,9 +15,11 @@ T-013 y T-014 corresponden a evolucion posterior del MVP:
 - T-013: Verificacion semantica y de calidad — primera concrecion de SD-02/DE-002.
 - T-014: Integracion de la verificacion semantica en el ciclo.
 
-T-015 (Automatizacion de puesta en marcha y modelo LLM local) es la tarea activa
-de evolucion dentro de Condor v1.x: incorpora la obtencion automatica del modelo
-LLM durante la puesta en marcha.
+T-015 (Automatizacion de puesta en marcha y modelo LLM local) fue la tarea activa
+de evolucion dentro de Condor v1.x: incorpora la seleccion automatica del modelo
+LLM por capacidad de ingenieria dentro de un presupuesto seguro de recursos, su
+obtencion durante la puesta en marcha y el agente `condor hacer` (edit/build/test
+con verificacion externa). **Completada y cerrada.**
 
 ## Trabajo inmediato
 
@@ -37,7 +39,7 @@ LLM durante la puesta en marcha.
 | T-012 | Instalador y puesta en marcha simplificada | Completada y congelada |
 | T-013 | Verificacion semantica y de calidad — primera concrecion | Completada y congelada |
 | T-014 | Integracion de verificacion semantica en el ciclo | Completada, verificada y congelada |
-| T-015 | Automatizacion de puesta en marcha y modelo LLM local | En curso (v1.x) |
+| T-015 | Automatizacion de puesta en marcha y modelo LLM local | Completada y cerrada (v1.x) |
 
 ## Frontera de Condor 1.0
 
@@ -49,4 +51,6 @@ v1.x mediante tareas explicitamente justificadas y cerrables.
 
 ## Siguiente
 
-T-015 (Automatizacion de puesta en marcha y modelo LLM local) esta en curso.
+T-015 (Automatizacion de puesta en marcha y modelo LLM local) completada y
+cerrada; E2E real con `qwen2.5-coder:3b` demostrado. La evolucion continua opera
+sobre tareas explicitamente justificadas posteriores.

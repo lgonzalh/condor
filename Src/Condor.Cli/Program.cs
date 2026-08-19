@@ -12,6 +12,7 @@ using Condor.Infrastructure.Verification;
 using Condor.Infrastructure.Vision;
 using Condor.Infrastructure.Setup;
 using Condor.Infrastructure.SemanticVerification;
+using Condor.Infrastructure.Agent;
 
 namespace Condor.Cli;
 
@@ -126,6 +127,12 @@ public static class Program
                     args.Skip(1).ToArray(),
                     CancellationToken.None);
 
+            case "hacer":
+                return await AgentCommand.ExecuteAsync(
+                    new AgentService(stateStore, assessmentService),
+                    args.Skip(1).ToArray(),
+                    CancellationToken.None);
+
             default:
                 Terminal.WriteError("Comando desconocido: " + args[0]);
                 RenderHelp();
@@ -149,6 +156,7 @@ public static class Program
         Terminal.WriteDim("Usa 'condor avanzar \"<solicitud>\"' para ejecutar el ciclo de ingenieria.");
         Terminal.WriteDim("Usa 'condor examinar \"<imagen>\"' para analizar una imagen localmente.");
         Terminal.WriteDim("Usa 'condor preparar' para verificar la puesta en marcha.");
+        Terminal.WriteDim("Usa 'condor hacer \"<intencion>\"' para ejecutar una tarea de ingenieria.");
         Terminal.WriteDim("Usa 'condor verificar-semantico' para compilar y probar el proyecto.");
         Terminal.WriteDim("Usa 'condor recomendar' para elegir un modelo local.");
         Terminal.WriteDim("Usa 'condor consultar' para consultar al modelo local.");
@@ -179,6 +187,8 @@ public static class Program
         Terminal.WriteLine("  condor examinar \"<imagen>\"      Analiza una imagen localmente.");
         Terminal.WriteLine("  condor examinar \"<imagen>\" --json");
         Terminal.WriteLine("  condor preparar                Verifica la puesta en marcha.");
+        Terminal.WriteLine("  condor hacer \"<intencion>\"\tEjecuta una tarea de ingenieria.");
+        Terminal.WriteLine("  condor hacer \"<intencion>\" --json");
         Terminal.WriteLine("  condor preparar --json");
         Terminal.WriteLine("  condor preparar --actualizar   Refresca el Assessment antes de preparar.");
         Terminal.WriteLine("  condor verificar-semantico     Compila y ejecuta las pruebas del proyecto.");

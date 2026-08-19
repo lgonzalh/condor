@@ -12,8 +12,11 @@ T-001 a T-014 estan completadas, verificadas, integradas, publicadas y congelada
 La linea base tecnica **Condor v1.0.0** quedo cerrada y etiquetada (tag `v1.0.0`).
 
 **T-015 (Automatizacion de puesta en marcha y modelo LLM local)** es la tarea
-activa de evolucion dentro de Condor v1.x: incorpora la obtencion automatica del
-modelo LLM local durante la puesta en marcha cuando es tecnicamente posible.
+de evolucion dentro de Condor v1.x incorpora la seleccion automatica del
+modelo LLM local por capacidad de ingenieria dentro de un presupuesto seguro de
+recursos, y su obtencion cuando es tecnicamente posible, sin modificar la linea
+base v1.0.0. Incluye el comando agente `condor hacer`. **Completada y cerrada**
+(evidencia funcional: suites verdes + E2E real).
 
 Ultimo estado confirmado antes de T-015:
 - Rama: main
@@ -34,10 +37,13 @@ Condor dispone de:
 - condor recomendar
 - condor preparar
 - condor verificar-semantico
+- condor hacer
 
-T-015 extiende `condor preparar` para asegurar automaticamente el modelo LLM
-local (seleccion por hardware, obtencion via Ollama cuando es posible, y
-verificacion posterior), sin alterar los restantes comandos.
+T-015 extiende `condor preparar` y añade `condor hacer` para asegurar
+automaticamente el modelo LLM local mas adecuado (presupuesto seguro de RAM/disco,
+seleccion por maxima capacidad de ingenieria, obtencion via Ollama cuando es
+posible, verificacion posterior y agente que cierra el ciclo real editando y
+verificando con build/test), sin alterar los restantes comandos.
 
 ## Estado del MVP
 
@@ -55,8 +61,9 @@ automatica sin intervencion manual del modelo).
 - Windows como plataforma oficial inicial.
 - Operacion local.
 - Sin dependencia obligatoria de cloud.
-- La obtencion automatica del modelo LLM local es parte de la puesta en marcha;
-  se respeta limites, reintentos y verificacion.
+- La seleccion/obtencion automatica del modelo LLM local es parte de la puesta en
+  marcha y del agente: se respeta presupuesto seguro (nunca superar RAM libre),
+  seleccion por capacidad de ingenieria, limites, reintentos y verificacion.
 - Sin Architect/Guardian.
 - Sin integracion de vision en el ciclo.
 - Mantener compatibilidad de comandos existentes.
@@ -65,4 +72,6 @@ automatica sin intervencion manual del modelo).
 
 ## Siguiente accion
 
-T-015 en evolucion v1.x: completar su validacion, documentacion y cierre formal.
+T-015 completada y cerrada. La evolucion continua opera sobre tareas
+explicitamente justificadas posteriores (T-016 en adelante) dentro de Condor v1.x;
+ninguna esta en curso. La linea base `v1.0.0` se mantiene cerrada y etiquetada.

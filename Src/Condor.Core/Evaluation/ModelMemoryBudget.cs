@@ -1,33 +1,52 @@
 ﻿namespace Condor.Core.Evaluation;
 
+// Presupuesto de recursos para cargar un modelo LLM local.
+// El presupuesto NUNCA puede superar la RAM libre real: se calcula como
+//   ramFree - margenOperativo
+// donde margenOperativo cubre el sistema operativo, el servidor Ollama,
+// el runtime de Condor y un colchon anti-swapping. No se usa un porcentaje
+// de la RAM total cuando la RAM libre es menor.
 public static class ModelMemoryBudget
 {
-    // Estimacion conservadora inicial (pesos + cache de contexto).
-    // NO es consumo real medido de inferencia; aislada para calibrar en el futuro.
-    // Calibracion con el equipo real de referencia: 7B Q4 (4,36 GB, pico 5,2 GB)
-    // es viable con ~6 GB libres; un 8B Q4 (4,87 GB, pico 5,8 GB) queda al limite.
-    public const double PeakEstimateFactor = 1.2;
-    public const double ReserveGb = 0.75;
-    public const double MaxTotalRatio = 0.45;
-    public const double DiskSafetyRatio = 0.5;
-    public const double BytesPerGb = 1024 * 1024 * 1024;
+    public const double BytesPerGb = 1024.0 * 1024 * 1024;
 
-    public static double EstimatePeakBytes(long sizeBytes) => sizeBytes * PeakEstimateFactor;
+    // Pico estimado de memoria de un modelo (peso + overhead de carga/KV).
+    // Factor aplicado al peso en disco. Calibrado: 7B Q4 (4.36 GB) tiene pico ~5.2.
+    public const double PeakFactor = 1.2;
 
-    public static double AvailableBudgetGb(double ramTotalGb, double ramFreeGb)
+    // Margen operativo: minimo de RAM que debe quedar para que Windows,
+    // Ollama y Condor + build/test operen de forma estable (anti-swapping).
+    public static double OperatingMarginGb(double ramTotalGb)
     {
-        var freeBudget = ramFreeGb - ReserveGb;
-        var totalCap = ramTotalGb * MaxTotalRatio;
-        return Math.Max(0, Math.Max(freeBudget, totalCap));
+        var ratio = ramTotalGb * 0.08;
+        return System.Math.Min(3.0, System.Math.Max(1.5, ratio));
     }
 
-    public static bool FitsInRam(long sizeBytes, double ramTotalGb, double ramFreeGb)
+    public static double EstimatePeakGb(double weightGb, double contextKbGb)
     {
-        return EstimatePeakBytes(sizeBytes) / BytesPerGb <= AvailableBudgetGb(ramTotalGb, ramFreeGb);
+        return (weightGb * PeakFactor) + contextKbGb;
     }
 
-    public static bool FitsInDisk(long sizeBytes, long freeDiskBytes)
+    // Presupuesto seguro de carga = RAM libre real - margen operativo.
+    public static double SafeBudgetGb(double ramTotalGb, double ramFreeGb)
     {
-        return sizeBytes <= freeDiskBytes * DiskSafetyRatio;
+        var margin = OperatingMarginGb(ramTotalGb);
+        var budget = ramFreeGb - margin;
+        return System.Math.Max(0, budget);
+    }
+
+    public static bool FitsInRam(double weightGb, double contextKbGb, double ramTotalGb, double ramFreeGb)
+    {
+        var safe = SafeBudgetGb(ramTotalGb, ramFreeGb);
+        var peak = EstimatePeakGb(weightGb, contextKbGb);
+        return peak <= safe;
+    }
+
+    // Disco: espacio libre - reserva de trabajo - margen anti-saturacion.
+    public static bool FitsInDisk(double weightGb, double workReserveGb, double freeDiskGb)
+    {
+        var safetyReserve = freeDiskGb * 0.10;
+        var margin = workReserveGb + safetyReserve;
+        return weightGb + margin <= freeDiskGb;
     }
 }

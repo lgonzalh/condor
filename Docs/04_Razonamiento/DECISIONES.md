@@ -401,7 +401,9 @@ La viabilidad por memoria se calcula con `ModelMemoryBudget`: pico estimado = ta
 Los factores son constantes publicas aisladas para calibrarse en el futuro con mediciones reales. La calibracion inicial se realizo con el equipo de desarrollo real, donde un modelo 7B Q4 (4,36 GB) es viable y un 8B queda al limite.
 
 Estado:
-Aceptada.
+Aceptada. Superada por DEC-047 (T-015): el presupuesto deja de usar el tope
+porcentual sobre RAM total y pasa a `presupuesto seguro = RAM libre -
+margen operativo`, nunca superando la RAM libre real.
 
 Origen:
 T-003.
@@ -1369,10 +1371,52 @@ Diseno tecnico de T-014 (Integracion de la verificacion semantica en el ciclo).
 
 ---
 
+# DEC-047
+
+Titulo:
+Presupuesto seguro de recursos y seleccion por capacidad de ingenieria (T-015).
+
+Decision:
+ModelMemoryBudget se corrige para que el presupuesto NUNCA supere la RAM libre
+real: `SafeBudgetGb = max(0, ramFreeGb - margenOperativo)`, con
+`margenOperativo = min(3.0, max(1.5, ramTotalGb * 0.08))` cubriendo SO, servidor
+Ollama, runtime de Condor y colchon anti-swapping para build/test. Ya NO se usa
+`max(RAM libre - reserva, RAM total * 0.45)` (el tope porcentual sobre RAM total
+desaparece cuando la RAM libre real es menor).
+
+La viabilidad de un modelo usa su pico: `pico = pesoGb * 1.2 + KVCacheContexto`,
+y se exige `pico <= SafeBudgetGb`. El disco exige
+`peso + reserva_trabajo + margen_seguridad <= libreDisco`.
+
+La seleccion (ModelSelector) elige la MAXIMA capacidad de ingenieria dentro del
+presupuesto seguro, por dominio (consulta/coding/agente/vision), usando
+orden MultiFileLevel -> CodingLevel -> StructuredOutput + desempate por menor
+peso. No se elige "el modelo mas pequeno que cabe" ni "el mas potente".
+
+Descarte preventivo: un modelo cuyo pico supera el presupuesto NO es elegible ni
+se obtiene, aunque ya este instalado; no se fuerza un modelo inviable para
+intentar lograr un resultado.
+
+Reutilizacion: la alternativa instalada solo se reutiliza si tiene capacidad
+equivalente o mayor que el deseado; una alternativa instalada menos capaz no
+impide obtener el deseado mas capaz que cabe.
+
+Consecuencia: DEC-022 queda superada en su formula de presupuesto; su motivacion
+(calibracion heuristica) se conserva como referencia historica.
+
+Estado:
+Aceptada.
+
+Origen:
+Diseno tecnico de T-015 (Automatizacion de puesta en marcha y modelo LLM local).
+
+---
+
 # Historial de Cambios
 
 | Version | Cambio |
 |---------|--------|
+| 4.2.0 | Se incorpora DEC-047 (presupuesto seguro y seleccion por capacidad, T-015) y se actualiza DEC-022. |
 | 4.1.0 | Se incorpora DEC-046 (diseno tecnico de T-014, decisiones D-IC1 a D-IC6, aprobada). |
 | 4.0.0 | Se incorpora DEC-045 (formalizacion del contrato de T-014, decisiones D-IN1 a D-IN5). |
 | 3.9.0 | Se incorpora DEC-044 (diseno tecnico de T-013, decisiones D-ST1 a D-ST9, aprobada). |

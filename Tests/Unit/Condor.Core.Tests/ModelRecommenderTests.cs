@@ -25,7 +25,9 @@ public class ModelRecommenderTests
         };
     }
 
-    private static AssessmentResult AssessmentConModelos(params ModelInfo[] models)
+    private static AssessmentResult AssessmentConModelos(params ModelInfo[] models) => AssessmentConModelos(7.1, models);
+
+    private static AssessmentResult AssessmentConModelos(double freeGb, params ModelInfo[] models)
     {
         return new AssessmentResult
         {
@@ -34,7 +36,7 @@ public class ModelRecommenderTests
                 Memory = new MemoryInfo
                 {
                     TotalBytes = (long)(15.4 * Gb),
-                    FreeBytes = (long)(7.1 * Gb),
+                    FreeBytes = (long)(freeGb * Gb),
                     Status = DetectionStatus.Detected
                 },
                 StorageList = new List<StorageInfo> { new StorageInfo { FreeBytes = (long)(100 * Gb) } }
@@ -229,14 +231,15 @@ public class ModelRecommenderTests
         };
 
         var result = new ModelRecommender().Recommend(
-            AssessmentConModelos(modelos[3], modelos[5], modelos[1], modelos[0], modelos[4], modelos[2]),
+            AssessmentConModelos(7.3, modelos[3], modelos[5], modelos[1], modelos[0], modelos[4], modelos[2]),
             "development");
 
         Assert.True(result.HasRecommendation);
         Assert.NotNull(result.Recommended);
         Assert.Equal("hhao/qwen2.5-coder-tools:7b", result.Recommended.Model.Name);
-        Assert.Equal(5, result.Alternatives.Count);
-        Assert.Empty(result.Excluded);
-        Assert.Contains(result.Alternatives, entry => entry.Model.Name == "qwen3:8b");
+        Assert.Equal(4, result.Alternatives.Count);
+        // Con el presupuesto seguro, qwen3:8b (pico > margen) queda excluido.
+        Assert.Contains(result.Excluded, e => e.Model.Name == "qwen3:8b");
+        Assert.Contains(result.Alternatives, entry => entry.Model.Name != "qwen3:8b");
     }
 }

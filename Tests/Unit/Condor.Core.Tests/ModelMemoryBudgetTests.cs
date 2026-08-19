@@ -5,66 +5,78 @@ namespace Condor.Core.Tests;
 public class ModelMemoryBudgetTests
 {
     [Fact]
-    public void EstimatePeakBytes_AplicaFactorDeSeguridad()
+    public void EstimatePeakGb_AplicaFactorDePicoAlPeso()
     {
-        var peak = ModelMemoryBudget.EstimatePeakBytes(4_687_090_790);
+        var peak = ModelMemoryBudget.EstimatePeakGb(4.0, 0.5);
 
-        Assert.Equal(5_624_508_948, peak);
+        Assert.Equal(5.3, peak, 3);
     }
 
     [Fact]
-    public void AvailableBudgetGb_UsaElMayorEntreLibresYTopeDeTotal()
+    public void OperatingMargin_RespectaPisoYMaximo()
     {
-        var budget = ModelMemoryBudget.AvailableBudgetGb(15.4, 7.1);
+        var min = ModelMemoryBudget.OperatingMarginGb(1);   // piso
+        var max = ModelMemoryBudget.OperatingMarginGb(80);  // tope
 
-        Assert.Equal(6.93, budget, 3);
+        Assert.Equal(1.5, min, 3);
+        Assert.Equal(3.0, max, 3);
     }
 
     [Fact]
-    public void AvailableBudgetGb_NuncaPermiteMasDelTopeDeTotal()
+    public void SafeBudget_NuncaSuperaLaRamLibreReal()
     {
-        var budget = ModelMemoryBudget.AvailableBudgetGb(8, 0.5);
+        // Equipo con mucha RAM total pero poca libre: el presupuesto DEBE
+        // quedar por debajo de la libre real, no del porcentaje de total.
+        var budget = ModelMemoryBudget.SafeBudgetGb(32, 4.7);
 
-        Assert.Equal(3.6, budget, 3);
+        Assert.True(budget <= 4.7);
+        Assert.True(budget < 4.7);
     }
 
     [Fact]
-    public void AvailableBudgetGb_NuncaEsNegativo()
+    public void SafeBudget_ConPresionTotalYLibreBaja_RespetaLaLibre()
     {
-        Assert.True(ModelMemoryBudget.AvailableBudgetGb(0.5, 0.1) >= 0);
-        Assert.True(ModelMemoryBudget.AvailableBudgetGb(16, 0) >= 0);
+        var lowFree = ModelMemoryBudget.SafeBudgetGb(15.4, 4.7);
+        var freeNoReserve = 4.7;
+
+        Assert.True(lowFree < freeNoReserve);
+        Assert.True(lowFree > 0);
     }
 
     [Fact]
-    public void FitsInRam_ModeloAjustadoAlPresupuesto_DevuelveVerdadero()
+    public void SafeBudget_NuncaEsNegativo()
     {
-        var size = (long)(3.56 * ModelMemoryBudget.BytesPerGb);
-
-        Assert.True(ModelMemoryBudget.FitsInRam(size, 15.4, 7.1));
+        Assert.True(ModelMemoryBudget.SafeBudgetGb(15.4, 0.1) >= 0);
+        Assert.True(ModelMemoryBudget.SafeBudgetGb(16, 0) >= 0);
     }
 
     [Fact]
-    public void FitsInRam_ModeloQueSuperaElPresupuesto_DevuelveFalso()
+    public void FitsInRam_ModeloTresBTienePresupuestoSuficiente()
     {
-        var size = (long)(8 * ModelMemoryBudget.BytesPerGb);
-
-        Assert.False(ModelMemoryBudget.FitsInRam(size, 15.4, 7.1));
+        Assert.True(ModelMemoryBudget.FitsInRam(1.9, 0, 15.4, 4.7));
+        Assert.True(ModelMemoryBudget.FitsInRam(1.8, 0, 15.4, 4.7));
     }
 
     [Fact]
-    public void FitsInRam_ModeloSieteBConCuantizacionQ4_EsViable()
+    public void FitsInRam_ModeloSieteBNoEsViableConRamLibreBaja()
     {
-        var size = (long)(4.36 * ModelMemoryBudget.BytesPerGb);
-
-        Assert.True(ModelMemoryBudget.FitsInRam(size, 15.4, 7.1));
+        // regla raiz: presupuesto = libre (4.7) - margen (1.5) = 3.2; pico 7B ~5.45
+        Assert.False(ModelMemoryBudget.FitsInRam(4.36, 0, 15.4, 4.7));
     }
 
     [Fact]
-    public void FitsInDisk_RespetaElMargenDeSeguridad()
+    public void FitsInRam_SuperaLaLibreReal_EsFalso()
     {
-        var freeBytes = (long)(200 * ModelMemoryBudget.BytesPerGb);
+        // Aunque total alto, si libre es pequena la raiz no cabe.
+        Assert.False(ModelMemoryBudget.FitsInRam(4.36, 0, 15.4, 2.5));
+    }
 
-        Assert.True(ModelMemoryBudget.FitsInDisk((long)(90 * ModelMemoryBudget.BytesPerGb), freeBytes));
-        Assert.False(ModelMemoryBudget.FitsInDisk((long)(110 * ModelMemoryBudget.BytesPerGb), freeBytes));
+    [Fact]
+    public void FitsInDisk_RespetaElMargenDeTrabajoYSeguridad()
+    {
+        var freeDiskGb = 200.0;
+
+        Assert.True(ModelMemoryBudget.FitsInDisk(2, 4, freeDiskGb));
+        Assert.False(ModelMemoryBudget.FitsInDisk(195, 4, freeDiskGb));
     }
 }

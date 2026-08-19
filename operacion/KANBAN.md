@@ -10,7 +10,7 @@ Ninguna tarea nueva de desarrollo.
 
 ## EN PROGRESO
 
-- T-015 — Automatizacion de puesta en marcha y modelo LLM local (evolucion v1.x)
+Ninguna.
 
 ## REVISION
 
@@ -32,6 +32,7 @@ Ninguna.
 - T-012 — Instalador y puesta en marcha simplificada
 - T-013 — Verificacion semantica y de calidad — primera concrecion
 - T-014 — Integracion de la verificacion semantica en el ciclo (congelada, commit c982b14)
+- T-015 — Automatizacion de puesta en marcha y modelo LLM local (evolucion v1.x, cerrada; presupuesto seguro, seleccion por capacidad, agente `condor hacer`, E2E real con qwen2.5-coder:3b)
 
 ## Frontera
 

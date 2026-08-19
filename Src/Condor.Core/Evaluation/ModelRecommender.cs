@@ -193,7 +193,8 @@ public class ModelRecommender
             {
                 var totalGb = memory.TotalBytes / ModelMemoryBudget.BytesPerGb;
                 var freeGb = memory.FreeBytes / ModelMemoryBudget.BytesPerGb;
-                var fits = ModelMemoryBudget.FitsInRam(model.SizeBytes, totalGb, freeGb);
+                var weightGb = model.SizeBytes / (double)ModelMemoryBudget.BytesPerGb;
+                var fits = ModelMemoryBudget.FitsInRam(weightGb, 0, totalGb, freeGb);
 
                 if (fits)
                 {

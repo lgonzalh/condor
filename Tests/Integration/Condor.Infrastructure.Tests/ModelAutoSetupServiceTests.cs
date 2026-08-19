@@ -24,16 +24,20 @@ public class ModelAutoSetupServiceTests
     }
 
     [Fact]
-    public async Task EnsureModel_AlternativaInstalada_ReutilizaAlternativa()
+    public async Task EnsureModel_AlternativaMenosCapaz_SeleccionaElDeseado()
     {
+        // La alternativa instalada (llama3.2:3b, general) es MENOS capaz en
+        // ingenieria que el deseado viable (qwen2.5-coder:7b): la seleccion
+        // apunta al deseado de mayor capacidad, no a la alternativa menor.
         var store = new LocalStateStore(DirectorioTemporal());
         await store.SaveAssessmentAsync(AssessmentConModelo("llama3.2:3b"));
         var service = new ModelAutoSetupService(store);
 
         var result = await service.EnsureModelAsync(cancellationToken: CancellationToken.None);
 
-        Assert.True(result.AlreadyInstalled);
-        Assert.Equal("llama3.2:3b", result.InstalledName);
+        Assert.NotNull(result.Desired);
+        Assert.Equal("qwen2.5-coder:7b", result.Desired.PullName);
+        Assert.NotEqual("llama3.2:3b", result.InstalledName);
     }
 
     [Fact]
