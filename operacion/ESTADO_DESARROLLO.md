@@ -42,6 +42,10 @@ Resultado tras la correccion:
 - Durante TODO el inicio hay indicador visual activo y mensajes de estado (banner,
   spinner y etapas: revisar recursos/RAM, evaluar modelos, seleccionar/preparar/verificar
   modelo, hasta "entorno listo"); la pantalla nunca queda aparentemente congelada.
+- Condor busca una salida viable: el catalogo incluye alternativas menores
+  (qwen2.5-coder:1.5b, llama3.2:1b, qwen2.5-coder:0.5b). Si el modelo instalado no cabe
+  en RAM, Condor evalua y usa/descarga la alternativa menor viable respetando el
+  presupuesto; solo pide intervencion cuando ha agotado todas las opciones del catalogo.
 
 ## DIAGNOSTICO ACTIVO
 

@@ -211,4 +211,53 @@ public class ModelSelectorTests
         Assert.Equal(ResourcePressure.Insufficient, r.Resources.Pressure);
         Assert.Contains(r.Limitations, l => l.Contains("no se intenta cargar", System.StringComparison.OrdinalIgnoreCase));
     }
+
+    [Fact]
+    public void Recommend_InstaladosNoCabenPeroAlternativaMenor_delCatalogoSiCabe()
+    {
+        // CASO C (promesa): los modelos instalados (3B/7B) no caben por RAM, pero
+        // el catalogo de Condor contiene una alternativa menor (qwen2.5-coder:1.5b)
+        // que SI cabe. El selector debe devolverla como deseada (aunque no este
+        // instalada) para que el auto-setup la descargue y la use.
+        // El inventario de Ollama no debe ser el limite del universo de modelos.
+        var assessment = AssessmentConModelo("qwen2.5-coder:3b", ramFreeGb: 6.0, ramTotalGb: 16);
+
+        var r = ModelSelector.RecommendFromCatalog(assessment, ModelCatalog.Default);
+
+        Assert.NotNull(r.Desired);
+        Assert.Equal("qwen2.5-coder:1.5b", r.Desired.PullName);
+        Assert.False(r.AlreadyInstalled); // se obtendra (descarga) por el auto-setup
+        Assert.False(r.BlockedByResources);
+        // El 3B instalado no cabe, pero NO se abandona: Condor eligio la alternativa
+        // menor viable del catalogo (1.5B) para descargar y usar.
+    }
+
+    [Fact]
+    public void Recommend_MasRamaBaja_CaeAlModeloAunMenor()
+    {
+        // Con RAM menos holgada ni el 1.5B cabe, pero el 0.5B (ultimo recurso)
+        // aun si. Condor debe seguir bajando dentro del catalogo respetando el
+        // presupuesto, sin detenerse tras descartar los instalados.
+        var assessment = AssessmentConModelo("qwen2.5-coder:3b", ramFreeGb: 5.1, ramTotalGb: 16);
+
+        var r = ModelSelector.RecommendFromCatalog(assessment, ModelCatalog.Default);
+
+        Assert.NotNull(r.Desired);
+        Assert.Equal("qwen2.5-coder:0.5b", r.Desired.PullName);
+        Assert.False(r.BlockedByResources);
+    }
+
+    [Fact]
+    public void Recommend_RamaExtrema_SoloCuandoElCatalogoSeAgotaBloquea()
+    {
+        // F: solo se bloquea cuando de verdad NO existe ninguna alternativa viable
+        // en el catalogo, no por el mero hecho de que los instalados no quepan.
+        // Con RAM tan baja que ni el 0.5B cabe (headroom < pico 0.5B) -> bloqueo.
+        var assessment = AssessmentConModelo("qwen2.5-coder:3b", ramFreeGb: 3.0, ramTotalGb: 16);
+
+        var r = ModelSelector.RecommendFromCatalog(assessment, ModelCatalog.Default);
+
+        Assert.Null(r.Desired);
+        Assert.True(r.BlockedByResources);
+    }
 }

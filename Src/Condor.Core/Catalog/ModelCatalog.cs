@@ -36,6 +36,65 @@ public static class ModelCatalog
         },
         new()
         {
+            // Alternativa menor al 3B: cuando la RAM no permite cargar
+            // qwen2.5-coder:3b (ni mayor), Condor puede descargar y usar este
+            // modelo como salida viable manteniendo capacidades de agente.
+            Name = "qwen2.5-coder:1.5b",
+            PullName = "qwen2.5-coder:1.5b",
+            SizeBytes = 986L * 1024 * 1024,
+            WeightGb = 0.92,
+            Family = "qwen2",
+            ParameterSize = "1.5B",
+            Quantization = "Q4_K_M",
+            ContextWindow = 32768,
+            CodingLevel = 2,
+            MultiFileLevel = 1,
+            StructuredOutput = true,
+            ToolUse = true,
+            Stability = true,
+            Purpose = "agente",
+            Capabilities = new List<string> { "completion", "tool-use", "structured-output", "coding" }
+        },
+        new()
+        {
+            Name = "llama3.2:1b",
+            PullName = "llama3.2:1b",
+            SizeBytes = 1334L * 1024 * 1024,
+            WeightGb = 1.28,
+            Family = "llama",
+            ParameterSize = "1.2B",
+            Quantization = "Q4_K_M",
+            ContextWindow = 128000,
+            CodingLevel = 1,
+            MultiFileLevel = 1,
+            StructuredOutput = true,
+            ToolUse = true,
+            Stability = true,
+            Purpose = "agente",
+            Capabilities = new List<string> { "completion", "tool-use", "structured-output", "coding" }
+        },
+        new()
+        {
+            // Ultimo recurso: modelo muy pequeno, ultima salida viable si ni
+            // siquiera el 1.5B cabe en RAM.
+            Name = "qwen2.5-coder:0.5b",
+            PullName = "qwen2.5-coder:0.5b",
+            SizeBytes = 397L * 1024 * 1024,
+            WeightGb = 0.37,
+            Family = "qwen2",
+            ParameterSize = "0.5B",
+            Quantization = "Q4_K_M",
+            ContextWindow = 32768,
+            CodingLevel = 1,
+            MultiFileLevel = 1,
+            StructuredOutput = true,
+            ToolUse = false,
+            Stability = true,
+            Purpose = "agente",
+            Capabilities = new List<string> { "completion", "structured-output", "coding" }
+        },
+        new()
+        {
             Name = "llama3.2:3b",
             PullName = "llama3.2:3b",
             SizeBytes = 1991L * 1024 * 1024,

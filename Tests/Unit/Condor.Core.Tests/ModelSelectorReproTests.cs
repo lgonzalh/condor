@@ -44,22 +44,21 @@ public class ModelSelectorReproTests
         // Por tanto AgentService NO produce "No hay un modelo compatible..." (linea 54).
     }
 
-    // Caso B: una tarea de analisis falla --- la misma RAM cae bajo el umbral y el
-    // MISMO modelo instalado es descartado -> Desired==null -> el error exacto.
+    // Caso B (actualizado a la Promesa): cuando la RAM cae bajo el umbral del
+    // modelo instalado (3B), Condor ya NO se bloquea con Desired==null: busca una
+    // alternativa menor viable en el catalogo (0.5B) para descargar y usar.
     [Fact]
-    public void AnalisisFalla_RamLibreBaja_DescartaLosMismoModelo_DesiredNulo()
+    public void AnalisisRamBaja_BuscaAlternativaMenorEnCatalogo_NoBloquea()
     {
         var assessment = Assessment("qwen2.5-coder:3b", ramTotalGb: 16, ramFreeGb: 5);
 
         var r = ModelSelector.RecommendFromCatalog(assessment, ModelCatalog.Default, "agente");
 
-        // Esta es exactamente la condicion que dispara en AgentService.RunAsync:
-        //   if (selection.Desired is null)
-        //       return Fail("No hay un modelo compatible disponible para la tarea.", ...);
-        Assert.Null(r.Desired);
-        Assert.True(r.BlockedByResources);
-        Assert.Equal(ResourcePressure.Insufficient, r.Resources?.Pressure);
-        Assert.Contains(r.Limitations, l => l.Contains("no se intenta cargar", System.StringComparison.OrdinalIgnoreCase));
+        // El 3B instalado no cabe, pero Condor no abandona: elige la alternativa
+        // menor viable (0.5B) en vez de devolver Desired==null.
+        Assert.NotNull(r.Desired);
+        Assert.Equal("qwen2.5-coder:0.5b", r.Desired.PullName);
+        Assert.False(r.BlockedByResources);
     }
 
     // La intencion (hola vs analisis) NO participa en la seleccion: se comprueba
@@ -78,30 +77,24 @@ public class ModelSelectorReproTests
         Assert.NotNull(rAnalisis.Desired);
     }
 
-    // Umbral exacto del menor modelo viable: la frontera entre la RAM que permite
-    // o rechaza al 3B esta en ~6.66 GB libres sobre 16 totales.
+    // Frontera del modelo instalado 3B: con RAM holgada se usa el 3B; al caer bajo
+    // el umbral, Condor pasa a la alternativa menor viable (1.5B) del catalogo en
+    // lugar de bloquear con Desired==null.
     [Fact]
-    public void FronteraDeRechazo_Qwen3b_seAncaEnRamaLibreBaja()
+    public void FronteraDeRechazo_Qwen3b_DegradaAAlternativaMenor()
     {
-        AssertTrueFits(ramFreeGb: 7.0);   // headroom 2.5 >= pico 2.16  -> cabe
-        AssertFalseFits(ramFreeGb: 6.5);  // headroom 2.0 <  pico 2.16  -> NO cabe
+        AssertElected(ramFreeGb: 7.0, "qwen2.5-coder:3b");  // headroom 2.5 >= pico 2.16 -> 3B cabe
+        AssertElected(ramFreeGb: 6.5, "qwen2.5-coder:1.5b"); // headroom 2.0 < pico 2.16 -> alternativa 1.5B
     }
 
-    private static void AssertTrueFits(double ramFreeGb)
+    private static void AssertElected(double ramFreeGb, string expected)
     {
         var r = ModelSelector.RecommendFromCatalog(
             Assessment("qwen2.5-coder:3b", ramTotalGb: 16, ramFreeGb: ramFreeGb),
             ModelCatalog.Default, "agente");
         Assert.NotNull(r.Desired);
-        Assert.Equal("qwen2.5-coder:3b", r.Desired.PullName);
-    }
-
-    private static void AssertFalseFits(double ramFreeGb)
-    {
-        var r = ModelSelector.RecommendFromCatalog(
-            Assessment("qwen2.5-coder:3b", ramTotalGb: 16, ramFreeGb: ramFreeGb),
-            ModelCatalog.Default, "agente");
-        Assert.Null(r.Desired);
+        Assert.Equal(expected, r.Desired.PullName);
+        Assert.False(r.BlockedByResources);
     }
 
     private static AssessmentResult Assessment(string installedName, double ramTotalGb, double ramFreeGb)

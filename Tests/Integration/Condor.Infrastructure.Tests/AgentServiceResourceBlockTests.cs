@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,7 +23,7 @@ public class AgentServiceResourceBlockTests
     public async Task RunAsync_RamBaja_ModeloInstalado_NoAfirmaQueNoExiste_y_ConservaTarea()
     {
         var store = new LocalStateStore(Path.Combine(TempDir(), "state-" + Guid.NewGuid().ToString("N")));
-        var assessment = new StubAssessmentService(ramTotalGb: 16, ramFreeGb: 5, installedModel: "qwen2.5-coder:3b");
+        var assessment = new StubAssessmentService(ramTotalGb: 16, ramFreeGb: 2, installedModel: "qwen2.5-coder:3b");
         var service = new AgentService(store, assessment);
 
         var result = await service.RunAsync("analiza que contiene este proyecto", cancellationToken: CancellationToken.None);
@@ -42,7 +42,7 @@ public class AgentServiceResourceBlockTests
     public async Task RunAsync_RamBaja_RecuperacionAcotada_SinBucleInfinito()
     {
         var store = new LocalStateStore(Path.Combine(TempDir(), "state-" + Guid.NewGuid().ToString("N")));
-        var assessment = new StubAssessmentService(ramTotalGb: 16, ramFreeGb: 5, installedModel: "qwen2.5-coder:3b");
+        var assessment = new StubAssessmentService(ramTotalGb: 16, ramFreeGb: 2, installedModel: "qwen2.5-coder:3b");
         var service = new AgentService(store, assessment);
 
         var result = await service.RunAsync("analiza", cancellationToken: CancellationToken.None);
@@ -60,7 +60,7 @@ public class AgentServiceResourceBlockTests
         // Respuesta NO a la pregunta opcional de RAM: Condor conserva la tarea,
         // termina de forma limpia y NO cierra aplicaciones por su cuenta.
         var store = new LocalStateStore(Path.Combine(TempDir(), "state-" + Guid.NewGuid().ToString("N")));
-        var assessment = new StubAssessmentService(ramTotalGb: 16, ramFreeGb: 5, installedModel: "qwen2.5-coder:3b");
+        var assessment = new StubAssessmentService(ramTotalGb: 16, ramFreeGb: 2, installedModel: "qwen2.5-coder:3b");
         var confirmation = new StubConfirmation(response: false);
         var service = new AgentService(store, assessment, confirmation: confirmation);
 
@@ -80,7 +80,7 @@ public class AgentServiceResourceBlockTests
         // Condor re-evalua UNA vez mas (contabilizable) y luego sale limpio,
         // sin bucles de reintento ilimitados y sin perder la tarea.
         var store = new LocalStateStore(Path.Combine(TempDir(), "state-" + Guid.NewGuid().ToString("N")));
-        var assessment = new StubAssessmentService(ramTotalGb: 16, ramFreeGb: 5, installedModel: "qwen2.5-coder:3b");
+        var assessment = new StubAssessmentService(ramTotalGb: 16, ramFreeGb: 2, installedModel: "qwen2.5-coder:3b");
         var confirmation = new StubConfirmation(response: true);
         var service = new AgentService(store, assessment, confirmation: confirmation);
 
@@ -89,7 +89,7 @@ public class AgentServiceResourceBlockTests
         Assert.False(result.Success);
         Assert.Equal(1, confirmation.AskCount);
         Assert.Contains("RAM libre", result.Reason, StringComparison.OrdinalIgnoreCase);
-        // Reintentos acotados: la confirmacion añade una re-evaluacion por encima
+        // Reintentos acotados: la confirmacion aÃ±ade una re-evaluacion por encima
         // de la recuperacion automatica, pero queda limitada (sin bucle infinito).
         Assert.True(assessment.ExecuteCount <= 14, "La reevaluacion tras confirmacion debe ser acotada.");
         Assert.Equal("analiza", result.Objective);
@@ -99,11 +99,11 @@ public class AgentServiceResourceBlockTests
     public async Task RunAsync_RamBaja_UsuarioConfirmaYRamaSeLibera_Reevalua()
     {
         // Respuesta SI y la RAM se libera (estado compartido subido al confirmar):
-        // Condor re-evalua y continúa en lugar de rendirse con el error de RAM.
-        // Cóndor NUNCA cierra apps; simula que el usuario si libero memoria.
+        // Condor re-evalua y continÃºa en lugar de rendirse con el error de RAM.
+        // CÃ³ndor NUNCA cierra apps; simula que el usuario si libero memoria.
         var store = new LocalStateStore(Path.Combine(TempDir(), "state-" + Guid.NewGuid().ToString("N")));
-        var ram = new RamState { FreeGb = 5.0 };
-        var assessment = new StubAssessmentService(ramTotalGb: 16, ramFreeGb: 5, installedModel: "qwen2.5-coder:3b", ram: ram);
+        var ram = new RamState { FreeGb = 2.0 };
+        var assessment = new StubAssessmentService(ramTotalGb: 16, ramFreeGb: 2, installedModel: "qwen2.5-coder:3b", ram: ram);
         var confirmation = new StubConfirmation(response: true, ram: ram, releasedGb: 9.0);
         var service = new AgentService(store, assessment, confirmation: confirmation);
 

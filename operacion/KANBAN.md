@@ -19,6 +19,9 @@ Sin incidencias activas de seleccion de modelo.
   y continua; si no, sale limpio conservando la tarea.
 - Progreso visible obligatorio durante todo el inicio: pantalla nunca se congela (banner,
   spinner y etapas "Revisando recursos"/"Evaluando modelos"/"Preparando modelo" hasta listo).
+- Busqueda de salida viable: el catalogo ahora incluye alternativas menores (1.5B/1B/0.5B);
+  si el modelo instalado no cabe, Condor busca y usa/descarga la alternativa menor viable
+  antes de pedir intervencion.
 - Build sin errores/advertencias en el ultimo cierre informado.
 - Suites automatizadas verdes en el ultimo cierre informado (534 pruebas).
 - Descarga de qwen2.5-coder:3b observada.

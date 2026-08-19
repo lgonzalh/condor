@@ -202,3 +202,54 @@ El flujo visible queda: Preparando entorno -> Revisando recursos -> ✓ Recursos
   prolongada y spinner), "✓ Entorno preparado", "Entorno listo..." y luego la advertencia.
   No queda pantalla en negro.
 - One-shot --json conserva su salida JSON (el inicio no usa el presentador de arranque).
+
+---
+
+## CÓNDOR BUSCA UNA SALIDA VIABLE (alternativas menores en el catalogo)
+
+### Que se encontro
+El selector (ModelSelector) y el auto-setup ya consideraban modelos del catalogo NO
+instalados y ya descargaban automaticamente un "desired" viable (ModelAutoSetupService /
+PullAsync). No habia una falla de seleccion: el LIMITE real era que el catalogo de Condor
+solo tenia modelos de 3B hacia arriba. Por eso, cuando la RAM no permitia cargar ni el
+qwen2.5-coder:3b, el selector descartaba TODO y Condor pedia intervencion de inmediato,
+sin tener ninguna alternativa menor que buscar/descargar.
+
+### Correccion (minima, sin duplicar seleccion/descarga)
+- ModelCatalog.cs: se anade una escalera de alternativas menores reales de Ollama aptas
+  para tareas de agente, con Purpose="agente" y perfil de recursos verificado:
+  - qwen2.5-coder:1.5b (~0.92 GB)   -> alternativa al 3B.
+  - llama3.2:1b (~1.28 GB)          -> alternativa general menor.
+  - qwen2.5-coder:0.5b (~0.37 GB)   -> ultimo recurso (ultima salida viable).
+- Con esto, OrderByCompatibility (FitsInRamStrict intacto) ya evalúa de mayor a menor
+  capacidad: si el 3B no cabe pero el 1.5B si, el 1.5B es el "desired" y el
+  ModelAutoSetupService lo descarga y verifica automaticamente (infraestructura existente).
+
+Flujo resultante (casos de aceptacion):
+A) RAM suficiente + instalado -> se usa el instalado (3B).
+B) Sin instalado + recursos -> se descarga el viable adecuado del catalogo.
+C) Instalados no caben + alternativa menor viable -> se elige/descarga la menor y se usa.
+D) Alternativa menor tampoco cabe -> sigue bajando en el catalogo (0.5B) si es viable.
+E) Ninguna viable -> se informa honesto (no ausencia), se sugiere liberar RAM, se pregunta
+   opcionalmente y se reevalua.
+F) Condor nunca se detiene solo por no caber los instalados si aun hay alternativa.
+
+### Pruebas
+- Unit ModelSelectorTests: instalados(3B) no caben pero 1.5B del catalogo si -> Desired=1.5B,
+  AlreadyInstalled=false (se descarga); caida a 0.5B con menor RAM; solo bloquea al agotar
+  el catalogo (RAM extrema).
+- Unit ModelSelectorReproTests: analisis con RAM baja -> alternativa 0.5B (no bloquea);
+  frontera 3B degrada a 1.5B.
+- Integration AgentServiceResourceBlockTests: los casos de bloqueo/intervencion ahora usan
+  RAM que no permite NINGUNA alternativa (headroom 0), para que sigan cubriendo la
+  intervencion S/N solo cuando el catalogo se agota.
+
+### Verificacion E2E real (con recursos disponibles)
+- RAM suficiente (7.8-7.9 GB, runner 7B descargado): tarea completa con qwen2.5-coder:3b
+  (exit 0) -> caso A.
+- RAM extrema (runner 7B cargado ~4.2 GB, libre 3.4-3.8): el selector agota el catalogo
+  (ni el 0.5B cabe con headroom 0) y reporta honestamente "modelo instalado no se pudo
+  cargar ahora / bloqueo temporal" sin afirmar ausencia -> caso E/F (agotado).
+- El caso C intermedio (3B no cabe, 1.5B si) esta demostrado por los tests de seleccion
+  con RAM controlada; en este entorno el runner de Ollama mantiene un working set fijo
+  (~4.2 GB) que impide sostener la RAM en el rango intermedio para el E2E.
