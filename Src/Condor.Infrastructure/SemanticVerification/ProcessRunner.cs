@@ -45,11 +45,28 @@ public sealed class ProcessRunner
             CreateNoWindow = true
         };
 
-        psi.ArgumentList.Add(kind == SemanticCheck.KindTest ? "test" : "build");
+        var verb = NormalizeVerb(kind);
+        psi.ArgumentList.Add(verb);
         psi.ArgumentList.Add(manifest);
-        psi.ArgumentList.Add("--no-restore");
+        if (verb is "build" or "test")
+        {
+            psi.ArgumentList.Add("--no-restore");
+        }
 
         return await ExecuteAsync(psi, timeoutMilliseconds, cancellationToken);
+    }
+
+    private static string NormalizeVerb(string kind)
+    {
+        return kind switch
+        {
+            SemanticCheck.KindTest => "test",
+            SemanticCheck.KindCompile => "build",
+            "test" => "test",
+            "build" => "build",
+            "restore" => "restore",
+            _ => "build"
+        };
     }
 
     private static async Task<ProcessRunResult> ExecuteAsync(
