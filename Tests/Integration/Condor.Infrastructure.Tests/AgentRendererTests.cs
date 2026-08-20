@@ -1,7 +1,6 @@
 using Condor.Cli.Presentation;
 using Condor.Core.Models;
 using Condor.Core.Serialization;
-
 namespace Condor.Infrastructure.Tests;
 
 public class AgentRendererTests
@@ -113,5 +112,67 @@ public class AgentRendererTests
         Assert.Contains("estilos.css", text);
         Assert.Contains("app.js", text);
         Assert.Contains("Proyecto web estatico", text);
+    }
+
+    [Fact]
+    public void Hallazgos_SonEvidenciaDistintaDelResultado()
+    {
+        // REQUISITO: [HALLAZGOS] y [RESULTADO] deben ser distintos. HALLAZGOS es la
+        // evidencia objetiva observada (archivos inspeccionados); RESULTADO es el
+        // analisis derivado del modelo (Reason). No deben repetirse.
+        var result = new AgentResult
+        {
+            Success = true,
+            Reason = "La aplicacion calcula la suma de dos enteros pasados por consola.",
+            Steps =
+            {
+                Obs("read_file", "src/Program.cs", preview: "class Program { static void Main(string[] args) { ... } }"),
+                Obs("read_file", "src/Calculator.cs", preview: "public int Add(int a, int b)")
+            }
+        };
+
+        var text = AgentRenderer.BuildResultText(result);
+
+        // RESULTADO contiene el analisis del modelo.
+        Assert.Contains("[RESULTADO]", text);
+        Assert.Contains("calcula la suma", text);
+        // HALLAZGOS contiene la EVIDENCIA observada (archivos inspeccionados), NO la
+        // sintesis; por tanto la sintesis solo aparecera una vez (en RESULTADO).
+        Assert.Contains("[HALLAZGOS]", text);
+        Assert.Contains("Se inspecciono 'src/Program.cs'", text);
+        // El analisis no debe repetirse como hallazgo.
+        var resultOnly = text.IndexOf("calcula la suma", System.StringComparison.Ordinal);
+        Assert.True(resultOnly >= 0);
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(text, "calcula la suma"));
+    }
+
+    [Fact]
+    public void Inventario_SePresentaCuandoExiste()
+    {
+        var result = new AgentResult
+        {
+            Success = true,
+            Reason = "Analisis.",
+            Inventory = new AgentInventory
+            {
+                RamTotalGb = 15.4,
+                RamFreeGb = 7.0,
+                SafeBudgetGb = 2.5,
+                PressureLabel = "Normal",
+                Cpu = "Intel Core i5\n4 nucleos\n8 hebras",
+                FreeDiskGb = 100.0,
+                SelectedModel = "qwen2.5-coder:3b",
+                SelectionReason = "El modelo deseado ya existe en Ollama; se reutiliza.",
+                ModelCapabilities = new() { "completion", "structured-output", "coding" }
+            }
+        };
+
+        var text = AgentRenderer.BuildResultText(result);
+
+        Assert.Contains("[INVENTARIO]", text);
+        Assert.Contains("qwen2.5-coder:3b", text);
+        Assert.Contains("structured-output", text);
+        Assert.Contains("presupuesto seguro", text);
+        Assert.Contains("Modelo: qwen2.5-coder:3b", text);
     }
 }

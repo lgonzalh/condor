@@ -46,6 +46,9 @@ Resultado tras la correccion:
   (qwen2.5-coder:1.5b, llama3.2:1b, qwen2.5-coder:0.5b). Si el modelo instalado no cabe
   en RAM, Condor evalua y usa/descarga la alternativa menor viable respetando el
   presupuesto; solo pide intervencion cuando ha agotado todas las opciones del catalogo.
+- Analisis y orquestacion: el agente presenta un inventario del entorno (RAM/CPU/disco/
+  modelos), el modelo seleccionado con su motivo y capacidades verificadas, y separa
+  [HALLAZGOS] (evidencia observada) de [RESULTADO] (analisis elaborado) sin duplicarlos.
 
 ## DIAGNOSTICO ACTIVO
 

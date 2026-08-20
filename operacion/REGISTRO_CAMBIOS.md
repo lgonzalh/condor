@@ -253,3 +253,45 @@ F) Condor nunca se detiene solo por no caber los instalados si aun hay alternati
 - El caso C intermedio (3B no cabe, 1.5B si) esta demostrado por los tests de seleccion
   con RAM controlada; en este entorno el runner de Ollama mantiene un working set fijo
   (~4.2 GB) que impide sostener la RAM en el rango intermedio para el E2E.
+
+---
+
+## ANALISIS Y ORQUESTACION DEL AGENTE (inventario + separacion HALLAZGOS/RESULTADO)
+
+### Problema
+El analisis entregado era superficial y la orquestacion estaba duplicada: [HALLAZGOS] y
+[RESULTADO] mostraban el MISMO texto (el `reason` del modelo), sin inventario del entorno,
+sin motivo de seleccion de modelo ni capacidades verificadas.
+
+### Correcion (no altera seleccion, presupuesto, routing ni la estructura general de la interfaz)
+- AgentModel.cs: nuevo `AgentInventory` (RAM total/libre, presupuesto seguro, presion, CPU,
+  disco libre, modelos instalados, modelo seleccionado + motivo, capacidades verificadas).
+  Se anade como campo opcional a `AgentResult`.
+- AgentService.cs: `BuildInventoryAsync` recopila el inventario real (detectores Cpu/Storage/
+  RAM, inventario de Ollama via /api/tags y capacidades del catalogo del modelo elegido)
+  y lo adjunta a los resultados exitosos del agente. Solo datos reales; nunca inventa.
+- AgentRenderer.cs:
+  * [INVENTARIO] nuevo: recursos, CPU, disco, modelos instalados, modelo + motivo, capacidades.
+  * [HALLAZGOS] ahora es EVIDENCIA objetiva observada (archivos inspeccionados con su
+    naturaleza), derivada de los pasos reales de herramienta, NO la sintesis del modelo.
+  * [RESULTADO] sigue siendo el analisis elaborado (`reason` del modelo). Asi HALLAZGOS y
+    RESULTADO provienen del flujo correspondiente y ya no se duplican.
+- Mejora moderada del prompt (sin inyectar el inventario al modelo): se pide un analisis util
+  y focalizado (leer el contenido relevante, atender el archivo que la tarea mencione) sin
+  romper el JSON del modelo local. Se descarto inyectar el inventario completo en el system
+  prompt porque degradaba la fiabilidad del qwen2.5-coder:3b (JSON invalido); el inventario
+  queda disponible y mostrado por Condor, orientando la decision de modelo aparte.
+
+### Pruebas
+- AgentRendererTests (2 nuevas): [HALLAZGOS] es evidencia distinta de [RESULTADO] (la sintesis
+  aparece una sola vez); [INVENTARIO] se presenta cuando existe (modelo, capacidades, recursos).
+
+### Verificacion E2E real (Ollama local)
+- Tarea "cuentame que es esta aplicacion" sobre un proyecto .NET real (exit 0): la salida
+  muestra [INVENTARIO] (RAM 6.9/15.4 GB · CPU Intel Core Ultra 7 · disco · modelos instalados,
+  modelo qwen2.5-coder:3b con motivo de seleccion, capacidades), [HALLAZGOS] = evidencia
+  ("Se inspecciono 'src/App.csproj' (manifiesto de proyecto .NET)") y [RESULTADO] = analisis
+  elaborado distinto de HALLAZGOS.
+- Indicador: se confirmo que no existe un caracter '|' junto al indicador de procesamiento;
+  el indicador es el spinner circular (◐◓◑◒) en terminal interactiva y '·' en salida
+  redirigida, seguido del texto de estado. No se introduce ni elimina simbolo extra.

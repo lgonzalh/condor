@@ -44,6 +44,33 @@ public class AgentResult
     public string? Objective { get; set; }
     public List<AgentStep> Steps { get; set; } = new();
     public AgentCheckpoint? Checkpoint { get; set; }
+
+    /// <summary>
+    /// Inventario del entorno y de la decision de modelo recopilado por Condor
+    /// antes/para la tarea (recursos, CPU, almacenamiento, modelos instalados,
+    /// modelo seleccionado y motivo, capacidades verificadas del catalogo).
+    /// Opcional: informativo; cuando es null el renderer omite el bloque.
+    /// </summary>
+    public AgentInventory? Inventory { get; set; }
+}
+
+/// <summary>
+/// Inventario objetivo que orienta la decision de Condor y se presenta en el
+/// analisis. Solo se rellena con datos reales detectados o del catalogo; nunca
+/// se inventan capacidades.
+/// </summary>
+public sealed class AgentInventory
+{
+    public double RamTotalGb { get; set; }
+    public double RamFreeGb { get; set; }
+    public double SafeBudgetGb { get; set; }
+    public string? PressureLabel { get; set; }
+    public string? Cpu { get; set; }
+    public double FreeDiskGb { get; set; }
+    public List<string>? InstalledModels { get; set; }
+    public string? SelectedModel { get; set; }
+    public string? SelectionReason { get; set; }
+    public List<string>? ModelCapabilities { get; set; }
 }
 
 public sealed class AgentLimits

@@ -156,6 +156,11 @@ public sealed class AgentService : IAgentService
         checkpoint.Strategy = "structured-action";
         checkpoint.LastDecision = "comprender";
 
+        // Inventario del entorno y de la decision de modelo (recursos, CPU, disco,
+        // modelos, modelo seleccionado, motivo y capacidades) para orientar y
+        // presentar en el analisis. Opcional y tolerante a errores.
+        var inventory = await BuildInventoryAsync(selection, cancellationToken);
+
         var toolset = new AgentToolset(workingDir, maxContent: _limits.MaxContentLength);
         var harness = new AgentHarness(workingDir, _limits, steps);
         var originalSnapshot = RepoSnapshot.Capture(workingDir);
@@ -265,7 +270,7 @@ public sealed class AgentService : IAgentService
                             var grounded = await GroundInformationalAsync(toolset, workingDir, steps, timeoutCts.Token);
                             return grounded is null
                                 ? Fail(checkpoint.LastError ?? "No fue posible describir el directorio.", model, intention, steps, checkpoint)
-                                : new AgentResult { Success = true, Reason = grounded, Model = model, Objective = intention, Steps = steps, Checkpoint = checkpoint };
+                                : new AgentResult { Success = true, Reason = grounded, Model = model, Objective = intention, Steps = steps, Checkpoint = checkpoint, Inventory = inventory };
                         }
 
                         checkpoint.LastError = "El modelo no produjo acciones estructuradas validas tras varios intentos.";
@@ -434,6 +439,7 @@ public sealed class AgentService : IAgentService
                             Reason = string.IsNullOrWhiteSpace(summary)
                                 ? "Condor observo el directorio y describio lo encontrado."
                                 : summary,
+                            Inventory = inventory,
                             Model = model, Objective = intention, Steps = steps, Checkpoint = checkpoint
                         };
                     }
@@ -472,7 +478,7 @@ public sealed class AgentService : IAgentService
                     // Si la intencion es de comprension/diagnostico y hay evidencia,
                     // se entrega la respuesta observada en vez de un crptico fallo
                     // por limite de iteraciones.
-                    var delivered = TryDeliverInformational(checkpoint, steps, workingDir, model, intention, progress, lastDoneReason);
+                    var delivered = TryDeliverInformational(checkpoint, steps, workingDir, model, intention, progress, lastDoneReason, inventory);
                     if (delivered is not null)
                     {
                         return delivered;
@@ -498,7 +504,7 @@ public sealed class AgentService : IAgentService
         // agente recolecto evidencia, se entrega una respuesta fundamentada (no un
         // crptico "limite de iteraciones"). Para una intencion de CONSTRUIR, sin
         // cambio verificado no hay respuesta que entregar.
-        return TryDeliverInformational(checkpoint, steps, workingDir, model, intention, progress, lastDoneReason)
+        return TryDeliverInformational(checkpoint, steps, workingDir, model, intention, progress, lastDoneReason, inventory)
             ?? Fail("El agente no pudo completar la tarea dentro de los limites.", model, intention, steps, checkpoint);
     }
 
@@ -509,7 +515,8 @@ public sealed class AgentService : IAgentService
         string model,
         string intention,
         IAgentProgressObserver? progress,
-        string? lastDoneReason)
+        string? lastDoneReason,
+        AgentInventory? inventory)
     {
         var flavor = AgentEngine.ClassifyIntent(intention);
         if (flavor == IntentFlavor.Build)
@@ -541,7 +548,8 @@ public sealed class AgentService : IAgentService
             Model = model,
             Objective = intention,
             Steps = steps.ToList(),
-            Checkpoint = checkpoint
+            Checkpoint = checkpoint,
+            Inventory = inventory
         };
     }
 
@@ -887,6 +895,69 @@ public sealed class AgentService : IAgentService
         }
     }
 
+    /// <summary>
+    /// Recopila el inventario objetivo del entorno y de la decision de modelo
+    /// (recursos, CPU, almacenamiento, modelos instalados, modelo seleccionado,
+    /// motivo y capacidades verificadas del catalogo). Solo usa datos reales
+    /// detectados o del catalogo; nunca inventa capacidades.
+    /// </summary>
+    private async Task<AgentInventory?> BuildInventoryAsync(
+        Condor.Core.Models.ModelSelectionResult selection,
+        CancellationToken ct)
+    {
+        try
+        {
+            var resources = selection.Resources;
+            var desired = selection.Desired;
+            var inventory = new AgentInventory
+            {
+                RamTotalGb = resources?.TotalGb ?? 0,
+                RamFreeGb = resources?.FreeGb ?? 0,
+                SafeBudgetGb = resources?.SafeBudgetGb ?? 0,
+                PressureLabel = resources?.PressureLabel
+            };
+
+            try
+            {
+                var cpu = await new CpuDetector().DetectAsync(ct);
+                if (cpu.Status == DetectionStatus.Detected)
+                {
+                    var parts = new List<string>();
+                    if (!string.IsNullOrWhiteSpace(cpu.Name)) parts.Add(cpu.Name);
+                    if (cpu.Cores > 0) parts.Add(cpu.Cores + " nucleos");
+                    if (cpu.LogicalProcessors > 0) parts.Add(cpu.LogicalProcessors + " hebras");
+                    inventory.Cpu = parts.Count > 0 ? string.Join(" · ", parts) : null;
+                }
+            }
+            catch { /* CPU opcional */ }
+
+            try
+            {
+                if (_assessmentService is not null)
+                {
+                    var live = await _assessmentService.ExecuteAsync(new AssessmentRequest(), ct);
+                    inventory.InstalledModels = live.Tools?.Ollama?.Models?.Select(m => m.Name).Where(n => !string.IsNullOrWhiteSpace(n)).ToList();
+                }
+            }
+            catch { /* modelos opcional */ }
+
+            var storage = await new StorageDetector().DetectAsync(ct);
+            var disks = storage.Disks;
+            inventory.FreeDiskGb = disks is { Count: > 0 }
+                ? System.Math.Round(disks.Max(d => d.FreeBytes) / (double)ModelMemoryBudget.BytesPerGb, 1)
+                : 0;
+
+            inventory.SelectedModel = selection.InstalledName ?? desired?.PullName;
+            inventory.SelectionReason = selection.Reason;
+            inventory.ModelCapabilities = desired?.Capabilities?.Any() == true ? desired.Capabilities : null;
+            return inventory;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private static void EvaluateResourcesAndWarn(AgentCheckpoint checkpoint, IAgentProgressObserver? progress, ref bool warned, int iteration)
     {
         var snapshot = EvaluateResources();
@@ -930,6 +1001,7 @@ public sealed class AgentService : IAgentService
     {
         var sb = new System.Text.StringBuilder();
         sb.AppendLine("Eres el agente de ingenieria local de Condor. Resuelves la tarea sobre el directorio " + workingDir + ".");
+
         if (!string.IsNullOrWhiteSpace(manifest))
             sb.AppendLine("Se detecto un proyecto .NET (manifiesto: " + manifest + "); si la tarea requiere compilar/probar, usa las acciones build/test sobre el, y para modificaciones usalas las herramientas de edicion sobre los archivos reales.");
         else
@@ -956,7 +1028,7 @@ public sealed class AgentService : IAgentService
         sb.AppendLine("FLUJO: primero usa list_dir y read_file para conocer la estructura real y leer el contenido exacto de los archivos. Para corregir, usa patch con 'original' copiado literalmente del archivo. No uses rutas inventadas: usa siempre rutas relativas reales que hayas visto en list_dir/read_file. Las rutas no existen si list_dir no las mostro.");
         sb.AppendLine("Si con patch/edit_file dejas el archivo roto y el build falla, puedes revertir el cambio con undo_file (igual ruta) y volver a intentar. Tambien puedes leer de nuevo el archivo con read_file para ver su estado actual despues de un fallo.");
         sb.AppendLine();
-        sb.AppendLine("SOLICITUDES DE COMPRENSION/ANALISIS (no de codigo): si la respuesta esperada es explicar que contiene el directorio, observa (list_dir/read_file) lo necesario y, cuando tengas suficiente evidencia para responder, sintetiza lo que has visto y haz done sin necesidad de build/test ni de editar nada. No repitas observaciones que ya hiciste: una misma ruta no aporta informacion nueva dos veces.");
+        sb.AppendLine("SOLICITUDES DE COMPRENSION/ANALISIS (no de codigo): la respuesta esperada es un ANALISIS UTIL, no una mera enumeracion de archivos. Inspecciona el contenido relevante con read_file (enfocate en el archivo que la tarea mencione, si lo hay) y cuando tengas suficiente evidencia haz done colocando en 'reason' un analisis elaborado de lo que hace y como se relaciona. No repitas observaciones que ya hiciste.");
         sb.AppendLine();
         sb.AppendLine("IMPORTANTE - HONESTIDAD Y VERIFICACION:");
         sb.AppendLine("  - NUNCA inventes ni simules exito. El harness ejecutara realmente build y test de forma externa.");
