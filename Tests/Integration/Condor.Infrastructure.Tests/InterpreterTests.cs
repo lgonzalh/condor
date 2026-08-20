@@ -106,4 +106,30 @@ public class InterpreterTests
 
         Assert.Equal(0, exit);
     }
+
+    [Fact]
+    public async Task RunAsync_IdentidadSeRepintaAntesDeCadaEspera()
+    {
+        // REQUISITO "identidad permanente": la zona de identidad se re-pinta antes de
+        // cada espera de entrada (onBeforePrompt) para que no desaparezca por el
+        // desplazamiento de la terminal, y de nuevo tras cerrar cada tarea.
+        var linea = new Queue<string>(new[]
+        {
+            "revisa el proyecto",
+            "revisa otro",
+            "/salir"
+        });
+
+        var prompts = 0;
+        var interpreter = new Interpreter(
+            line => { prompts++; return Task.FromResult(0); },
+            line => { prompts++; return Task.FromResult(0); },
+            () => linea.Count > 0 ? linea.Dequeue() : null,
+            onBeforePrompt: () => prompts += 1000); // marca la re-pintura de identidad
+
+        await interpreter.RunAsync();
+
+        // Se repinto la identidad al menos una vez por espera de entrada.
+        Assert.True(prompts >= 2000, "La zona de identidad debe reinpintarse antes de cada entrada.");
+    }
 }

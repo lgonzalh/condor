@@ -30,6 +30,9 @@ Sin incidencias activas de seleccion de modelo.
 - Identidad permanente y diferenciacion del origen: "©Condor" + eslogan se mantienen visibles
   desde el inicio hasta la respuesta; se muestra el modelo realmente utilizado y se colorea
   por origen (Cóndor azul, modelo gris, error rojo, advertencia amarillo).
+- Identidad como zona persistente: la identidad se re-dibuja como zona fija antes de cada
+  espera de entrada y permanece visible todo el ciclo (inicio, tarea, respuesta, error,
+  finalizacion y nueva espera); muestra el modelo local REAL activo.
 - Build sin errores/advertencias en el ultimo cierre informado.
 - Suites automatizadas verdes en el ultimo cierre informado (534 pruebas).
 - Descarga de qwen2.5-coder:3b observada.

@@ -15,15 +15,18 @@ public sealed class Interpreter
     private readonly Func<SlashRoute, Task<int>> _slashHandler;
     private readonly Func<FreeIntentionRoute, Task<int>> _freeIntentionHandler;
     private readonly Func<string?> _readLine;
+    private readonly Action? _onBeforePrompt;
 
     public Interpreter(
         Func<SlashRoute, Task<int>> slashHandler,
         Func<FreeIntentionRoute, Task<int>> freeIntentionHandler,
-        Func<string?>? readLine = null)
+        Func<string?>? readLine = null,
+        Action? onBeforePrompt = null)
     {
         _slashHandler = slashHandler;
         _freeIntentionHandler = freeIntentionHandler;
         _readLine = readLine ?? (() => Console.ReadLine());
+        _onBeforePrompt = onBeforePrompt;
     }
 
     public async Task<int> RunAsync(CancellationToken cancellationToken = default)
@@ -66,6 +69,9 @@ public sealed class Interpreter
 
     private async Task<string?> ReadLineAsync(CancellationToken ct)
     {
+        // Zona persistente de identidad: antes de pedir entrada se re-dibuja para
+        // que nunca desaparezca por el desplazamiento de la terminal.
+        _onBeforePrompt?.Invoke();
         if (!Console.IsInputRedirected)
         {
             Console.Write("> ");

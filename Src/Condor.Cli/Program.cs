@@ -125,7 +125,8 @@ public static class Program
             free => AgentCommand.ExecuteAsync(
                 new AgentService(stateStore, assessmentService, confirmation: PromptIfInteractive()),
                 free.Intention.Split(' ', System.StringSplitOptions.RemoveEmptyEntries | System.StringSplitOptions.TrimEntries),
-                CancellationToken.None));
+                CancellationToken.None),
+            onBeforePrompt: () => Presentation.IdentityHeader.Render(prep.Model));
 
         Terminal.WriteDim("Escribe '/ayuda' para los comandos de control o '/salir' para terminar.");
         Terminal.WriteLine();

@@ -355,3 +355,28 @@ y modelo + tiempo al final.
   "©Condor · qwen2.5-coder:3b · <tiempo>". Sin referencias .NET ni '|'.
 - Tests de interfaz/progreso/startup: 45/45 verdes (renderer, ambos presentadores y preparador).
 - Suites completas: 548 pruebas, 0 fallos; build Release 0 warnings/errors.
+
+---
+
+## IDENTIDAD PERMANENTE COMO ZONA DE LA INTERFAZ (correccion puntual)
+
+### Cambio
+- La identidad de Condor se trata ahora como una ZONA PERSISTENTE de la interfaz principal
+  interactiva, no como texto que se imprime solo en determinados momentos:
+  - IdentityHeader.cs (nuevo): zona con "©Condor - <modelo real>" + eslogan + separador;
+    la primera linea muestra el modelo local REAL utilizado en ese momento.
+  - Interpreter.cs: nueva dependencia opcional `onBeforePrompt` que re-dibuja la zona de
+    identidad antes de CADA espera de entrada (>>>>), de modo que no desaparezca por el
+    desplazamiento de la terminal y no se superponga con el prompt/estado/respuesta.
+  - Program.cs: conecta el `onBeforePrompt` con `IdentityHeader.Render(prep.Model)` en la
+    sesion interactiva (modelo real obtenido de la preparacion).
+- Se conservan intactas: seleccion dinamica de modelos, presupuesto/RAM, escalera, cambio
+  de modelo, adaptacion al modelo, estrategia de Ollama y seleccion de familias (Prompta 2).
+- No se eliminaron ni reemplazaron funcionalidades; cambio minimo de interfaz.
+
+### Prueba liviana
+- InterpreterTests (nuevo): la zona de identidad se reinpinta antes de cada espera de entrada.
+- Verificacion E2E (real, exit 0 / incluye error de modelo local no atribuible): la identidad
+  con el modelo real permanece visible en inicio, procesamiento, respuesta y errores/finalizacion,
+  sin solapamientos.
+- Suites completas: 549 pruebas, 0 fallos; build Release 0 warnings/errors.

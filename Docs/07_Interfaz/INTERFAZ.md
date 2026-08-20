@@ -134,7 +134,21 @@ Cada estado comunica:
 
 ## Identidad
 
-Logo y nombre de Condor.
+Zona PERSISTENTE de la interfaz principal interactiva: permanece visible durante todo el
+ciclo de vida de la sesion (inicio, preparacion, espera de entrada, tarea, procesamiento,
+respuesta, errores, finalizacion y espera de una nueva tarea). No es un texto que se
+imprima solo en determinados momentos; se re-dibuja como zona fija en cada punto de espera
+para que no desaparezca por el desplazamiento de la terminal.
+
+Formato base:
+
+    ©Condor - <MODELO LOCAL REAL>
+    Observa · Comprende · Planifica · Construye · Verifica
+    ------------------------------------------------------
+
+La primera linea muestra SIEMPRE el modelo local REAL que Condor esta utilizando en ese
+momento (nunca uno sugerido, anterior o supuesto). Si el modelo cambia, esta linea se
+actualiza al modelo realmente activo.
 
 ## Area de intencion
 

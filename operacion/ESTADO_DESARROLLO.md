@@ -55,6 +55,9 @@ Resultado tras la correccion:
 - Identidad permanente: "©Condor" + eslogan se muestran desde el inicio, durante el procesamiento
   y en cada respuesta; el modelo mostrado es el realmente utilizado y el texto se diferencia
   por origen con color (Cóndor azul, modelo gris, error rojo, advertencia amarillo).
+- Identidad como zona persistente: la identidad es una zona fija de la interfaz interactiva que
+  se re-dibuja antes de cada espera de entrada; permanece visible todo el ciclo y muestra el
+  modelo local REAL activo.
 
 ## DIAGNOSTICO ACTIVO
 
