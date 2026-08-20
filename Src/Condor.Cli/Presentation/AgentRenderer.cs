@@ -13,7 +13,49 @@ public static class AgentRenderer
 {
     public static void RenderResult(AgentResult result, TimeSpan? elapsed = null)
     {
-        Terminal.WriteLine(BuildResultText(result, elapsed));
+        // Identidad permanente (Cóndor, en azul) + el modelo realmente utilizado.
+        Terminal.WriteBlue("©Condor - " + (string.IsNullOrWhiteSpace(result.Model) ? "modelo local" : result.Model));
+        Terminal.WriteDim("Observa · Comprende · Planifica · Construye · Verifica");
+
+        if (!string.IsNullOrWhiteSpace(result.Objective))
+        {
+            Terminal.WriteLine();
+            Terminal.WriteLine("Tarea: " + result.Objective);
+        }
+
+        // Contexto/decisiones de Condor (azul).
+        AppendInventoryColor(result.Inventory);
+        var observed = result.Steps.Where(IsObservation).Select(s => s.Path)
+            .Where(p => !string.IsNullOrWhiteSpace(p) && p != "." && p != "./")
+            .Distinct().ToList();
+        if (observed.Count > 0)
+        {
+            Terminal.WriteLine();
+            Terminal.WriteBlue("Revisando: " + string.Join(", ", observed) + ".");
+        }
+
+        // Analisis producido por el modelo (gris) o error real (rojo).
+        Terminal.WriteLine();
+        if (!result.Success)
+        {
+            Terminal.WriteError(string.IsNullOrWhiteSpace(result.Reason) ? "No pude completar esta tarea." : result.Reason!.Trim());
+        }
+        else
+        {
+            Terminal.WriteDim(string.IsNullOrWhiteSpace(result.Reason) ? "Listo." : result.Reason!.Trim());
+        }
+
+        var changes = result.Steps.Where(IsChange).Where(s => s.Success).ToList();
+        if (changes.Count > 0)
+        {
+            var paths = changes.Select(c => string.IsNullOrWhiteSpace(c.Path) ? "(archivo)" : c.Path).Distinct();
+            Terminal.WriteLine();
+            Terminal.WriteBlue("Modifique: " + string.Join(", ", paths) + ".");
+        }
+
+        // Pie de respuesta (firma permanente).
+        Terminal.WriteLine();
+        Terminal.WriteBlue(SignatureLine(result, elapsed));
     }
 
     /// <summary>
@@ -25,9 +67,15 @@ public static class AgentRenderer
     public static string BuildResultText(AgentResult result, TimeSpan? elapsed = null)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("CONDOR");
+
+        // Identidad permanente de Condor: el modelo que se muestra es el REALMENTE
+        // utilizado (result.Model), nunca uno "sugerido". El eslogan acompania siempre.
+        sb.AppendLine("©Condor - " + (string.IsNullOrWhiteSpace(result.Model) ? "modelo local" : result.Model));
+        sb.AppendLine("Observa · Comprende · Planifica · Construye · Verifica");
 
         // Tarea que se respondio.
+        if (!string.IsNullOrWhiteSpace(result.Objective))
+            sb.AppendLine();
         if (!string.IsNullOrWhiteSpace(result.Objective))
             sb.AppendLine("Tarea: " + result.Objective);
 
@@ -86,10 +134,7 @@ public static class AgentRenderer
     private static bool IsChange(AgentStep s)
         => s.Action is AgentAction.ActionPatch or AgentAction.ActionEditFile or AgentAction.ActionCreateFile or AgentAction.ActionUndoFile;
 
-    private static bool IsVerification(string action)
-        => action is AgentAction.ActionBuild or AgentAction.ActionTest or AgentAction.ActionRestore;
-
-    /// <summary>Presenta el inventario del entorno y de la decision de modelo, en prosa breve.</summary>
+    /// <summary>Presenta el inventario del entorno y de la decision de modelo, en prosa breve (versión texto).</summary>
     private static void AppendInventory(StringBuilder sb, AgentInventory? inv)
     {
         if (inv is null) return;
@@ -112,6 +157,32 @@ public static class AgentRenderer
         {
             sb.AppendLine();
             sb.AppendLine("Contexto: " + string.Join(" · ", parts) + ".");
+        }
+    }
+
+    /// <summary>Presenta el inventario del entorno en color de Condor (azul).</summary>
+    private static void AppendInventoryColor(AgentInventory? inv)
+    {
+        if (inv is null) return;
+
+        var parts = new List<string>();
+        if (inv.RamTotalGb > 0)
+            parts.Add("RAM " + inv.RamFreeGb.ToString("0.0") + "/" + inv.RamTotalGb.ToString("0.0") + " GB libres (presupuesto " + inv.SafeBudgetGb.ToString("0.0") + " GB" + (string.IsNullOrWhiteSpace(inv.PressureLabel) ? ")" : ", " + inv.PressureLabel + ")"));
+        if (!string.IsNullOrWhiteSpace(inv.Cpu))
+            parts.Add(inv.Cpu);
+        if (inv.FreeDiskGb > 0)
+            parts.Add(inv.FreeDiskGb.ToString("0.0") + " GB libres de disco");
+        if (inv.InstalledModels is { Count: > 0 })
+            parts.Add("modelos: " + string.Join(", ", inv.InstalledModels));
+        if (!string.IsNullOrWhiteSpace(inv.SelectedModel))
+            parts.Add("uso " + inv.SelectedModel);
+        if (inv.ModelCapabilities is { Count: > 0 })
+            parts.Add("capaz de " + string.Join(", ", inv.ModelCapabilities));
+
+        if (parts.Count > 0)
+        {
+            Terminal.WriteLine();
+            Terminal.WriteBlue("Contexto: " + string.Join(" · ", parts) + ".");
         }
     }
 }

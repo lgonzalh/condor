@@ -234,7 +234,7 @@ public sealed class AgentToolset
     private async Task<AgentStep> RunDotAsync(string kind, int iteration, CancellationToken ct)
     {
         var manifest = FindManifest();
-        if (string.IsNullOrWhiteSpace(manifest)) return F(iteration, kind, "No se encontro manifiesto .NET.", null);
+        if (string.IsNullOrWhiteSpace(manifest)) return F(iteration, kind, "No hay un proyecto con sistema de build reconocido; se omite la compilacion.", null);
 
         var run = await _runner.RunAsync(_root, manifest, kind, _timeout, ct);
         if (run.ValidationReason is not null) return F(iteration, kind, run.ValidationReason, manifest);

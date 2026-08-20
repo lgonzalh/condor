@@ -4,6 +4,7 @@ public static class Terminal
 {
     private const string Reset = "\u001b[0m";
     private const string Cyan = "\u001b[36m";
+    private const string Blue = "\u001b[34m";
     private const string Green = "\u001b[32m";
     private const string Yellow = "\u001b[33m";
     private const string Red = "\u001b[31m";
@@ -26,6 +27,12 @@ public static class Terminal
     public static void WriteInfo(string text)
     {
         Console.WriteLine(UseColor ? Cyan + text + Reset : text);
+    }
+
+    /// <summary>Azul: identifica el contenido producido por Condor.</summary>
+    public static void WriteBlue(string text)
+    {
+        Console.WriteLine(UseColor ? Blue + text + Reset : text);
     }
 
     public static void WriteSuccess(string text)

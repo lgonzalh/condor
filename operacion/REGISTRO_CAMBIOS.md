@@ -323,3 +323,35 @@ B) "Qué contiene index.html, ¿de qué trata la página?" -> analiza el CONTENI
 Se comprueba: identificacion de archivos, reconocimiento de tipos, analisis real del contenido,
 ausencia de validacion .NET, respuesta natural, ausencia de etiquetas tecnicas obligatorias,
 y modelo + tiempo al final.
+
+---
+
+## IDENTIDAD PERMANENTE Y DIFERENCIACION DEL ORIGEN (interfaz MVP - test liviano)
+
+### Cambios
+- Identidad permanente: la ventana muestra "©Condor" + "Observa · Comprende · Planifica ·
+  Construye · Verifica" desde el inicio (banner de arranque) y durante el procesamiento de
+  cada tarea (cabecera del presentador del agente), y en la respuesta (cabecera del
+  renderer). No se pierde al iniciar/terminar tareas, errores o cambios de modelo.
+- Modelo real visible: junto a la identidad se muestra el modelo LOCALMENTE UTILIZADO
+  ("©Condor - qwen2.5-coder:3b"), tomado de result.Model (el realmente usado, nunca uno
+  "sugerido"). El pie de respuesta conserva "©Condor · <modelo real> · <tiempo>".
+- Diferenciacion visual del origen en el renderer de la respuesta: Cóndor en azul
+  (Terminal.WriteBlue), el analisis producido por el modelo en gris (WriteDim), error real
+  en rojo, advertencia en amarillo (WriteWarning); el texto de usuario usa el color por
+  defecto. Sin prefijos "c:/q:/l:/d:" en la conversacion; la separacion es visual.
+- Se conserva internamente el origen del analisis (el `reason` del modelo) para trazabilidad.
+- Se elimino de la experiencia cualquier mensaje que tratara .NET como requisito universal:
+  el toolset ya no emite "No se encontro manifiesto .NET." sino un mensaje general sobre
+  sistema de build.
+- Se confirmo que no existe un caracter '|' junto al indicador de procesamiento (el
+  indicador es el spinner circular en interactivo y '·' en redirigido); no se introdujo ni
+  quito simbolo extra.
+
+### Pruebas livianas (E2E real)
+- Arranque: muestra "©Condor" + eslogan desde el inicio (exit 0).
+- Interaccion simple "cuentame que hay aqui": la respuesta final muestra la identidad
+  "©Condor - qwen2.5-coder:3b" + eslogan, analisis (gris/rojo segun corresponda) y el pie
+  "©Condor · qwen2.5-coder:3b · <tiempo>". Sin referencias .NET ni '|'.
+- Tests de interfaz/progreso/startup: 45/45 verdes (renderer, ambos presentadores y preparador).
+- Suites completas: 548 pruebas, 0 fallos; build Release 0 warnings/errors.

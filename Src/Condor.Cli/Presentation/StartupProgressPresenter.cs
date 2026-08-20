@@ -130,7 +130,7 @@ public sealed class StartupProgressPresenter : IStartupProgressView, IDisposable
     private void RenderHeader()
     {
         Console.WriteLine();
-        Terminal.WriteInfo("CONDOR");
+        Terminal.WriteBlue("©Condor");
         Terminal.WriteDim("Observa · Comprende · Planifica · Construye · Verifica");
         Console.WriteLine();
         Console.WriteLine();

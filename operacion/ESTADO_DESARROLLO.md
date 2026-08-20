@@ -52,6 +52,9 @@ Resultado tras la correccion:
 - ADN conversacional y generalizacion: la respuesta final es natural (sin etiquetas tecnicas
   obligatorias), agnostica del ecosistema (no asume .NET) y termina con la firmita
   '©Condor · <modelo> · <tiempo>'.
+- Identidad permanente: "©Condor" + eslogan se muestran desde el inicio, durante el procesamiento
+  y en cada respuesta; el modelo mostrado es el realmente utilizado y el texto se diferencia
+  por origen con color (Cóndor azul, modelo gris, error rojo, advertencia amarillo).
 
 ## DIAGNOSTICO ACTIVO
 

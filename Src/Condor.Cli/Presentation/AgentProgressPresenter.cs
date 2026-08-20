@@ -36,7 +36,9 @@ public sealed class AgentProgressPresenter : IAgentProgressView, IDisposable
             _startedAt = DateTime.Now;
             if (_interactive)
             {
-                Console.WriteLine("Condor esta trabajando...");
+                // La identidad permanece visible mientras se procesa.
+                Terminal.WriteBlue("©Condor");
+                Terminal.WriteDim("Observa · Comprende · Planifica · Construye · Verifica");
             }
         }
 
@@ -128,8 +130,8 @@ public sealed class AgentProgressPresenter : IAgentProgressView, IDisposable
 
     private int CountBlockHeight()
     {
-        // La cabecera "Condor esta trabajando..." (1) + el bloque de estado actual.
-        return BuildLines().Count + 1;
+        // Cabecera de identidad (2 lineas: ©Condor + eslogan) + el bloque de estado actual.
+        return BuildLines().Count + 2;
     }
 
     private List<string> BuildLines()
