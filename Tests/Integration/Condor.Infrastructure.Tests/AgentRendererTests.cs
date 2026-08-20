@@ -49,11 +49,14 @@ public class AgentRendererTests
     }
 
     [Fact]
-    public void Bloques_SeparadosProgresoAnalisisVerificacionResultado()
+    public void RespuestaEsConversacional_SinEtiquetasTecnicas()
     {
+        // REQUISITO: la respuesta final debe ser natural; no se exponen como
+        // etiquetas obligatorias [PROGRESO]/[ANALISIS]/[HALLAZGOS]/[VERIFICACION]/[RESULTADO].
         var result = new AgentResult
         {
             Success = true,
+            Model = "qwen2.5-coder:3b",
             Reason = "Correccion aplicada y verificada.",
             Steps =
             {
@@ -66,15 +69,16 @@ public class AgentRendererTests
 
         var text = AgentRenderer.BuildResultText(result);
 
-        Assert.Contains("[PROGRESO]", text);
-        Assert.Contains("[ANALISIS]", text);
-        Assert.Contains("[CAMBIOS]", text);
-        Assert.Contains("[VERIFICACION]", text);
-        Assert.Contains("[RESULTADO]", text);
+        Assert.DoesNotContain("[PROGRESO]", text);
+        Assert.DoesNotContain("[ANALISIS]", text);
+        Assert.DoesNotContain("[HALLAZGOS]", text);
+        Assert.DoesNotContain("[VERIFICACION]", text);
+        Assert.DoesNotContain("[RESULTADO]", text);
+        Assert.Contains("Correccion aplicada y verificada.", text);
     }
 
     [Fact]
-    public void Cambios_MuestranResumenSinContenido()
+    public void Cambios_SeMencionanEnProsaSinVolcarContenido()
     {
         var result = new AgentResult
         {
@@ -85,9 +89,7 @@ public class AgentRendererTests
 
         var text = AgentRenderer.BuildResultText(result);
 
-        // El bloque CAMBIOS cita el archivo y una metrica, no vierte el documento completo.
-        Assert.Contains("[CAMBIOS]", text);
-        Assert.Contains("src/Program.cs", text);
+        Assert.Contains("Modifique: src/Program.cs", text);
         Assert.DoesNotContain("contenido largo que no debe volcarse", text);
     }
 
@@ -109,45 +111,33 @@ public class AgentRendererTests
         var text = AgentRenderer.BuildResultText(result);
 
         Assert.Contains("index.html", text);
-        Assert.Contains("estilos.css", text);
         Assert.Contains("app.js", text);
         Assert.Contains("Proyecto web estatico", text);
     }
 
     [Fact]
-    public void Hallazgos_SonEvidenciaDistintaDelResultado()
+    public void ConclusionUnica_NoSeRepite()
     {
-        // REQUISITO: [HALLAZGOS] y [RESULTADO] deben ser distintos. HALLAZGOS es la
-        // evidencia objetiva observada (archivos inspeccionados); RESULTADO es el
-        // analisis derivado del modelo (Reason). No deben repetirse.
+        // La sintesis del modelo aparece una sola vez (como respuesta), no repetida.
         var result = new AgentResult
         {
             Success = true,
-            Reason = "La aplicacion calcula la suma de dos enteros pasados por consola.",
+            Reason = "La aplicacion calcula la suma de dos enteros por consola.",
             Steps =
             {
-                Obs("read_file", "src/Program.cs", preview: "class Program { static void Main(string[] args) { ... } }"),
+                Obs("read_file", "src/Program.cs", preview: "class Program { ... }"),
                 Obs("read_file", "src/Calculator.cs", preview: "public int Add(int a, int b)")
             }
         };
 
         var text = AgentRenderer.BuildResultText(result);
 
-        // RESULTADO contiene el analisis del modelo.
-        Assert.Contains("[RESULTADO]", text);
-        Assert.Contains("calcula la suma", text);
-        // HALLAZGOS contiene la EVIDENCIA observada (archivos inspeccionados), NO la
-        // sintesis; por tanto la sintesis solo aparecera una vez (en RESULTADO).
-        Assert.Contains("[HALLAZGOS]", text);
-        Assert.Contains("Se inspecciono 'src/Program.cs'", text);
-        // El analisis no debe repetirse como hallazgo.
-        var resultOnly = text.IndexOf("calcula la suma", System.StringComparison.Ordinal);
-        Assert.True(resultOnly >= 0);
-        Assert.Single(System.Text.RegularExpressions.Regex.Matches(text, "calcula la suma"));
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(text, System.Text.RegularExpressions.Regex.Escape("La aplicacion calcula la suma de dos enteros por consola.")));
+        Assert.Contains("src/Program.cs", text);
     }
 
     [Fact]
-    public void Inventario_SePresentaCuandoExiste()
+    public void Inventario_SePresentaComoContextoNatural()
     {
         var result = new AgentResult
         {
@@ -159,20 +149,30 @@ public class AgentRendererTests
                 RamFreeGb = 7.0,
                 SafeBudgetGb = 2.5,
                 PressureLabel = "Normal",
-                Cpu = "Intel Core i5\n4 nucleos\n8 hebras",
+                Cpu = "Intel Core i5 4 nucleos 8 hebras",
                 FreeDiskGb = 100.0,
                 SelectedModel = "qwen2.5-coder:3b",
-                SelectionReason = "El modelo deseado ya existe en Ollama; se reutiliza.",
                 ModelCapabilities = new() { "completion", "structured-output", "coding" }
             }
         };
 
         var text = AgentRenderer.BuildResultText(result);
 
-        Assert.Contains("[INVENTARIO]", text);
+        Assert.DoesNotContain("[INVENTARIO]", text);
+        Assert.Contains("Contexto:", text);
         Assert.Contains("qwen2.5-coder:3b", text);
         Assert.Contains("structured-output", text);
-        Assert.Contains("presupuesto seguro", text);
-        Assert.Contains("Modelo: qwen2.5-coder:3b", text);
+        Assert.Contains("presupuesto", text);
+    }
+
+    [Fact]
+    public void FirmaFinal_IncluyeModeloYTiempo()
+    {
+        var result = new AgentResult { Success = true, Model = "qwen2.5-coder:3b" };
+
+        var text = AgentRenderer.BuildResultText(result, TimeSpan.FromSeconds(32.7));
+
+        Assert.Contains("©Condor · qwen2.5-coder:3b ·", text);
+        Assert.Contains(" s", text.Substring(text.Length - 8)); // segundos en la firma
     }
 }

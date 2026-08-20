@@ -11,106 +11,73 @@ namespace Condor.Cli.Presentation;
 /// </summary>
 public static class AgentRenderer
 {
-    public static void RenderResult(AgentResult result)
+    public static void RenderResult(AgentResult result, TimeSpan? elapsed = null)
     {
-        Terminal.WriteLine(BuildResultText(result));
+        Terminal.WriteLine(BuildResultText(result, elapsed));
     }
 
     /// <summary>
-    /// Construye el texto de presentacion humana (compacto, sin volcados de
-    /// archivos). Separado de la E/S para poder verificarse en pruebas.
+    /// Construye el texto de respuesta humana como UNA CONVERSACION NATURAL: no se
+    /// exponen las etapas tecnicas internas como etiquetas obligatorias; se relata
+    /// de forma natural lo observado y el analisis. La firmita final documenta el
+    /// modelo usado y el tiempo. Separada de la E/S para poder verificarse en pruebas.
     /// </summary>
-    public static string BuildResultText(AgentResult result)
+    public static string BuildResultText(AgentResult result, TimeSpan? elapsed = null)
     {
         var sb = new StringBuilder();
         sb.AppendLine("CONDOR");
 
-        // Cabecera breve.
-        sb.AppendLine("  Estado  : " + (result.Success ? "ok" : "no completo"));
-        if (!string.IsNullOrWhiteSpace(result.Objective)) sb.AppendLine("  Tarea   : " + result.Objective);
+        // Tarea que se respondio.
+        if (!string.IsNullOrWhiteSpace(result.Objective))
+            sb.AppendLine("Tarea: " + result.Objective);
 
-        // Bloque 0: INVENTARIO del entorno y de la decision de modelo.
+        // Inventario breve y natural (opcional).
         AppendInventory(sb, result.Inventory);
 
-        // Bloque 1: PROGRESO / ACCIONES.
-        var actions = result.Steps.Where(s => !IsObservation(s) && s.Action != AgentAction.ActionDone).ToList();
-        if (actions.Count > 0)
-        {
-            sb.AppendLine();
-            sb.AppendLine("[PROGRESO]");
-            foreach (var step in actions)
-            {
-                var falla = !step.Success;
-                var ruta = (step.Action == AgentAction.ActionBuild || step.Action == AgentAction.ActionTest ||
-                           step.Action == AgentAction.ActionRestore)
-                    ? ""
-                    : (string.IsNullOrWhiteSpace(step.Path) ? "" : " " + step.Path);
-                sb.AppendLine("  " + (falla ? "✕" : "✓") + " " + step.Action + ruta + (falla ? " (" + ShortLine(step.ResultPreview, 60) + ")" : ""));
-            }
-        }
-
-        // Bloque 2: ANALISIS (archivos observados).
+        // Archivos observados, en prosa.
         var observed = result.Steps.Where(IsObservation).Select(s => s.Path)
             .Where(p => !string.IsNullOrWhiteSpace(p) && p != "." && p != "./")
             .Distinct().ToList();
         if (observed.Count > 0)
         {
             sb.AppendLine();
-            sb.AppendLine("[ANALISIS]");
-            foreach (var f in observed)
-                sb.AppendLine("  ✓ " + f);
+            sb.AppendLine("Revisando: " + string.Join(", ", observed) + ".");
         }
 
-        // Bloque 2b: HALLAZGOS -> EVIDENCIA objetiva recogida durante la
-        // observacion (archivos con contenido inspeccionado y datos puntuales de
-        // los resultados de las herramientas). NO es la sinopsis del modelo: la
-        // conclusion elaborada va en [RESULTADO]. Asi [HALLAZGOS] y [RESULTADO]
-        // provienen del flujo correspondiente y no se repiten.
-        var findings = ExtractFindings(result);
-        if (findings.Count > 0)
-        {
-            sb.AppendLine();
-            sb.AppendLine("[HALLAZGOS]");
-            foreach (var f in findings)
-                sb.AppendLine("  - " + f);
-        }
+        // El corazon de la respuesta: el analisis elaborado.
+        sb.AppendLine();
+        var summary = string.IsNullOrWhiteSpace(result.Reason) ? "Listo. No tengo mas que anadir por ahora." : result.Reason!.Trim();
+        sb.AppendLine(summary);
 
-        // Bloque 3: CAMBIOS.
+        // Cambios, si los hubo (en pocas palabras).
         var changes = result.Steps.Where(IsChange).Where(s => s.Success).ToList();
         if (changes.Count > 0)
         {
+            var paths = changes.Select(c => string.IsNullOrWhiteSpace(c.Path) ? "(archivo)" : c.Path).Distinct();
             sb.AppendLine();
-            sb.AppendLine("[CAMBIOS]");
-            foreach (var c in changes)
-            {
-                var ruta = string.IsNullOrWhiteSpace(c.Path) ? "(archivo)" : c.Path;
-                sb.AppendLine("  M " + ruta + "  " + MetricLine(c.ResultPreview));
-            }
+            sb.AppendLine("Modifique: " + string.Join(", ", paths) + ".");
         }
 
-        // Bloque 4: VERIFICACION.
-        var verifications = result.Steps.Where(s => IsVerification(s.Action)).ToList();
-        if (verifications.Count > 0)
-        {
-            sb.AppendLine();
-            sb.AppendLine("[VERIFICACION]");
-            foreach (var v in verifications)
-            {
-                var ok = v.Success;
-                sb.AppendLine("  " + (ok ? "✓" : "✕") + " " + Title(v.Action) + (ok ? "" : " (" + ShortLine(v.ResultPreview, 80) + ")"));
-            }
-        }
-
-        // Bloque 5: RESULTADO.
+        // Firma permanente del ADN de Condor.
         sb.AppendLine();
-        sb.AppendLine("[RESULTADO]");
-        var summary = result.Reason;
-        sb.AppendLine("  " + (string.IsNullOrWhiteSpace(summary) ? "Condor completo." : summary.Trim()));
-
-        sb.AppendLine();
-        sb.AppendLine("  " + result.Steps.Count + " accion(es) de herramienta · " + (result.Checkpoint?.Iteration.ToString() ?? "-") + " iteracion(es) de decision");
+        sb.AppendLine(SignatureLine(result, elapsed));
 
         return sb.ToString();
+    }
+
+    private static string SignatureLine(AgentResult result, TimeSpan? elapsed)
+    {
+        var model = string.IsNullOrWhiteSpace(result.Model) ? "modelo local" : result.Model;
+        var time = FormatElapsed(elapsed);
+        return "©Condor · " + model + " · " + time;
+    }
+
+    private static string FormatElapsed(TimeSpan? elapsed)
+    {
+        if (elapsed is not { } e) return "-";
+        if (e.TotalMilliseconds < 1000)
+            return Math.Max(1, (int)e.TotalMilliseconds) + " ms";
+        return e.TotalSeconds.ToString("0.0") + " s";
     }
 
     private static bool IsObservation(AgentStep s)
@@ -122,126 +89,29 @@ public static class AgentRenderer
     private static bool IsVerification(string action)
         => action is AgentAction.ActionBuild or AgentAction.ActionTest or AgentAction.ActionRestore;
 
-    /// <summary>Presenta el inventario del entorno y de la decision de modelo.</summary>
+    /// <summary>Presenta el inventario del entorno y de la decision de modelo, en prosa breve.</summary>
     private static void AppendInventory(StringBuilder sb, AgentInventory? inv)
     {
         if (inv is null) return;
 
-        var lines = new List<string>();
+        var parts = new List<string>();
         if (inv.RamTotalGb > 0)
-            lines.Add("  RAM: " + inv.RamFreeGb.ToString("0.0") + " / " + inv.RamTotalGb.ToString("0.0") + " GB libres · presupuesto seguro " + inv.SafeBudgetGb.ToString("0.0") + " GB" + (string.IsNullOrWhiteSpace(inv.PressureLabel) ? "" : " · " + inv.PressureLabel));
+            parts.Add("RAM " + inv.RamFreeGb.ToString("0.0") + "/" + inv.RamTotalGb.ToString("0.0") + " GB libres (presupuesto " + inv.SafeBudgetGb.ToString("0.0") + " GB" + (string.IsNullOrWhiteSpace(inv.PressureLabel) ? ")" : ", " + inv.PressureLabel + ")"));
         if (!string.IsNullOrWhiteSpace(inv.Cpu))
-            lines.Add("  CPU: " + inv.Cpu);
+            parts.Add(inv.Cpu);
         if (inv.FreeDiskGb > 0)
-            lines.Add("  Disco libre: " + inv.FreeDiskGb.ToString("0.0") + " GB");
+            parts.Add(inv.FreeDiskGb.ToString("0.0") + " GB libres de disco");
         if (inv.InstalledModels is { Count: > 0 })
-            lines.Add("  Modelos instalados: " + string.Join(", ", inv.InstalledModels));
+            parts.Add("modelos: " + string.Join(", ", inv.InstalledModels));
         if (!string.IsNullOrWhiteSpace(inv.SelectedModel))
-            lines.Add("  Modelo: " + inv.SelectedModel + (string.IsNullOrWhiteSpace(inv.SelectionReason) ? "" : " — " + ShortLine(inv.SelectionReason, 90)));
+            parts.Add("uso " + inv.SelectedModel);
         if (inv.ModelCapabilities is { Count: > 0 })
-            lines.Add("  Capacidades: " + string.Join(", ", inv.ModelCapabilities));
+            parts.Add("capaz de " + string.Join(", ", inv.ModelCapabilities));
 
-        if (lines.Count == 0) return;
-        sb.AppendLine();
-        sb.AppendLine("[INVENTARIO]");
-        foreach (var l in lines)
-            sb.AppendLine(l);
-    }
-
-    /// <summary>
-    /// EVIDENCIA objetiva recogida durante la observacion/analisis, a partir de
-    /// los pasos reales de herramienta (list_dir, read_file, search). Devuelve
-    /// enunciados puntuales y verificables, NUNCA la sintesis/razonamiento del
-    /// modelo (que pertenece a [RESULTADO]).
-    /// </summary>
-    private static List<string> ExtractFindings(AgentResult result)
-    {
-        var items = new List<string>();
-
-        foreach (var s in result.Steps.Where(s => s.Success && IsObservation(s)))
+        if (parts.Count > 0)
         {
-            if (s.Action == AgentAction.ActionListDir && !string.IsNullOrWhiteSpace(s.Path) &&
-                s.Path != "." && s.Path != "./")
-            {
-                items.Add("Existe el directorio '" + s.Path + "'.");
-            }
-            else if (s.Action == AgentAction.ActionReadFile && !string.IsNullOrWhiteSpace(s.Path) && s.Path != ".")
-            {
-                var info = DescribeReading(s.Path, s.ResultPreview);
-                items.Add(info);
-            }
-            else if (s.Action == AgentAction.ActionSearch && !string.IsNullOrWhiteSpace(s.ResultPreview))
-            {
-                items.Add("Busqueda: " + ShortLine(s.ResultPreview, 120));
-            }
+            sb.AppendLine();
+            sb.AppendLine("Contexto: " + string.Join(" · ", parts) + ".");
         }
-
-        return items.Distinct().ToList();
     }
-
-    private static string DescribeReading(string path, string? preview)
-    {
-        var ext = System.IO.Path.GetExtension(path).TrimStart('.');
-        var lang = TheLanguage(ext);
-        if (!string.IsNullOrWhiteSpace(lang))
-            return "Se inspecciono '" + path + "' (" + lang + ").";
-        return "Se inspecciono '" + path + "'.";
-    }
-
-    private static string TheLanguage(string ext)
-    {
-        return ext.ToLowerInvariant() switch
-        {
-            "cs" => "codigo C#",
-            "py" => "codigo Python",
-            "ts" or "js" or "jsx" or "tsx" => "codigo JavaScript/TypeScript",
-            "go" => "codigo Go",
-            "rs" => "codigo Rust",
-            "java" => "codigo Java",
-            "csproj" or "fsproj" or "vbproj" => "manifiesto de proyecto .NET",
-            "sln" or "slnx" => "solucion .NET",
-            "json" => "JSON",
-            "md" => "documento Markdown",
-            "txt" => "texto",
-            "html" or "htm" => "markup HTML",
-            "css" or "scss" => "hoja de estilo",
-            "xml" => "XML",
-            "yaml" or "yml" => "YAML",
-            _ => ""
-        };
-    }
-
-    private static string MetricLine(string? preview)
-    {
-        // Solo una metrica compacta (nunca el contenido completo).
-        if (string.IsNullOrWhiteSpace(preview)) return "0 cambios";
-        var s = preview;
-        var plus = CountOccurrences(s, '+');
-        var minus = CountOccurrences(s, '-');
-        return "+" + plus + " / -" + minus + " lineas estimadas";
-    }
-
-    private static int CountOccurrences(string s, char c)
-    {
-        var n = 0;
-        foreach (var ch in s)
-            if (ch == c) n++;
-        return n;
-    }
-
-    private static string ShortLine(string? s, int max)
-    {
-        if (string.IsNullOrWhiteSpace(s)) return "";
-        var clean = s.Replace("\r\n", " ").Replace("\n", " ").Trim();
-        if (clean.Length > max) clean = clean.Substring(0, max) + "…";
-        return clean;
-    }
-
-    private static string Title(string action) => action switch
-    {
-        AgentAction.ActionBuild => "Build",
-        AgentAction.ActionTest => "Tests",
-        AgentAction.ActionRestore => "Restore",
-        _ => action
-    };
 }

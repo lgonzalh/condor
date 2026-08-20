@@ -24,6 +24,9 @@ Sin incidencias activas de seleccion de modelo.
   antes de pedir intervencion.
 - Analisis y orquestacion: se muestra inventario del entorno + motivo/capacidades del modelo,
   y se separa [HALLAZGOS] (evidencia) de [RESULTADO] (analisis) sin duplicacion.
+- ADN conversacional y generalizacion: la respuesta final es natural (sin etiquetas tecnicas
+  obligatorias), agnostica de ecosistema (no asume .NET) y termina con
+  '©Condor · <modelo> · <tiempo>'.
 - Build sin errores/advertencias en el ultimo cierre informado.
 - Suites automatizadas verdes en el ultimo cierre informado (534 pruebas).
 - Descarga de qwen2.5-coder:3b observada.

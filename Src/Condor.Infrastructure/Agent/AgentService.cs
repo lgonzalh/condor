@@ -1003,9 +1003,9 @@ public sealed class AgentService : IAgentService
         sb.AppendLine("Eres el agente de ingenieria local de Condor. Resuelves la tarea sobre el directorio " + workingDir + ".");
 
         if (!string.IsNullOrWhiteSpace(manifest))
-            sb.AppendLine("Se detecto un proyecto .NET (manifiesto: " + manifest + "); si la tarea requiere compilar/probar, usa las acciones build/test sobre el, y para modificaciones usalas las herramientas de edicion sobre los archivos reales.");
+            sb.AppendLine("Se detecto un proyecto con manifest ('" + manifest + "'). Si la tarea requiere compilar/probar y el ecosistema lo permite, usa las acciones build/test; para modificaciones, edita los archivos reales.");
         else
-            sb.AppendLine("No se detecto de antemano un proyecto .NET en la raiz. NO asumas que es un proyecto .NET: observa el contenido real con list_dir y read_file para descubrir que existe (manifiestos, estructura, lenguaje/ecosistema, documentacion, senales de proyecto). Una solicitud de comprension/analisis no requiere un manifiesto .NET para comenzar: describe lo que realmente encuentres; si hay un ecosistema, identificalo; si no hay proyecto reconocible, explicalo tras haber inspeccionado.");
+            sb.AppendLine("No se asume ningun ecosistema concreto: observa el contenido real con list_dir y read_file para descubrir que existe (estructura, lenguajes, manifiestos, documentacion). Solo usa las acciones build/test si el ecosistema detectado lo permite y la tarea lo requiere; una solicitud de comprension/analisis no requiere compilar: describe e interpreta lo que realmente encuentres.");
         sb.AppendLine();
         sb.AppendLine();
         sb.AppendLine("Devuelve UNICAMENTE un JSON valido por paso, sin texto extra, con esta forma:");

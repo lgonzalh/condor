@@ -38,7 +38,10 @@ public static class AgentCommand
                 presenter.Start(intent);
             }
 
+            var sw = System.Diagnostics.Stopwatch.StartNew();
             var result = await agentService.RunAsync(intent, bridge, cancellationToken);
+            sw.Stop();
+            var elapsed = sw.Elapsed;
 
             if (outputJson)
             {
@@ -52,7 +55,7 @@ public static class AgentCommand
                 presenter?.Stop(result.Success, finalLine);
 
                 Terminal.WriteLine();
-                AgentRenderer.RenderResult(result);
+                AgentRenderer.RenderResult(result, elapsed);
             }
 
             return result.Success ? 0 : 1;

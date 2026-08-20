@@ -49,6 +49,9 @@ Resultado tras la correccion:
 - Analisis y orquestacion: el agente presenta un inventario del entorno (RAM/CPU/disco/
   modelos), el modelo seleccionado con su motivo y capacidades verificadas, y separa
   [HALLAZGOS] (evidencia observada) de [RESULTADO] (analisis elaborado) sin duplicarlos.
+- ADN conversacional y generalizacion: la respuesta final es natural (sin etiquetas tecnicas
+  obligatorias), agnostica del ecosistema (no asume .NET) y termina con la firmita
+  '©Condor · <modelo> · <tiempo>'.
 
 ## DIAGNOSTICO ACTIVO
 

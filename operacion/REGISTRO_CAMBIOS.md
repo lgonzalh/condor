@@ -288,10 +288,38 @@ sin motivo de seleccion de modelo ni capacidades verificadas.
 
 ### Verificacion E2E real (Ollama local)
 - Tarea "cuentame que es esta aplicacion" sobre un proyecto .NET real (exit 0): la salida
-  muestra [INVENTARIO] (RAM 6.9/15.4 GB · CPU Intel Core Ultra 7 · disco · modelos instalados,
-  modelo qwen2.5-coder:3b con motivo de seleccion, capacidades), [HALLAZGOS] = evidencia
-  ("Se inspecciono 'src/App.csproj' (manifiesto de proyecto .NET)") y [RESULTADO] = analisis
-  elaborado distinto de HALLAZGOS.
+  presentaba el inventario (RAM/CPU/disco/modelos, modelo con motivo y capacidades) y el
+  analisis elaborado distinto de la evidencia observada.
 - Indicador: se confirmo que no existe un caracter '|' junto al indicador de procesamiento;
   el indicador es el spinner circular (◐◓◑◒) en terminal interactiva y '·' en salida
   redirigida, seguido del texto de estado. No se introduce ni elimina simbolo extra.
+
+---
+
+## ADN CONVERSACIONAL Y GENERALIZACION DEL ANALISIS
+
+### Cambios
+- AgentRenderer.cs: la respuesta final es ahora UNA CONVERSACION NATURAL. Se eliminan los
+  bloques tecnicos obligatorios ([PROGRESO]/[ANALISIS]/[HALLAZGOS]/[VERIFICACION]/[RESULTADO]/
+  [INVENTARIO]/[CAMBIOS]). Se presenta en prosa: tarea, contexto breve del entorno, "Revisando:
+  <archivos>", el analisis elaborado, "Modifique: <archivos>" si hubo cambios y la firmita final.
+- AgentRenderer.cs: firma permanente del ADN de Condor al final de cada respuesta:
+  "©Condor · <modelo> · <tiempo>" (segundos con 1 decimal, o milisegundos si es muy corto).
+  El tiempo se mide en AgentCommand (Stopwatch) y se pasa al renderer.
+- AgentService.cs: el prompt del sistema es ahora agnóstico de ecosistema: no se asume .NET;
+  solo se usan build/test si el ecosistema detectado lo permite y la tarea lo requiere.
+  El inventario no se inyecta al modelo (seguia degradando la fiabilidad del 3B).
+- Se mantienen intactos: seleccion de modelos, presupuestos, escalera de alternativas,
+  recuperacion de RAM e interfaz estructural. No se creo un sistema paralelo.
+
+### Prueba liviana (E2E real, proyecto HTML, sin .NET, exit 0)
+A) "Revisa y me cuentas qué tenemos aquí." -> respuesta natural: 'El directorio actual
+   contiene tres archivos: app.js, estilos.css y index.html.' + firma
+   '©Condor · qwen2.5-coder:3b · 93,4 s'. Sin etiquetas tecnicas; sin validacion .NET.
+B) "Qué contiene index.html, ¿de qué trata la página?" -> analiza el CONTENIDO (no solo lista):
+   'El archivo index.html contiene una pagina web basica con un titulo, un parrafo y un boton.
+   La pagina parece ser una tienda virtual o una landing page.' + firma
+   '©Condor · qwen2.5-coder:3b · 85,6 s'.
+Se comprueba: identificacion de archivos, reconocimiento de tipos, analisis real del contenido,
+ausencia de validacion .NET, respuesta natural, ausencia de etiquetas tecnicas obligatorias,
+y modelo + tiempo al final.
