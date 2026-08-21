@@ -12,6 +12,18 @@ public enum StartupStage
     /// <summary>Detectando Ollama y su estado.</summary>
     DetectingOllama,
 
+    /// <summary>Bootstrap de dependencias: detectando ausencias y preparando el entorno.</summary>
+    BootstrappingDependencies,
+
+    /// <summary>Ollama no instalado: descargando/instalando Ollama de la fuente oficial.</summary>
+    InstallingOllama,
+
+    /// <summary>Ollama instalado pero el server no responde: iniciando el servidor.</summary>
+    StartingOllamaServer,
+
+    /// <summary>Verificando que el server real de Ollama responde en el endpoint local.</summary>
+    VerifyingOllamaServer,
+
     /// <summary>Evaluando modelos disponibles y viables.</summary>
     EvaluatingModels,
 
