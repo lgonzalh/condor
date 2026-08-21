@@ -19,10 +19,11 @@ public sealed class VisionService : IVisionService
     public VisionService(
         IStateStore stateStore,
         ILlmClient? llmClient = null,
-        VisionLimits? limits = null)
+        VisionLimits? limits = null,
+        Condor.Infrastructure.Llm.LocalModelSession? session = null)
     {
         _stateStore = stateStore;
-        _llmClient = llmClient ?? new Condor.Infrastructure.Llm.OllamaClient();
+        _llmClient = llmClient ?? (session?.Llm as ILlmClient) ?? new Condor.Infrastructure.Llm.OllamaClient();
         _imageReader = new ImageFileReader();
         _limits = limits ?? VisionLimits.Default;
     }

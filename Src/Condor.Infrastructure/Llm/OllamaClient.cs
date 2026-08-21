@@ -19,7 +19,7 @@ namespace Condor.Infrastructure.Llm;
 public class OllamaClient : ILlmClient, ILlmProviderDiagnostics
 {
     public const string DefaultApiBase = "http://127.0.0.1:11434";
-    private const int DefaultTimeoutMilliseconds = 180000;
+    public const int DefaultTimeoutMilliseconds = 180000;
 
     private readonly HttpClient _httpClient;
     private readonly string _apiBase;
@@ -58,6 +58,36 @@ public class OllamaClient : ILlmClient, ILlmProviderDiagnostics
         catch
         {
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Descarga el modelo de la RAM del proveedor mediante el mecanismo oficial
+    /// de Ollama (POST /api/generate con keep_alive=0). Condor NO gestiona el
+    /// proceso llama-server.exe; este metodo solo pide a Ollama que libere el
+    /// modelo, devolviendo la memoria retenida. Es idempotente y tolerante a
+    /// errores: un fallo de liberacion no debe impedir el cierre de Condor.
+    /// </summary>
+    public async Task ReleaseModelAsync(string model, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(model))
+        {
+            return;
+        }
+
+        try
+        {
+            // Un generate de una sola respuesta con keep_alive=0 hace que Ollama
+            // descargue el modelo al terminar. Si el modelo no esta cargado o el
+            // servidor no esta disponible, se ignora con elegancia.
+            using var response = await _httpClient.PostAsJsonAsync(
+                _apiBase + "/api/generate",
+                new { model, prompt = string.Empty, keep_alive = 0, stream = false },
+                cancellationToken);
+        }
+        catch
+        {
+            // La liberacion nunca debe impedir el cierre de Condor.
         }
     }
 

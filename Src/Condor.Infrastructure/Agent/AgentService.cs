@@ -22,6 +22,8 @@ public sealed class AgentService : IAgentService
     private readonly ILlmProviderDiagnostics _provider;
     private readonly AgentLimits _limits;
     private readonly IUserConfirmation? _confirmation;
+    private readonly LocalModelSession? _session;
+    private readonly BudgetReevaluator? _reevaluator;
 
     public AgentService(
         IStateStore stateStore,
@@ -29,15 +31,35 @@ public sealed class AgentService : IAgentService
         AgentLimits? limits = null,
         ILlmClient? llm = null,
         ILlmProviderDiagnostics? provider = null,
-        IUserConfirmation? confirmation = null)
+        IUserConfirmation? confirmation = null,
+        LocalModelSession? session = null,
+        BudgetReevaluator? reevaluator = null)
     {
         _stateStore = stateStore;
         _assessmentService = assessmentService;
-        _llm = llm ?? new OllamaClient();
-        _provider = provider ?? (_llm as ILlmProviderDiagnostics) ?? new OllamaClient();
+        _session = session;
+        if (session is not null)
+        {
+            // Sesion compartida: un unico proveedor/HttpClient para toda la ejecucion.
+            _llm = llm ?? session.Llm;
+            _provider = provider ?? session.Diagnostics;
+        }
+        else
+        {
+            _llm = llm ?? new OllamaClient();
+            _provider = provider ?? (_llm as ILlmProviderDiagnostics) ?? new OllamaClient();
+        }
         _limits = limits ?? AgentLimits.Default;
         _confirmation = confirmation;
+        _reevaluator = reevaluator ?? new BudgetReevaluator(BudgetPolicy.Default);
     }
+
+    /// <summary>
+    /// Crea el auto-setup de modelos reutilizando el HttpClient de la sesion
+    /// compartida cuando existe, para no duplicar conectores por tarea.
+    /// </summary>
+    private ModelAutoSetupService CreateModelSetup()
+        => new(_stateStore, _assessmentService, httpClient: _session?.SharedHttpClient);
 
     /// <summary>
     /// Intentos acotados de recuperacion cuando el modelo instalado no cabe por
@@ -59,13 +81,12 @@ public sealed class AgentService : IAgentService
             return Fail("No hay un directorio de trabajo util. Ejecuta desde el proyecto.", "", intention, steps, checkpoint);
         }
 
-        // Seleccion automatica del modelo (preparado). La RAM es una instantanea
-        // viva que fluctua entre invocaciones: si el modelo instalado no cabe en el
-        // presupuesto seguro en este instante, se intenta recuperar de forma
-        // ACOTADA (sin bucle infinito) y, si aun sigue bloqueado, se comunica de
-        // forma honesta sin afirmar que el modelo no existe.
-        var modelSetup = new ModelAutoSetupService(_stateStore, _assessmentService);
-        var selection = await modelSetup.EnsureModelAsync(cancellationToken: cancellationToken);
+        // Clasificar la tarea -> requisito de modelo (que capacidades y eficiencia).
+        var requirement = TaskIntentClassifier.Classify(intention);
+
+        // Seleccion automatica del modelo (harness dinamico por tarea + presupuesto).
+        var modelSetup = CreateModelSetup();
+        var selection = await modelSetup.EnsureModelForRequirementAsync(requirement, cancellationToken: cancellationToken);
 
         if (selection.Desired is null && !selection.BlockedByResources)
             return Fail("No hay un modelo compatible disponible para la tarea.", "", intention, steps, checkpoint);
@@ -81,7 +102,7 @@ public sealed class AgentService : IAgentService
                 message: "Modelo instalado, pero la RAM libre no permite cargarlo por ahora; comprobando de nuevo...",
                 resourceState: selection.Resources?.PressureLabel,
                 availableGb: selection.Resources?.FreeGb,
-                safeBudgetGb: selection.Resources?.SafeBudgetGb,
+                safeBudgetGb: selection.Budget?.BudgetGb,
                 flag: ProgressFlag.Recovering));
 
             var recovered = false;
@@ -89,7 +110,7 @@ public sealed class AgentService : IAgentService
             {
                 await ResourceRecoveryDelayAsync(cancellationToken);
 
-                selection = await modelSetup.EnsureModelAsync(cancellationToken: cancellationToken);
+                selection = await modelSetup.EnsureModelForRequirementAsync(requirement, cancellationToken);
                 recovered = selection.Desired is not null;
             }
 
@@ -118,7 +139,7 @@ public sealed class AgentService : IAgentService
                         message: "Usuario confirmo liberar memoria; reevaluando RAM y seleccionando modelo...",
                         flag: ProgressFlag.Recovering));
 
-                    selection = await modelSetup.EnsureModelAsync(cancellationToken: cancellationToken);
+                    selection = await modelSetup.EnsureModelForRequirementAsync(requirement, cancellationToken);
                     if (selection.Desired is not null)
                     {
                         progress?.Report(AgentProgress.Of(
@@ -135,7 +156,7 @@ public sealed class AgentService : IAgentService
                         message: reason,
                         resourceState: blocked?.PressureLabel,
                         availableGb: blocked?.FreeGb,
-                        safeBudgetGb: blocked?.SafeBudgetGb,
+                        safeBudgetGb: selection.Budget?.BudgetGb,
                         flag: ProgressFlag.ProviderError));
                     // Promesa: la tarea no se pierde. La intencion queda conservada en
                     // Objective + Checkpoint; el usuario puede reintentar cuando haya
@@ -145,9 +166,7 @@ public sealed class AgentService : IAgentService
             }
         }
 
-        // Invariante: en este punto Desired es obligatoriamente no-nulo (los
-        // caminos con Desired == null ya retornaron arriba, bien por ausencia de
-        // modelo compatible o por bloqueo temporal de recursos).
+        // Invariante: en este punto Desired es obligatoriamente no-nulo.
         if (selection.Desired is null)
             return Fail("No se pudo resolver un modelo utilizable para la tarea.", "", intention, steps, checkpoint);
 
@@ -155,6 +174,14 @@ public sealed class AgentService : IAgentService
         checkpoint.Model = model;
         checkpoint.Strategy = "structured-action";
         checkpoint.LastDecision = "comprender";
+
+        // Registrar la sesion activa del proveedor para la reutilizacion.
+        // Deduplicacion: si la sesion ya esta activa para el MISMO modelo, se
+        // reutiliza; nunca se inicializa un recurso nuevo por solicitud.
+        if (_session is not null)
+        {
+            await _session.EnsureAvailableAsync(model, cancellationToken);
+        }
 
         // Inventario del entorno y de la decision de modelo (recursos, CPU, disco,
         // modelos, modelo seleccionado, motivo y capacidades) para orientar y
@@ -172,10 +199,15 @@ public sealed class AgentService : IAgentService
         var snapshot = await ListRootSnapshotAsync(toolset, workingDir, cancellationToken);
         var manifest = FindManifest(workingDir);
 
+        // Verificar disponibilidad de la sesion y ajustar el prompt al modelo
+        // seleccionado (adaptacion por capacidades; no un prompt unico estatico).
+        var activeModel = selection.Desired;
+        var systemPrompt = ModelPromptBuilder.BuildSystemPrompt(workingDir, manifest, activeModel);
+
         var messages = new List<LlmMessage>
         {
-            new() { Role = "system", Content = BuildSystemPrompt(workingDir, manifest) },
-            new() { Role = "user", Content = "Contexto inicial del repositorio (estructura de la raiz):\n" + snapshot + "\n\nTarea: " + intention + "\n\nCONTEXTO ESTRICTO: no respondas con texto libre. Emite SIEMPRE una accion estructurada JSON (ver system). Para una solicitud de comprension (\"que tenemos aqui\"), primero observa con list_dir/read_file y cuando tengas suficiente evidencia responde usando done, colocando tu sintesis en el campo 'reason'. Nunca respondas fuera del JSON." }
+            new() { Role = "system", Content = systemPrompt },
+            new() { Role = "user", Content = "Contexto inicial del repositorio (estructura de la raiz):\n" + snapshot + "\n\nTarea: " + intention + "\n\nCONTEXTO ESTRICTO: si el modelo soporta salida estructurada, emite SIEMPRE una accion JSON (ver system). Para una solicitud de comprension (\"que tenemos aqui\"), observa con list_dir/read_file y cuando tengas suficiente evidencia responde usando done, colocando tu sintesis en 'reason'. No respondas fuera de lo indicado en system." }
         };
 
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -199,6 +231,12 @@ public sealed class AgentService : IAgentService
             for (var iteration = 0; iteration < _limits.MaxIterations; iteration++)
             {
                 checkpoint.Iteration = iteration + 1;
+
+                // Punto seguro de reevaluacion del presupuesto (no se interrumpe
+                // una inferencia en curso). Si la RAM cambio y existe un 1+/1- mas
+                // adecuado, Condor cambia de modelo en este punto, de forma acotada.
+                model = await MaybeReevaluateBudgetAtSafePointAsync(
+                    model, selection.Desired, selection.NextCandidate, requirement, progress, cancellationToken);
 
                 // 1. Modelo produce una decision estructurada. Se distingue el
                 //    fallo del proveedor (crash/caida/timeout) del protocolo del
@@ -896,6 +934,98 @@ public sealed class AgentService : IAgentService
     }
 
     /// <summary>
+    /// Reevaluacion dinamica del presupuesto en un punto seguro (entre inferencias).
+    /// Si la RAM cambio de forma significativa y existe un candidato mas adecuado
+    /// (1+ al subir RAM, o una alternativa viable al bajar), Condor cambia el modelo
+    /// actual de forma ACOTADA (el reevaluador limita los cambios para evitar bucles)
+    /// y reregistra la sesion (libera el anterior, asegura el nuevo). Nunca interrumpe
+    /// una inferencia en curso. Devuelve el nombre de modelo a usar a continuacion.
+    /// </summary>
+    private async Task<string> MaybeReevaluateBudgetAtSafePointAsync(
+        string model,
+        ModelCandidate? node,
+        ModelCandidate? next,
+        TaskModelRequirement requirement,
+        IAgentProgressObserver? progress,
+        CancellationToken ct)
+    {
+        if (_reevaluator is null)
+        {
+            return model;
+        }
+
+        Condor.Core.Models.MemoryInfo? memory;
+        try
+        {
+            memory = await new MemoryDetector().DetectAsync(ct);
+        }
+        catch
+        {
+            return model;
+        }
+
+        // Reevaluamos solo cuando el intervalo haya transcurrido desde la ultima
+        // evaluacion para no reintentar en cada iteracion del loop (politica).
+        var elapsed = DateTime.UtcNow - _lastBudgetCheckUtc;
+        if (_lastBudgetCheckUtc != DateTime.MinValue && elapsed < _reevaluator.ReevaluationInterval)
+        {
+            return model;
+        }
+        _lastBudgetCheckUtc = DateTime.UtcNow;
+
+        var decision = _reevaluator.Decide(
+            memory, node ?? FindNodeByName(model), next, requirement, _budgetChanges);
+
+        switch (decision.Transition)
+        {
+            case BudgetTransition.UpgradeToNext:
+            case BudgetTransition.Downgrade:
+                if (string.IsNullOrWhiteSpace(decision.SuggestedModel))
+                {
+                    return model;
+                }
+
+                _budgetChanges++;
+                var newModel = decision.SuggestedModel!;
+                progress?.Report(AgentProgress.Of(
+                    AgentPhase.Verifying,
+                    message: "Presupuesto reevaluado (" + (decision.Budget?.BudgetGb.ToString("0.0") ?? "?") +
+                              " GB): " + (decision.Transition == BudgetTransition.UpgradeToNext ? "subiendo a 1+ " : "degradando a ") +
+                              newModel + " en punto seguro.",
+                    flag: ProgressFlag.Recovering));
+
+                if (_session is not null)
+                {
+                    // Liberar el modelo anterior como parte de la transicion (Ollama
+                    // keep_alive=0) y registrar el nuevo como sesion activa.
+                    await _session.ReleaseAsync(ct);
+                    await _session.EnsureAvailableAsync(newModel, ct);
+                }
+
+                return newModel;
+
+            default:
+                return model;
+        }
+    }
+
+    private ModelCandidate? FindNodeByName(string model)
+    {
+        foreach (var c in Condor.Core.Catalog.ModelCatalog.Default)
+        {
+            if (c.PullName.Equals(model, StringComparison.OrdinalIgnoreCase) ||
+                c.Name.Equals(model, StringComparison.OrdinalIgnoreCase))
+            {
+                return c;
+            }
+        }
+        return null;
+    }
+
+    private DateTime _lastBudgetCheckUtc = DateTime.MinValue;
+    private int _budgetChanges = 0;
+
+    /// <summary>
     /// Recopila el inventario objetivo del entorno y de la decision de modelo
     /// (recursos, CPU, almacenamiento, modelos instalados, modelo seleccionado,
     /// motivo y capacidades verificadas del catalogo). Solo usa datos reales
@@ -909,12 +1039,18 @@ public sealed class AgentService : IAgentService
         {
             var resources = selection.Resources;
             var desired = selection.Desired;
+            var budget = selection.Budget;
             var inventory = new AgentInventory
             {
-                RamTotalGb = resources?.TotalGb ?? 0,
-                RamFreeGb = resources?.FreeGb ?? 0,
-                SafeBudgetGb = resources?.SafeBudgetGb ?? 0,
-                PressureLabel = resources?.PressureLabel
+                RamTotalGb = resources?.TotalGb ?? (budget?.RamTotalGb ?? 0),
+                RamFreeGb = resources?.FreeGb ?? (budget?.RamFreeGb ?? 0),
+                SafeBudgetGb = resources?.SafeBudgetGb ?? (budget?.BudgetGb ?? 0),
+                PressureLabel = resources?.PressureLabel,
+                ReserveGb = budget?.ReserveGb ?? 0,
+                OperationalReserveGb = budget?.OperationalReserveGb ?? 0,
+                BudgetGb = budget?.BudgetGb ?? 0,
+                NodeInCurrent = selection.NodeInCurrent?.PullName,
+                NextCandidate = selection.NextCandidate?.PullName
             };
 
             try
@@ -995,49 +1131,6 @@ public sealed class AgentService : IAgentService
             message: builder.ToString(),
             iteration: iteration,
             flag: ProgressFlag.Recovering));
-    }
-
-    private static string BuildSystemPrompt(string workingDir, string? manifest)
-    {
-        var sb = new System.Text.StringBuilder();
-        sb.AppendLine("Eres el agente de ingenieria local de Condor. Resuelves la tarea sobre el directorio " + workingDir + ".");
-
-        if (!string.IsNullOrWhiteSpace(manifest))
-            sb.AppendLine("Se detecto un proyecto con manifest ('" + manifest + "'). Si la tarea requiere compilar/probar y el ecosistema lo permite, usa las acciones build/test; para modificaciones, edita los archivos reales.");
-        else
-            sb.AppendLine("No se asume ningun ecosistema concreto: observa el contenido real con list_dir y read_file para descubrir que existe (estructura, lenguajes, manifiestos, documentacion). Solo usa las acciones build/test si el ecosistema detectado lo permite y la tarea lo requiere; una solicitud de comprension/analisis no requiere compilar: describe e interpreta lo que realmente encuentres.");
-        sb.AppendLine();
-        sb.AppendLine();
-        sb.AppendLine("Devuelve UNICAMENTE un JSON valido por paso, sin texto extra, con esta forma:");
-        sb.AppendLine("{\"action\": \"<accion>\", \"path\": \"<ruta relativa>\", \"original\": \"<texto exacto a localizar>\", \"replacement\": \"<texto nuevo>\", \"content\": \"<contenido o vacio>\", \"reason\": \"<breve explicacion>\"}");
-        sb.AppendLine();
-        sb.AppendLine("Acciones permitidas:");
-        sb.AppendLine("  list_dir  \"path\"            -> listar el contenido de un directorio (usa rutas relativas a la raiz del proyecto).");
-        sb.AppendLine("  read_file \"path\"            -> leer el contenido exacto de un archivo.");
-        sb.AppendLine("  patch     \"path\"            -> reemplazo quirurgico: 'original' es el texto EXACTO que ya existe (copialo del read_file) y 'replacement' es el texto nuevo. Es la forma preferida de editar: no reescribes el archivo entero, conservas el resto intacto.");
-        sb.AppendLine("  edit_file \"path\"            -> sobrescribe TODO el archivo con 'content'. Usalo solo si no puedes anclar un patch.");
-        sb.AppendLine("  create_file \"path\"          -> crea un archivo nuevo con 'content'.");
-        sb.AppendLine("  build                        -> compila el proyecto.");
-        sb.AppendLine("  test                         -> ejecuta las pruebas.");
-        sb.AppendLine("  restore                      -> restaura paquetes de NuGet si build/test fallan por restauracion.");
-        sb.AppendLine("  git_status                   -> estado del repositorio.");
-        sb.AppendLine("  search \"content\"            -> busca texto en el proyecto.");
-        sb.AppendLine("  undo_file \"path\"            -> revierte la ultima edicion/patch/create sobre el archivo (recuperacion tras errores).");
-        sb.AppendLine("  done                         -> termina cuando creas que la tarea esta resuelta.");
-        sb.AppendLine();
-        sb.AppendLine("FLUJO: primero usa list_dir y read_file para conocer la estructura real y leer el contenido exacto de los archivos. Para corregir, usa patch con 'original' copiado literalmente del archivo. No uses rutas inventadas: usa siempre rutas relativas reales que hayas visto en list_dir/read_file. Las rutas no existen si list_dir no las mostro.");
-        sb.AppendLine("Si con patch/edit_file dejas el archivo roto y el build falla, puedes revertir el cambio con undo_file (igual ruta) y volver a intentar. Tambien puedes leer de nuevo el archivo con read_file para ver su estado actual despues de un fallo.");
-        sb.AppendLine();
-        sb.AppendLine("SOLICITUDES DE COMPRENSION/ANALISIS (no de codigo): la respuesta esperada es un ANALISIS UTIL, no una mera enumeracion de archivos. Inspecciona el contenido relevante con read_file (enfocate en el archivo que la tarea mencione, si lo hay) y cuando tengas suficiente evidencia haz done colocando en 'reason' un analisis elaborado de lo que hace y como se relaciona. No repitas observaciones que ya hiciste.");
-        sb.AppendLine();
-        sb.AppendLine("IMPORTANTE - HONESTIDAD Y VERIFICACION:");
-        sb.AppendLine("  - NUNCA inventes ni simules exito. El harness ejecutara realmente build y test de forma externa.");
-        sb.AppendLine("  - NO modifiques archivos de prueba (Tests.cs, *Tests*) para que las pruebas parezcan pasar. La tarea se resuelve corrigiendo el CODIGO DE PRODUCCION, no las pruebas. Si alteras pruebas, Condor lo detectara y no confirmara exito.");
-        sb.AppendLine("  - Si lees un error real del harness, decide el siguiente paso basandote en esa evidencia (lee el archivo señalado, corrige con patch, y vuelve a build/test).");
-        sb.AppendLine("  - No declares 'done' hasta que el harness haya confirmado build y test con exito.");
-        sb.AppendLine("  - Si una ruta no existe, Condor te mostrara candidatos coincidentes; eligelos y sigue. No te inventes rutas.");
-        sb.AppendLine("  - Cuando modifiques archivos, comprueba que el resultado compila y las pruebas pasan antes de terminar.");
-        return sb.ToString();
     }
 
     private static string? FindManifest(string workingDirectory)

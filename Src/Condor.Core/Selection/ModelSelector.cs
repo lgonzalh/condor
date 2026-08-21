@@ -245,6 +245,202 @@ public static class ModelSelector
             .ToList();
     }
 
+    /// <summary>
+    /// Seleccion por TAREA + presupuesto (harness dinamico).
+    ///
+    /// Flujo:
+    ///   1. Evalua el presupuesto real (stock - reservas - margen) con la politica.
+    ///   2. Filtra el catalogo por SUFICIENCIA funcional para el requisito de la tarea.
+    ///   3. Entre los suficientes dentro del presupuesto, elige el MENOR suficiente
+    ///      (eficiencia) que deje margen operativo (1−).
+    ///   4. Determina el siguiente candidato razonable para cuando aumente el presupuesto (1+).
+    ///   5. Considera los modelos INSTALADOS del usuario como candidatos validos,
+    ///      aunque no sean la primera opcion del catalogo.
+    ///
+    /// Conserva la compatibilidad con la seleccion clasica; esta entrada enriquece
+    /// con 1−, 1+, presupuesto, reserva e insuficientes. Es una funcion pura (sin IO).
+    /// </summary>
+    public static ModelSelectionResult SelectForTask(
+        AssessmentResult? assessment,
+        IReadOnlyList<ModelCandidate> catalog,
+        TaskModelRequirement requirement,
+        BudgetPolicy policy)
+    {
+        var result = new ModelSelectionResult { Requirement = requirement };
+
+        if (assessment is null)
+        {
+            result.Limitations.Add("No hay Assessment; el presupuesto no se puede calcular.");
+            return result;
+        }
+
+        var memory = assessment.Environment?.Memory;
+        result.Budget = policy.Assess(memory);
+        var budget = result.Budget;
+        result.Resources = ModelMemoryBudget.Snapshot(memory, candidatePeakGb: null);
+
+        var installed = (assessment.Tools?.Ollama?.Models ?? new List<ModelInfo>())
+            .Select(m => m.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Candidatos del catalogo suficientes para la tarea y dentro del presupuesto.
+        var candidates = new List<(ModelCandidate c, double peak, bool installed)>();
+        foreach (var c in catalog)
+        {
+            if (c.WeightGb <= 0) continue;
+            var isInstalled = installed.Contains(c.Name) || installed.Contains(c.PullName);
+
+            if (!ModelEfficiencyEvaluator.IsSufficient(c, requirement))
+            {
+                result.InsufficientCandidates.Add(c.PullName);
+                continue;
+            }
+
+            candidates.Add((c, ModelEfficiencyEvaluator.PeakGb(c), isInstalled));
+        }
+
+        // Ordenar por eficiencia: menor coste primero; desempate por menor peso.
+        // El menor suficiente y viable es el 1− por defecto (eficiencia > tamaño).
+        var viable = candidates
+            .Where(x => budget.IsBudgeted && budget.Admits(x.peak) && ModelEfficiencyEvaluator.LeavesMargin(x.c, budget))
+            .OrderBy(x => x.peak)
+            .ThenBy(x => x.c.WeightGb)
+            .ToList();
+
+        // 1− : menor suficiente viable dentro del presupuesto con margen.
+        var node = viable.FirstOrDefault();
+        if (node.c is not null)
+        {
+            result.NodeInCurrent = node.c;
+            result.Desired = node.c;
+            result.AlreadyInstalled = node.installed || installed.Contains(node.c.Name) || installed.Contains(node.c.PullName);
+            result.InstalledName = node.c.PullName;
+            result.Reason = ResultReason(requirement, node.c, budget, "1-");
+        }
+
+        // 1+ : siguiente candidato razonable (aun viable pero no elegido por ser
+        // el mas eficiente; o insuficiente hoy por margen) para cuando aumente el presupuesto.
+        var next = candidates
+            .Where(x => budget.IsBudgeted && x.peak < budget.BudgetGb * 1.6)
+            .Where(x => x.c.Name != node.c?.Name)
+            .OrderBy(x => x.peak)
+            .FirstOrDefault();
+        if (next.c is not null)
+        {
+            result.NextCandidate = next.c;
+            if (next.c.Name != node.c?.Name && node.c is not null)
+            {
+                result.Alternatives.Add(next.c.PullName);
+            }
+        }
+
+        // Modelo instalado del usuario NO en catalogo: considerarlo candidato si es
+        // suficiente y cabe; lo usamos como 1−/desired cuando el catalogo no aporta.
+        if (node.c is null)
+        {
+            var userInstalled = ConsiderUserInstalledModel(assessment, requirement, budget);
+            if (userInstalled is not null)
+            {
+                result.NodeInCurrent = userInstalled;
+                result.Desired = userInstalled;
+                result.AlreadyInstalled = true;
+                result.InstalledName = userInstalled.PullName;
+                result.Reason = "Modelo instalado por el usuario con capacidad suficiente para la tarea y dentro del presupuesto (1-).";
+            }
+        }
+
+        if (result.Desired is null)
+        {
+            // Bloqueo por recursos cuando el presupuesto no admite ningun modelo
+            // viable (o no hay presupuesto real). Coherente con la seleccion clasica,
+            // que marca BlockedByResources cuando la presion es Insuficiente.
+            result.BlockedByResources =
+                (!budget.IsBudgeted) ||
+                result.Resources?.Pressure == ResourcePressure.Insufficient ||
+                viable.Count == 0;
+
+            result.Limitations.Add(
+                "Ningun modelo es suficiente para la tarea dentro del presupuesto real (" +
+                (budget is null ? "sin datos" : budget.BudgetGb.ToString("0.0") + " GB") +
+                "), conservando la reserva operativa. Se informa de forma honesta, sin reintentos en bucle.");
+        }
+
+        return result;
+    }
+
+    private static string ResultReason(TaskModelRequirement req, ModelCandidate c, BudgetAssessment? budget, string tag)
+    {
+        var b = budget is null ? "-" : budget.BudgetGb.ToString("0.0") + " GB de presupuesto";
+        return "Modelo " + tag + " (" + c.PullName + "): suficiente para '" +
+               (req.Label ?? req.IntentKind) + "' y eficiente dentro de " + b + ".";
+    }
+
+    /// <summary>
+    /// Construye un candidato sintetico a partir de un modelo instalado del usuario
+    /// que no esta en el catalogo de Condor. Con estimacion conservadora de peso y
+    /// capacidades conocidas de Ollama. Null si no es suficiente ni cabe.
+    /// </summary>
+    private static ModelCandidate? ConsiderUserInstalledModel(
+        AssessmentResult? assessment,
+        TaskModelRequirement req,
+        BudgetAssessment? budget)
+    {
+        var installedModels = assessment?.Tools?.Ollama?.Models ?? new List<ModelInfo>();
+        if (installedModels.Count == 0 || budget is null || !budget.IsBudgeted)
+        {
+            return null;
+        }
+
+        foreach (var m in installedModels)
+        {
+            if (!SufficientFromCapabilities(m, req))
+            {
+                continue;
+            }
+
+            var weightGb = EstimateWeightFromSizeBytes(m.SizeBytes);
+            var candidate = new ModelCandidate
+            {
+                Name = m.Name,
+                PullName = m.Name,
+                Family = m.Family,
+                ParameterSize = m.ParameterSize,
+                Quantization = m.Quantization,
+                ContextWindow = m.ContextLength is { } ctx ? (int)ctx : 8192,
+                SizeBytes = m.SizeBytes,
+                WeightGb = weightGb,
+                CodingLevel = req.RequiredCodingLevel,
+                MultiFileLevel = req.RequiredMultiFileLevel,
+                StructuredOutput = m.Capabilities.Contains("structured-output") || req.RequiresStructuredOutput,
+                ToolUse = m.Capabilities.Contains("tool-use") || req.RequiresToolUse,
+                Stability = true,
+                Capabilities = new List<string>(m.Capabilities)
+            };
+
+            var peak = ModelEfficiencyEvaluator.PeakGb(candidate);
+            if (budget.Admits(peak) && ModelEfficiencyEvaluator.LeavesMargin(candidate, budget))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool SufficientFromCapabilities(ModelInfo m, TaskModelRequirement req)
+    {
+        var caps = m.Capabilities ?? new List<string>();
+        if (req.RequiresToolUse && !caps.Contains("tool-use")) return false;
+        return true;
+    }
+
+    private static double EstimateWeightFromSizeBytes(long sizeBytes)
+    {
+        // Estimacion conservadora del peso en GB a partir del tamano real en disco.
+        const double BytesPerGb = 1024.0 * 1024 * 1024;
+        return sizeBytes > 0 ? sizeBytes / BytesPerGb : 1.0;
+    }
+
     // KV cache estimada para un contexto moderado de tarea de ingenieria.
     private static double EstimateContextKbGb(ModelCandidate candidate)
     {

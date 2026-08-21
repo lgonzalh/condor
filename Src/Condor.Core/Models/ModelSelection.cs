@@ -39,4 +39,19 @@ public class ModelSelectionResult
 
     /// <summary>True si la seleccion quedo bloqueada por recursos (ningun modelo cabe).</summary>
     public bool BlockedByResources { get; set; }
+
+    /// <summary>Veredicto de presupuesto (stock, reserva, presupuesto real) del harness.</summary>
+    public BudgetAssessment? Budget { get; set; }
+
+    /// <summary>Requisito de tarea que motorizo la seleccion (capacidades + eficiencia).</summary>
+    public TaskModelRequirement? Requirement { get; set; }
+
+    /// <summary>Modelo 1− : suficiente y eficiente para la tarea bajo el presupuesto actual.</summary>
+    public ModelCandidate? NodeInCurrent { get; set; }
+
+    /// <summary>Modelo 1+ : siguiente candidato razonable para cuando aumente el presupuesto.</summary>
+    public ModelCandidate? NextCandidate { get; set; }
+
+    /// <summary>Lista de candidatos evaluados que fueron insuficientes para la tarea (p. ej. muy pequeños).</summary>
+    public List<string> InsufficientCandidates { get; set; } = new();
 }

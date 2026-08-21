@@ -21,9 +21,9 @@ public sealed class OllamaModelOperator
     {
     }
 
-    public OllamaModelOperator(HttpClient http, OllamaDetector? detector = null)
+    public OllamaModelOperator(HttpClient? http, OllamaDetector? detector = null)
     {
-        _http = http;
+        _http = http ?? new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
         _detector = detector ?? new OllamaDetector();
     }
 

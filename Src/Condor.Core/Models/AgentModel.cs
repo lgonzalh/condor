@@ -71,6 +71,13 @@ public sealed class AgentInventory
     public string? SelectedModel { get; set; }
     public string? SelectionReason { get; set; }
     public List<string>? ModelCapabilities { get; set; }
+
+    // Harness de presupuesto dinamico (stock + presupuesto + reserva + 1-/1+).
+    public double ReserveGb { get; set; }
+    public double OperationalReserveGb { get; set; }
+    public double BudgetGb { get; set; }
+    public string? NodeInCurrent { get; set; }
+    public string? NextCandidate { get; set; }
 }
 
 public sealed class AgentLimits

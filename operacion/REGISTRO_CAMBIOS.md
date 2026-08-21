@@ -380,3 +380,129 @@ y modelo + tiempo al final.
   con el modelo real permanece visible en inicio, procesamiento, respuesta y errores/finalizacion,
   sin solapamientos.
 - Suites completas: 549 pruebas, 0 fallos; build Release 0 warnings/errors.
+
+---
+
+## CICLO DE VIDA DEL PROVEEDOR LOCAL (resolver duplicados / orfanos / RAM retenida)
+
+### Diagnostico (basado en evidencia, sin asumir)
+- Condor NO gestiona el proceso llama-server.exe: es cliente HTTP de Ollama
+  (127.0.0.1:11434) vía `/api/chat`, `/api/tags`, `/api/version`, `/api/pull`.
+  El ownership de llama-server es de Ollama (lo lanza su servidor).
+- Cada servicio (Vision, Agent, Ask) y cada deteccion instanciaba su propio
+  `OllamaClient`/`HttpClient`, y no existia una sesion/proveedor unico.
+- No habia shutdown unico: `/salir`/EOF hacian `return 0` sin liberar el modelo;
+  Ollama retiene el modelo en RAM (keep_alive por defecto), de ahi que
+  "llama-server siga vivo / RAM retenida" tras terminar Condor.
+- No se matan procesos: Condor no es dueno externo; no se usa taskkill.
+
+### Correccion (motor de ejecucion, sin tocar la TUI)
+- `ILlmProviderLifecycle.cs` (nuevo): contrato de ciclo de vida de la sesion
+  (ProviderName, ActiveModel, EnsureAvailableAsync, ReleaseAsync).
+- `LocalModelSession.cs` (nuevo): sesion unica y reutilizable por ejecucion.
+  Centraliza un unico HttpClient y el modelo activo. `EnsureAvailableAsync`
+  deduplica (si la sesion ya esta activa para el MISMO modelo y el proveedor
+  responde, se reutiliza sin crear nada). `ReleaseAsync` es idempotente y libera
+  el modelo mediante el mecanismo oficial de Ollama (`keep_alive=0`).
+- `OllamaClient.cs`: timeout publico y `ReleaseModelAsync` (`POST /api/generate`
+  con `keep_alive=0`) para descargar el modelo de RAM sin matar procesos.
+- `OllamaModelOperator.cs` y `ModelAutoSetupService.cs`: comparten el HttpClient
+  de la sesion (no se crean conectores duplicados por tarea/retry).
+- `AgentService.cs` y `VisionService.cs`: aceptan la sesion compartida; el agente
+  registra el modelo activo antes de inferir.
+- `Program.cs`: crea UNA `LocalModelSession`, la inyecta en todos los flujos y
+  envuelve `Main` en `try/finally` para liberar la sesion en el shutdown unico
+  (normal, error o cancelacion). Ctrl+C tambien libera la sesion antes de salir.
+
+### Control de procesos y deduplicacion
+- Una solicitud NO crea otra instancia si ya existe una sesion compatible
+  (mismo modelo, proveedor disponible): se reutiliza.
+- Un fallo del proveedor se diagnostica y se reporta de forma honesta; un retry
+  NO crea una cascada de instancias. La liberacion solo ocurre al liberar la
+  sesion (shutdown), no entre requests.
+- Queda liberada la RAM del modelo al terminar Condor sin dejar procesos propios
+  huerfanos ni depender de matar infraestructura externa de Ollama.
+
+### Pruebas
+- `LocalModelSessionLifecycleTests.cs` (nuevo, 13 pruebas): inicializacion unica,
+  dos solicitudes consecutivas comparten sesion, fallo de proveedor sin cascada,
+  retry sin duplicar instancia, timeout, cancelacion, cierre normal/anormal
+  (finally), reutilizacion de sesion activa, cambio de modelo, liberacion
+  idempotente y sin modelo. Todas con HttpClient/handler simulados.
+- Suites completas: Core 242/242, Architecture 22/22, Integration 297/299.
+  Las 2 rechazadas (`CompleteAsync_ModeloInexistente...` y
+  `EnsureModel_ModeloDeseadoInstalado_ReutilizaSinPull`) son pruebas que requieren
+  un Ollama REAL en 127.0.0.1:11434 (fallan igual en el commit base; no son
+  regresion de este cambio).
+- `Tests/Functional/condor-lifecycle.func.ps1` (nuevo): prueba funcional REAL
+  contra Ollama vivo (requiere servidor y modelo): varias solicitudes one-shot,
+  fallo de proveedor, y comprobacion de ausencia de procesos propios huerfanos y
+  de liberacion correcta. La TUI no se modifica.
+
+---
+
+## HARNESS DE PRESUPUESTO DINAMICO Y SELECCION INTELIGENTE DE MODELOS
+
+### Objetivo
+Convertir el presupuesto de RAM en un HARNESS: "RAM como STOCK + RESERVA +
+presupuesto dinamico + 1-/1+ + seleccion por tarea". Condor ya no pregunta cual es
+el modelo mas grande que cabe, sino el mas pequeno que sea SUFICIENTE para la
+tarea, EFICIENTE y SEGURO dentro del presupuesto, conservando una reserva
+operativa.
+
+### Correccion (motor de ejecucion, sin tocar la TUI)
+- `BudgetPolicy` (Core/Evaluation, nuevo): politica configurable de reservas y
+  formula documentada:
+  `presupuesto_real = RAM_libre - reservaSistema - reservaCondor - reservaOperativa - margenEstabilidad`.
+  La reserva operativa (max(absoluto, RAM_libre*ratio)) nunca se presta al modelo;
+  el presupuesto es >=0 y nunca supera la RAM libre real.
+- `BudgetAssessment` (Core/Models, nuevo): veredicto auditable de stock/presupuesto/reserva.
+- `TaskModelRequirement` + `TaskIntentClassifier` (nuevos): traduce la tarea a las
+  capacidades requeridas (puro, sin IO, sin preferir familia).
+- `ModelEfficiencyEvaluator` (nuevo): suficiencia funcional + eficiencia + deja margen.
+- `ModelSelector.SelectForTask` (nuevo, puro): seleccion por tarea + 1- + 1+ +
+  modelo instalado del usuario como candidato + insuficientes.
+- `BudgetReevaluator` (nuevo): reevaluacion periodica (30 min configurable) en
+  punto seguro con limite (sin loops); decisiones Keep/Upgrade/Downgrade con motivo.
+- `ModelPromptBuilder` (Infrastructure, nuevo): adapta el prompt al modelo (JSON si
+  soporta estructura, tool-use, multi-archivo, modelo en uso).
+- `ModelAutoSetupService.EnsureModelForRequirementAsync` (nuevo): orquesta la
+  seleccion/descarga por tarea con el harness. Se conserva `EnsureModelAsync`
+  (seleccion clasica) para el arranque (sin regresion).
+- `AgentService` (Infrastructure/Agent): clasifica la tarea, usa el harness,
+  adapta el prompt, y reevalua el presupuesto en puntos seguros entre inferencias
+  (cambia de modelo de forma acotada: libera el anterior y registra el nuevo en la
+  sesion, sin duplicar runners).
+- `AgentInventory` ganó presupuesto/reserva/operativa/1-/1+ (inventario razonado).
+
+### Decisiones de diseno (regla de no destruccion)
+- Se conservo la seleccion clasica (`RecommendFromCatalog`) para arranque y tests.
+- El harness se acopla al que agregue `SelectForTask` para el flujo del agente;
+  no se borro funcionalidad existente, se anadio una via por-tarea.
+- La TUI/presentacion no se modifico.
+
+### E2E real (Ollama v0.31.1, RAM libre ~6 GB)
+El harness en ejecucion real:
+- Calculo stock->reserva->presupuesto (6,5 GB libres -> ~2,0 GB de presupuesto).
+- Rechazo cargar un modelo que agotaria el margen operativo (bloqueo TEMPORAL
+  honesto, no "ausencia de modelo"), conservando la tarea.
+- Refuso usar un modelo "pequeno que cabe" pero insuficiente para la tarea de
+  agente (exige tool-use + coding); protege la reserva antes de presupuesto~0.
+- Tras liberar un runner retenido en Ollama (keep_alive=0), la RAM subio y el
+  harness reevalua (ver limite: la politica por defecto es conservadora; equipos
+  con poca RAM libre pueden reportar bloqueo aun con modelo pequeno viable).
+
+### Pruebas
+- `HarnessBudgetTests` (Unit Core, 17): reserva minima, presupuesto, modelo grande
+  descartado sin margen, eficiencia, seleccion por tarea, familias, modelo
+  instalado del usuario, 1-/1+, subida/bajada de RAM, reevaluacion, continuidad,
+  modelo insuficiente descartado, ausencia de loops.
+- `ModelPromptBuilderTests` (Integration, 4): adaptacion del prompt por modelo.
+- Suites completas: Architecture 22/22, Core 259/259, Integration 304/304.
+- Build Release 0 warnings/errores. La TUI no se modifica.
+
+### Anomalia registrada (limitacion de entorno, honesta)
+La politica por defecto es conservadora a proposito. En maquinas con poca RAM
+libre, el harness reporta bloqueo TEMPORAL en lugar de cargar un modelo pequeno
+que "quepar numericamente", porque proteger la reserva es prioridad. `BudgetPolicy`
+es configurable para ajustar el balance en despliegue.

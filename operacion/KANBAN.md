@@ -11,6 +11,10 @@ Sin incidencias activas de seleccion de modelo.
 
 ## LISTO / VERIFICADO PARCIALMENTE
 
+- Harness de presupuesto dinamico y seleccion inteligente: RAM como stock + reserva + presupuesto
+  + 1-/1+ + seleccion por tarea. Reserva operativa configurable (`BudgetPolicy`), seleccion por
+  suficiencia/eficiencia (no tamaño), reevaluacion en punto seguro con limite, adaptacion del
+  prompt al modelo, modelo instalado del usuario como candidato. Pruebas 17 harness + 4 prompt.
 - Estabilizacion del agente: causa raiz de la RAM fluctuante identificada y corregida.
 - Promesa fundamental de inicio: con modelos instalados pero RAM baja, la sesion arranca
   igual (no se bloquea); Condor decide el modelo en cada tarea con recuperacion acotada.

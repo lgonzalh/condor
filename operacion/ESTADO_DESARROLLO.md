@@ -58,6 +58,13 @@ Resultado tras la correccion:
 - Identidad como zona persistente: la identidad es una zona fija de la interfaz interactiva que
   se re-dibuja antes de cada espera de entrada; permanece visible todo el ciclo y muestra el
   modelo local REAL activo.
+- HARNESS DE PRESUPUESTO EN EVOLUCION CONTINUA: la RAM se trata como stock + reserva + presupuesto
+  dinámico. `BudgetPolicy` (configurable) define la reserva operativa y la formula
+  (`presupuesto_real = RAM_libre - reservaSistema - reservaCondor - reservaOperativa - margen`).
+  La seleccion es por TAREA (suficiencia + eficiencia), con 1- (modelo actual eficiente) y
+  1+ (siguiente candidato), reevaluacion periodica en punto seguro con limite (sin loops),
+  adaptacion del prompt al modelo y modelo instalado del usuario como candidato. No se prefiere
+  ninguna familia por defecto. Documentado en Docs/04_Razonamiento/HARNESS_PRESUPUESTO.md.
 
 ## DIAGNOSTICO ACTIVO
 

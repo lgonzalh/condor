@@ -22,12 +22,13 @@ public sealed class ModelAutoSetupService : IModelAutoSetupService
         IStateStore stateStore,
         IAssessmentService? assessmentService = null,
         ModelSetupLimits? limits = null,
-        OllamaModelOperator? modelOperator = null)
+        OllamaModelOperator? modelOperator = null,
+        System.Net.Http.HttpClient? httpClient = null)
     {
         _stateStore = stateStore;
         _assessmentService = assessmentService;
         _limits = limits ?? ModelSetupLimits.Default;
-        _operator = modelOperator ?? new OllamaModelOperator();
+        _operator = modelOperator ?? new OllamaModelOperator(httpClient);
     }
 
     public async Task<ModelSelectionResult> EnsureModelAsync(
@@ -35,6 +36,8 @@ public sealed class ModelAutoSetupService : IModelAutoSetupService
         CancellationToken cancellationToken = default,
         IStartupProgressObserver? progress = null)
     {
+        // Seleccion clasica (misma comportamiento previo) para el arranque y usos
+        // que no requieren el harness por tarea. Conserva la regresion existente.
         var assessment = await _stateStore.LoadAssessmentAsync(cancellationToken);
 
         if (assessment is null && _assessmentService is not null)
@@ -43,16 +46,12 @@ public sealed class ModelAutoSetupService : IModelAutoSetupService
             await _stateStore.SaveAssessmentAsync(assessment, cancellationToken);
         }
 
-        // El estado persistido es SOLO una sugerencia. La autoridad del
-        // inventario real es /api/tags de Ollama en este momento.
         var authoritativeAssessment = await LoadAuthoritativeAssessmentAsync(assessment, cancellationToken);
 
         var selection = ModelSelector.RecommendFromCatalog(authoritativeAssessment, ModelCatalog.Default);
 
         if (selection.Desired is null)
         {
-            // Ningun modelo es viable: si es por recursos, exponemos los procesos
-            // de alto consumo (solo lectura) y NO reintentamos la carga en bucle.
             if (selection.BlockedByResources)
             {
                 var consumers = new ProcessRamDetector().DetectTopConsumers();
@@ -66,54 +65,18 @@ public sealed class ModelAutoSetupService : IModelAutoSetupService
             return selection;
         }
 
-        // Declara "no encontrado" y avanza visualmente: evaluando recursos,
-        // seleccionando, preparando descarga. Nunca una terminal congelada.
-        if (selection.AlreadyInstalled is false &&
-            authoritativeAssessment?.Tools?.Ollama is { ServerRunning: true } &&
-            (authoritativeAssessment.Tools.Ollama.Models is null ||
-             authoritativeAssessment.Tools.Ollama.Models.Count == 0))
-        {
-            progress?.Report(StartupProgress.Of(
-                StartupStage.EvaluatingModels,
-                message: "Modelo no encontrado: evaluando recursos"));
-            progress?.Report(StartupProgress.Of(
-                StartupStage.SelectingModel,
-                message: selection.Desired.PullName));
-        }
-
-        // Confiar en Ollama, jamas en el assessment persistido: si el assessment
-        // dice "instalado" pero Ollama no lo tiene, NO declararlo listo.
         if (selection.AlreadyInstalled)
         {
-            progress?.Report(StartupProgress.Of(
-                StartupStage.SelectingModel,
-                message: selection.InstalledName ?? selection.Desired.PullName));
-            progress?.Report(StartupProgress.Of(
-                StartupStage.VerifyingModel,
-                message: selection.InstalledName ?? selection.Desired.PullName));
-
             var installedNow = await _operator.IsInstalledAsync(
                 selection.InstalledName ?? selection.Desired.PullName, cancellationToken);
             if (installedNow)
             {
-                progress?.Report(StartupProgress.Of(
-                    StartupStage.VerifyingModel,
-                    message: selection.InstalledName ?? selection.Desired.PullName,
-                    completed: true));
                 await RefreshAssessmentAsync(cancellationToken);
                 return selection; // reutilizar, no descargar
             }
 
-            // El modelo declarado en el assessment NO existe en Ollama (fue
-            // eliminado): el inventario vacio manda antes que el estado antiguo.
-            progress?.Report(StartupProgress.Of(
-                StartupStage.SelectingModel,
-                message: selection.InstalledName ?? selection.Desired.PullName));
-            await RefreshAssessmentAsync(cancellationToken);
-
             var fresh = await _stateStore.LoadAssessmentAsync(cancellationToken);
             selection = ModelSelector.RecommendFromCatalog(fresh, ModelCatalog.Default);
-
             if (selection.Desired is null)
             {
                 await RefreshAssessmentAsync(cancellationToken);
@@ -131,13 +94,8 @@ public sealed class ModelAutoSetupService : IModelAutoSetupService
             return selection;
         }
 
-        progress?.Report(StartupProgress.Of(
-            StartupStage.SelectingModel,
-            message: desired.PullName));
-
-        progress?.Report(StartupProgress.Of(
-            StartupStage.DownloadingModel,
-            message: desired.PullName));
+        progress?.Report(StartupProgress.Of(StartupStage.SelectingModel, message: desired.PullName));
+        progress?.Report(StartupProgress.Of(StartupStage.DownloadingModel, message: desired.PullName));
 
         var pulled = await RetryPolicy.ExecuteAsync(
             _ => _operator.PullAsync(
@@ -168,12 +126,105 @@ public sealed class ModelAutoSetupService : IModelAutoSetupService
             selection.Reason = "No fue posible obtener el modelo automaticamente.";
         }
 
-        // Regla de autoridad: el estado persistido no puede afirmar que un modelo
-        // existe si Ollama no lo confirma. Se refresca el assessment al final SIEMPRE
-        // (exito o fracaso) para que %LOCALAPPDATA% refleje el inventario real.
         await RefreshAssessmentAsync(cancellationToken);
-
         return selection;
+    }
+
+    /// <summary>
+    /// Seleccion inteligente por TAREA + presupuesto (harness dinamico). Usa la
+    /// politico de reserva, el requisito de la tarea y la eficiencia (1- y 1+).
+    /// </summary>
+    public async Task<ModelSelectionResult> EnsureModelForRequirementAsync(
+        TaskModelRequirement requirement,
+        CancellationToken cancellationToken = default,
+        IStartupProgressObserver? progress = null)
+    {
+        var assessment = await LoadAuthoritativeAssessmentAsync(
+            await _stateStore.LoadAssessmentAsync(cancellationToken), cancellationToken);
+
+        var selection = ModelSelector.SelectForTask(assessment, ModelCatalog.Default, requirement, BudgetPolicy.Default);
+
+        if (selection.Desired is null)
+        {
+            await RefreshAssessmentAsync(cancellationToken);
+            return selection;
+        }
+
+        if (selection.AlreadyInstalled)
+        {
+            var installedNow = await _operator.IsInstalledAsync(
+                selection.InstalledName ?? selection.Desired.PullName, cancellationToken);
+            if (installedNow)
+            {
+                await RefreshAssessmentAsync(cancellationToken);
+                return selection; // reutilizar, no descargar
+            }
+        }
+
+        var desired = selection.Desired;
+        if (!IsOllamaReady(assessment))
+        {
+            selection.Limitations.Add("Ollama no esta disponible; no se puede obtener el modelo.");
+            selection.Reason = "Ollama no esta disponible; no fue posible obtener el modelo.";
+            await RefreshAssessmentAsync(cancellationToken);
+            return selection;
+        }
+
+        if (selection.AlreadyInstalled is false)
+        {
+            progress?.Report(StartupProgress.Of(StartupStage.SelectingModel, message: desired.PullName));
+            progress?.Report(StartupProgress.Of(StartupStage.DownloadingModel, message: desired.PullName));
+
+            var pulled = await RetryPolicy.ExecuteAsync(
+                _ => _operator.PullAsync(desired.PullName, _limits.PullTimeoutMilliseconds, null, cancellationToken),
+                _limits.MaxPullAttempts,
+                TimeSpan.FromSeconds(2),
+                cancellationToken);
+
+            if (pulled)
+            {
+                selection.AlreadyInstalled = true;
+                selection.InstalledName = desired.PullName;
+                selection.Reason = "Modelo obtenido automaticamente y verificado en Ollama (harness).";
+            }
+            else
+            {
+                selection.Limitations.Add("No fue posible obtener el modelo tras los reintentos limitados.");
+                selection.Reason = "No fue posible obtener el modelo automaticamente.";
+            }
+        }
+
+        await RefreshAssessmentAsync(cancellationToken);
+        return selection;
+    }
+
+    private static TaskModelRequirement ModelSelectionRequirementFor(string? purpose)
+    {
+        var p = (purpose ?? "").ToLowerInvariant();
+        if (p == TaskIntentKinds.Consult)
+        {
+            return new TaskModelRequirement
+            {
+                IntentKind = TaskIntentKinds.Consult,
+                RequiredCodingLevel = 0,
+                RequiredMultiFileLevel = 0,
+                RequiresToolUse = false,
+                RequiresStructuredOutput = false,
+                PreferSmallestSufficient = true,
+                Label = "consulta directa al modelo"
+            };
+        }
+
+        return new TaskModelRequirement
+        {
+            IntentKind = TaskIntentKinds.Agent,
+            RequiredCodingLevel = 3,
+            RequiredMultiFileLevel = 2,
+            RequiresToolUse = true,
+            RequiresStructuredOutput = true,
+            PreferSmallestSufficient = true,
+            Label = "agente de ingenieria"
+        };
     }
 
     /// <summary>
