@@ -54,4 +54,11 @@ public class ModelSelectionResult
 
     /// <summary>Lista de candidatos evaluados que fueron insuficientes para la tarea (p. ej. muy pequeños).</summary>
     public List<string> InsufficientCandidates { get; set; } = new();
+
+    /// <summary>
+    /// Candidato minimo suficiente para la tarea que NO cabe en el presupuesto
+    /// actual. Es la referencia honesta para "MODELO NO EJECUTABLE": permite
+    /// informar RAM requerida estimada frente a RAM disponible sin inventar.
+    /// </summary>
+    public ModelCandidate? MinimumViable { get; set; }
 }

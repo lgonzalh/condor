@@ -95,6 +95,26 @@ public static class ModelCatalog
         },
         new()
         {
+            // Diversidad de familias en el segmento <=1.5B: alternativa no-Qwen
+            // para equipos con poca RAM, evitando depender de una sola familia.
+            Name = "gemma3:1b",
+            PullName = "gemma3:1b",
+            SizeBytes = 815L * 1024 * 1024,
+            WeightGb = 0.82,
+            Family = "gemma3",
+            ParameterSize = "1B",
+            Quantization = "Q4_K_M",
+            ContextWindow = 32768,
+            CodingLevel = 1,
+            MultiFileLevel = 1,
+            StructuredOutput = true,
+            ToolUse = false,
+            Stability = true,
+            Purpose = "agente",
+            Capabilities = new List<string> { "completion", "structured-output" }
+        },
+        new()
+        {
             Name = "llama3.2:3b",
             PullName = "llama3.2:3b",
             SizeBytes = 1991L * 1024 * 1024,

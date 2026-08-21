@@ -8,6 +8,7 @@ using Condor.Core.Selection;
 using Condor.Infrastructure.Detection;
 using Condor.Infrastructure.Llm;
 using Condor.Infrastructure.Retry;
+using Condor.Infrastructure.State;
 
 namespace Condor.Infrastructure.Setup;
 
@@ -17,6 +18,7 @@ public sealed class ModelAutoSetupService : IModelAutoSetupService
     private readonly IAssessmentService? _assessmentService;
     private readonly ModelSetupLimits _limits;
     private readonly OllamaModelOperator _operator;
+    private readonly ModelKardex _kardex = new();
 
     public ModelAutoSetupService(
         IStateStore stateStore,
@@ -115,6 +117,8 @@ public sealed class ModelAutoSetupService : IModelAutoSetupService
             selection.AlreadyInstalled = true;
             selection.InstalledName = desired.PullName;
             selection.Reason = "Modelo obtenido automaticamente y verificado en Ollama.";
+            await _kardex.RecordAsync(desired.PullName, ModelKardexStatus.Instalado,
+                "Obtenido automaticamente y verificado en Ollama.");
             progress?.Report(StartupProgress.Of(
                 StartupStage.VerifyingModel,
                 message: desired.PullName,
@@ -124,6 +128,8 @@ public sealed class ModelAutoSetupService : IModelAutoSetupService
         {
             selection.Limitations.Add("No fue posible obtener el modelo tras los reintentos limitados.");
             selection.Reason = "No fue posible obtener el modelo automaticamente.";
+            await _kardex.RecordAsync(desired.PullName, ModelKardexStatus.FalloObtencion,
+                "Fallo la obtencion tras reintentos acotados.");
         }
 
         await RefreshAssessmentAsync(cancellationToken);
@@ -146,6 +152,16 @@ public sealed class ModelAutoSetupService : IModelAutoSetupService
 
         if (selection.Desired is null)
         {
+            // Kardex: si hay un modelo minimo viable que no cabe, se registra el
+            // rechazo por presupuesto (historial local para diagnostico).
+            if (selection.BlockedByResources && selection.MinimumViable is not null)
+            {
+                await _kardex.RecordAsync(
+                    selection.MinimumViable.PullName,
+                    ModelKardexStatus.RechazadoPorPresupuesto,
+                    "El presupuesto de RAM no admite el modelo minimo suficiente para la tarea.");
+            }
+
             await RefreshAssessmentAsync(cancellationToken);
             return selection;
         }
@@ -186,11 +202,15 @@ public sealed class ModelAutoSetupService : IModelAutoSetupService
                 selection.AlreadyInstalled = true;
                 selection.InstalledName = desired.PullName;
                 selection.Reason = "Modelo obtenido automaticamente y verificado en Ollama (harness).";
+                await _kardex.RecordAsync(desired.PullName, ModelKardexStatus.Instalado,
+                    "Obtenido automaticamente por el harness de tarea y verificado en Ollama.");
             }
             else
             {
                 selection.Limitations.Add("No fue posible obtener el modelo tras los reintentos limitados.");
                 selection.Reason = "No fue posible obtener el modelo automaticamente.";
+                await _kardex.RecordAsync(desired.PullName, ModelKardexStatus.FalloObtencion,
+                    "Fallo la obtencion tras reintentos acotados (harness).");
             }
         }
 

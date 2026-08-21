@@ -359,6 +359,11 @@ public static class ModelSelector
                 result.Resources?.Pressure == ResourcePressure.Insufficient ||
                 viable.Count == 0;
 
+            // Referencia del minimo suficiente para la tarea (aunque no quepa hoy):
+            // es lo que informa "RAM requerida estimada" en MODELO NO EJECUTABLE.
+            var minimum = candidates.OrderBy(x => x.peak).FirstOrDefault();
+            result.MinimumViable = minimum.c;
+
             result.Limitations.Add(
                 "Ningun modelo es suficiente para la tarea dentro del presupuesto real (" +
                 (budget is null ? "sin datos" : budget.BudgetGb.ToString("0.0") + " GB") +

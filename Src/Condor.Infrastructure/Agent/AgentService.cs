@@ -21,7 +21,6 @@ public sealed class AgentService : IAgentService
     private readonly ILlmClient _llm;
     private readonly ILlmProviderDiagnostics _provider;
     private readonly AgentLimits _limits;
-    private readonly IUserConfirmation? _confirmation;
     private readonly LocalModelSession? _session;
     private readonly BudgetReevaluator? _reevaluator;
 
@@ -31,7 +30,6 @@ public sealed class AgentService : IAgentService
         AgentLimits? limits = null,
         ILlmClient? llm = null,
         ILlmProviderDiagnostics? provider = null,
-        IUserConfirmation? confirmation = null,
         LocalModelSession? session = null,
         BudgetReevaluator? reevaluator = null)
     {
@@ -50,7 +48,6 @@ public sealed class AgentService : IAgentService
             _provider = provider ?? (_llm as ILlmProviderDiagnostics) ?? new OllamaClient();
         }
         _limits = limits ?? AgentLimits.Default;
-        _confirmation = confirmation;
         _reevaluator = reevaluator ?? new BudgetReevaluator(BudgetPolicy.Default);
     }
 
@@ -60,14 +57,6 @@ public sealed class AgentService : IAgentService
     /// </summary>
     private ModelAutoSetupService CreateModelSetup()
         => new(_stateStore, _assessmentService, httpClient: _session?.SharedHttpClient);
-
-    /// <summary>
-    /// Intentos acotados de recuperacion cuando el modelo instalado no cabe por
-    /// RAM libre en el presupuesto seguro. Se evita un reintento infinito:
-    /// tras este numero de re-evaluaciones, Condor comunica el bloqueo de forma
-    /// honesta y conserva la tarea.
-    /// </summary>
-    private const int MaxResourceRecoveryAttempts = 3;
 
     public async Task<AgentResult> RunAsync(string intention, IAgentProgressObserver? progress = null, CancellationToken cancellationToken = default)
     {
@@ -93,77 +82,19 @@ public sealed class AgentService : IAgentService
 
         if (selection.Desired is null)
         {
-            // El modelo EXISTE (instalado/conocido) pero la RAM libre actual no
-            // permite cargarlo segun el presupuesto seguro. Se espera un numero
-            // limitado de veces (delay corto + re-evaluacion viva) para dar
-            // oportunidad a que la RAM se libere; NUNCA en bucle infinito.
+            // Sin modelo utilizable: fallo RAPIDO y controlado. NO se pregunta al
+            // usuario que libere memoria como mecanismo normal ni se entra en un
+            // loop de recuperacion oculto detras de "Verificando". Se expone el
+            // motivo real con detalle (modelo, RAM requerida, RAM disponible).
             progress?.Report(AgentProgress.Of(
                 AgentPhase.Verifying,
-                message: "Modelo instalado, pero la RAM libre no permite cargarlo por ahora; comprobando de nuevo...",
+                message: "Modelo no ejecutable por presupuesto de memoria.",
                 resourceState: selection.Resources?.PressureLabel,
                 availableGb: selection.Resources?.FreeGb,
                 safeBudgetGb: selection.Budget?.BudgetGb,
-                flag: ProgressFlag.Recovering));
+                flag: ProgressFlag.ProviderError));
 
-            var recovered = false;
-            for (var attempt = 0; attempt < MaxResourceRecoveryAttempts && !recovered; attempt++)
-            {
-                await ResourceRecoveryDelayAsync(cancellationToken);
-
-                selection = await modelSetup.EnsureModelForRequirementAsync(requirement, cancellationToken);
-                recovered = selection.Desired is not null;
-            }
-
-            if (!recovered)
-            {
-                var blocked = selection.Resources;
-                var reason = BuildResourceBlockedReason(blocked);
-
-                // Intervencion OPCIONAL de RAM: si hay un confirmador interactivo
-                // (consola) y el usuario confirma liberar memoria, se re-evalua UNA
-                // vez mas de forma acotada y, si ahora existe un modelo viable, se
-                // continua automaticamente. Cóndor NUNCA cierra aplicaciones por su
-                // cuenta; si el usuario no confirma, se conserva la tarea y se sale
-                // de forma limpia. Sin confirmador, el comportamiento sigue siendo
-                // la salida limpia honesta actual.
-                var confirmed = _confirmation is not null &&
-                    await _confirmation.AskToReleaseRamAsync(
-                        "La RAM disponible actualmente no permite ejecutar un modelo seguro. " +
-                        "¿Quieres liberar memoria y que Cóndor vuelva a intentarlo? [S/N]",
-                        cancellationToken);
-
-                if (confirmed)
-                {
-                    progress?.Report(AgentProgress.Of(
-                        AgentPhase.Verifying,
-                        message: "Usuario confirmo liberar memoria; reevaluando RAM y seleccionando modelo...",
-                        flag: ProgressFlag.Recovering));
-
-                    selection = await modelSetup.EnsureModelForRequirementAsync(requirement, cancellationToken);
-                    if (selection.Desired is not null)
-                    {
-                        progress?.Report(AgentProgress.Of(
-                            AgentPhase.Verifying,
-                            message: "RAM liberada; modelo " + (selection.InstalledName ?? selection.Desired.PullName) + " disponible.",
-                            flag: ProgressFlag.Recovering));
-                    }
-                }
-
-                if (selection.Desired is null)
-                {
-                    progress?.Report(AgentProgress.Of(
-                        AgentPhase.Verifying,
-                        message: reason,
-                        resourceState: blocked?.PressureLabel,
-                        availableGb: blocked?.FreeGb,
-                        safeBudgetGb: selection.Budget?.BudgetGb,
-                        flag: ProgressFlag.ProviderError));
-                    // Promesa: la tarea no se pierde. La intencion queda conservada en
-                    // Objective + Checkpoint; el usuario puede reintentar cuando haya
-                    // recursos. Sin reintentos automaticos ilimitados.
-                    return Fail(reason, "", intention, steps, checkpoint);
-                }
-            }
+            return Fail(BuildModelNotExecutableReason(selection), "", intention, steps, checkpoint);
         }
 
         // Invariante: en este punto Desired es obligatoriamente no-nulo.
@@ -877,33 +808,44 @@ public sealed class AgentService : IAgentService
         return "El proveedor del modelo fallo: " + cause + detailText + ". Condor detuvo la tarea para no consumir mas iteraciones. Revisa el diagnostico del servidor local.";
     }
 
-    private static async Task ResourceRecoveryDelayAsync(CancellationToken ct)
+    /// <summary>
+    /// Construye el mensaje claro de "MODELO NO EJECUTABLE" por presupuesto de
+    /// memoria. Incluye modelo (si se conoce), RAM requerida estimada, RAM
+    /// disponible y el motivo exacto. Es la salida controlada ante RAM insuficiente
+    /// (no se pide al usuario liberar memoria como mecanismo normal, no hay loop).
+    /// </summary>
+    private static string BuildModelNotExecutableReason(Condor.Core.Models.ModelSelectionResult selection)
     {
-        try
-        {
-            await Task.Delay(700, ct);
-        }
-        catch (OperationCanceledException)
-        {
-            // Cancelacion cooperativa: el gate abandona la espera.
-        }
-    }
+        var budget = selection.Budget;
+        var resources = selection.Resources;
+        // Referencia del modelo: el minimo suficiente para la tarea que no cabe
+        // (bloqueo por recursos) o el deseado si existe.
+        var reference = selection.Desired ?? selection.MinimumViable;
 
-    private static string BuildResourceBlockedReason(Condor.Core.Models.ResourceSnapshot? resources)
-    {
         var sb = new System.Text.StringBuilder();
-        sb.Append("El modelo instalado no se pudo cargar ahora: la RAM libre (" +
-                  (resources?.FreeGb.ToString("0.0") ?? "-") + " GB) no alcanza el presupuesto seguro (" +
-                  (resources?.SafeBudgetGb.ToString("0.0") ?? "-") + " GB) para el modelo minimo compatible.");
-        sb.Append(" Es un bloqueo TEMPORAL por recursos, no la ausencia de un modelo: libera memoria");
-        sb.Append(" (por ejemplo cerrando procesos de alto consumo) y reintenta la misma tarea.");
+        sb.AppendLine("MODELO NO EJECUTABLE");
+        var model = reference is not null ? reference.PullName : "ninguno (sin modelo compatible)";
+        sb.AppendLine("Modelo: " + model);
+        sb.AppendLine("RAM requerida estimada: " +
+                      (reference is null ? "-" : ModelEfficiencyEvaluator.PeakGb(reference).ToString("0.0")) + " GB");
+        sb.AppendLine("RAM disponible: " + (resources?.FreeGb.ToString("0.0") ?? "-") + " GB");
+        sb.AppendLine("Motivo: presupuesto de memoria insuficiente.");
+        if (budget is not null && budget.IsBudgeted)
+        {
+            sb.AppendLine("Presupuesto permitido: " + budget.BudgetGb.ToString("0.0") + " GB · reserva operativa: " + budget.ReserveGb.ToString("0.0") + " GB.");
+        }
+        else if (resources is not null)
+        {
+            sb.AppendLine("Estado de recursos: " + (resources.PressureLabel ?? "sin datos") + ".");
+        }
+
         if (resources is not null && resources.TopConsumers.Count > 0)
         {
             var top = string.Join(", ", resources.TopConsumers.Select(c => c.ProcessName + " ~" + c.WorkingSetGb.ToString("0.0") + " GB"));
-            sb.Append(" Consumidores actuales: " + top + ".");
+            sb.AppendLine("Consumidores actuales de RAM (solo informativo): " + top + ".");
         }
 
-        sb.Append(" Estado: " + (resources?.PressureLabel ?? "sin datos") + ".");
+        sb.AppendLine("Accion: se ha detenido de forma controlada; no se descarga ni carga un modelo que no pueda ejecutarse de forma segura.");
         return sb.ToString();
     }
 

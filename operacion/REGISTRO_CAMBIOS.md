@@ -506,3 +506,117 @@ La politica por defecto es conservadora a proposito. En maquinas con poca RAM
 libre, el harness reporta bloqueo TEMPORAL en lugar de cargar un modelo pequeno
 que "quepar numericamente", porque proteger la reserva es prioridad. `BudgetPolicy`
 es configurable para ajustar el balance en despliegue.
+
+---
+
+## BOOTSTRAP DE DEPENDENCIAS — OLLAMA (puesta en marcha automatica)
+
+### Problema
+El usuario podia tener Ollama instalado e incluso la app abierta, pero el Ollama
+Server no disponible; Condor podia quedarse esperando sin informar claramente. El
+usuario no debia conocer "ollama serve", puertos ni procesos.
+
+### Correccion (Infrastructure, nuevo namespace `DependencyBootstrap`; la TUI no se modifica)
+- `OllamaHealthChecker`: distingue 4 estados reales (no-instalado / instalado /
+  server caido / server OK) usando SIEMPRE el endpoint real
+  (`/api/version` sobre 127.0.0.1:11434); nunca se trata como disponible solo por
+  existir "ollama.exe".
+- `OllamaProvisioner`: detecta -> instala (automatico) -> arranca el server ->
+  espera con timeout/reintentos -> re-verifica el endpoint -> registra ownership.
+- `OllamaAutoInstaller`: instalacion AUTOMATICA desde la fuente oficial
+  (`OllamaSetup.exe`), sin confirmacion de Condor; el UAC de Windows es una
+  autorizacion del SO y es aceptable. Instalacion correcta + reintentos acotados.
+- `OllamaServerLauncher`: inicia `ollama serve` y registra quien lo inicio.
+- `DependencyBootstrapper`: abstraccion detectar -> preparar -> verificar ->
+  continuar por dependencias (hoy Ollama).
+- `Program.cs`: invoca el bootstrap al inicio de la sesion interactiva y en los
+  flujos one-shot que necesitan el proveedor, ANTES de preparar modelo. En fallo
+  muestra error controlado (sin stack trace).
+- `StartupStage`: nuevas etapas de bootstrap (BootstrappingDependencies,
+  InstallingOllama, StartingOllamaServer, VerifyingOllamaServer) con sus etiquetas
+  de progreso (aditivas, sin alterar estetica existente).
+
+### Ownership
+- Ollama preexistente -> se reutiliza y NO se cierra.
+- Ollama iniciado por Condor -> `StartedByCondor` (registrado).
+- Condor NO usa taskkill ni cierra Ollama ajeno; libera el modelo via keep_alive=0
+  en la sesion.
+
+### Dependencias de Windows
+No hay binario nativo propio que dependa de VC++; no se instala Visual C++
+Redistributable (sin necesidad tecnica comprobable). No se toca `LocalModelSession`
+ni `AgentService` para este cambio (solo wiring de arranque).
+
+### Pruebas
+- `DependencyBootstrapTests` (Integration, 9): A-H (server disponible; server
+  detenido->inicia; no instalado->instala; no puede iniciar->timeout/error;
+  ya existia->reutiliza y no cierra; Condor inicio->registra propiedad; server deja
+  de responder->no bloquea; cancelacion cooperativa). Mas regresion instalado vs
+  server disponible.
+- Suites completas: Architecture 22/22, Core 259/259, Integration 313/313.
+- Build Release 0 warnings/errores.
+
+### Validacion real (Windows, Ollama v0.31.1)
+- Con server disponible: `condor /contexto` continua de inmediato (reutiliza).
+- Con server detenido (simulando "app abierta pero server caido"): Cóndor detecta
+  el estado, inicia `ollama serve`, verifica el endpoint real y continua al flujo
+  normal; el endpoint vuelve a responder (0.31.1) y el ownership es StartedByCondor.
+- La liberacion del modelo retenido permanece por keep_alive=0 (sin matar procesos).
+- NO se hizo commit/push (requiere autorizacion explicita).
+
+---
+
+## T-017 — TUI OPERACIONAL Y FLUJO HONESTO (sin "Verificando" ambiguo)
+
+### Problema
+- El estado generico "Verificando" ocultaba el bloqueo real por RAM; tras el
+  bloqueo se preguntaba "[S/N] liberar memoria" y Ctrl+C producía una
+  OperationCanceledException visible (excepción técnica al usuario).
+- Dos presentadores ("StartupProgressPresenter", "AgentProgressPresenter")
+  redibujaban bloques multi-línea con aritmética de cursor ANSI independiente:
+  peleaban por el cursor y la salida quedaba rota.
+- El catálogo concentraba el segmento pequeño en una sola familia (qwen2).
+
+### Correccion
+- `AgentService`: fallo RÁPIDO y controlado ante presupuesto de RAM insuficiente.
+  Se elimina el bucle de re-evaluación oculto y el confirmador de liberación de
+  memoria como mecanismo normal (O1). Nueva pantalla honesta "MODELO NO
+  EJECUTABLE": Modelo / RAM requerida estimada / RAM disponible / Motivo /
+  Presupuesto permitido / Consumidores informativos / Acción. Sin stack traces.
+  La tarea se conserva (Objective + Checkpoint).
+- Eliminados: `IUserConfirmation`, `ConsoleRamConfirmation` y su wiring en
+  `Program.cs` (`PromptIfInteractive`). Ya no se pregunta S/N por RAM jamás.
+- `ModelSelector.SelectForTask`: expone `MinimumViable` (candidato mínimo
+  suficiente que no cabe) para informar la RAM requerida real del bloqueo.
+- `TuiScreen` (nuevo): autoridad ÚNICA de renderizado en esperas. Una sola línea
+  de estado reescrita en su sitio + zona de actividad persistente (las etapas
+  concluidas se archivan y quedan en el scroll). Mecánica sin cálculos de
+  altura ni borrados de bloque: elimina los conflictos de cursor.
+- Presentadores migrados a `TuiScreen`. Estados reales por etapa con etiqueta
+  operacional: [ENTORNO]/[MEMORIA]/[OLLAMA]/[MODELO]/[VERIFICACION]/[DECISION]
+  en arranque y [SOLICITUD]/[AGENTE]/[VERIFICACION]/[RESPUESTA] en agente. Si hay
+  mensaje, SIEMPRE se muestra (nunca una fase genérica sin detalle). Salida
+  redirigida: líneas compactas deduplicadas (E2E estable).
+- `ModelKardex` (nuevo): kardex local de modelos (`kardex_modelos.json`) junto
+  al estado; registra Instalado / RechazadoPorPresupuesto / FalloObtencion con
+  fecha y motivo. El inventario vivo de Ollama sigue mandando; el kardex es
+  historial para diagnóstico. Enganchado en ambas rutas de selección.
+- Descargas: solo se obtienen modelos admitidos por el presupuesto vigente
+  (selección clásica con FitsInRamStrict + harness con margen 1−); nunca se
+  auto-descarga un modelo que el presupuesto determine no ejecutable.
+- `ModelCatalog`: diversidad de familias en el segmento <=1.5B con `gemma3:1b`
+  (~0.8 GB, familia gemma3) junto a qwen2.5-coder:0.5b/1.5b y llama3.2:1b.
+
+### O4 (bootstrap Ollama)
+Sin regresiones: detección real del server (/api/version), instalación/arranco
+automático, ownership, reutilización sin segundo server y liberación keep_alive=0
+permanecen intactos (ningún archivo de DependencyBootstrap modificado).
+
+### Pruebas
+- `AgentServiceResourceBlockTests` reescrito al nuevo contrato: fallo rápido con
+  pantalla MODELO NO EJECUTABLE (datos concretos, sin "liberar memoria"), acotado
+  (<=4 evaluaciones) y compatible-no-disponible sin descargas fuera de presupuesto.
+- Suites completas: Architecture 22/22, Core 259/259, Integration 307/307
+  (3 pruebas nuevas sustituyen a las del confirmador eliminado).
+- Build Cli/Core/Infrastructure: 0 warnings, 0 errores. Árbol del commit
+  verificado compilable en aislamiento (stash --keep-index + build).

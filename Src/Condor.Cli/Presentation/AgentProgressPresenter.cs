@@ -4,45 +4,49 @@ using Condor.Core.Models;
 namespace Condor.Cli.Presentation;
 
 /// <summary>
-/// Presentador de progreso del agente en terminal. Muestra una barra de progreso
-/// INDETERMINADO (spinner) y el estado real del trabajo (fase, accion, ruta,
-/// iteracion y tiempo transcurrido) actualizado en la misma zona de la terminal,
-/// sin porcentajes inventados. Degrada a lineas simples si la salida esta
-/// redirigida (p. ej. pipelines o captura de E2E).
+/// Presentador de progreso del agente sobre la pantalla centralizada (TuiScreen).
+/// Una sola linea de estado reescrita en su sitio con el estado real del trabajo
+/// (etiqueta operacional [SOLICITUD]/[AGENTE]/[VERIFICACION]/[RESPUESTA],
+/// operacion concreta, mensaje y tiempo transcurrido). Sin porcentajes
+/// inventados y sin redibujados de bloque que peleaban por el cursor. Degrada a
+/// lineas compactas deduplicadas si la salida esta redirigida (pipelines/E2E).
 /// </summary>
 public sealed class AgentProgressPresenter : IAgentProgressView, IDisposable
 {
     private static readonly string[] Frames = { "◐", "◓", "◑", "◒" };
 
     private readonly object _gate = new();
+    private readonly TuiScreen _screen;
     private DateTime _startedAt;
     private int _spin;
-
-    private AgentProgress? _current;
     private System.Threading.Timer? _ticker;
     private bool _stopped;
-    private bool _interactive;
+    private bool _started;
 
-    public AgentProgressPresenter()
+    private AgentProgress? _current;
+
+    public AgentProgressPresenter() : this(TuiScreen.Shared)
     {
-        _interactive = !Console.IsOutputRedirected;
+    }
+
+    public AgentProgressPresenter(TuiScreen screen)
+    {
+        _screen = screen;
     }
 
     public void Start(string intention)
     {
         lock (_gate)
         {
-            if (_stopped) return;
+            if (_stopped || _started) return;
+            _started = true;
             _startedAt = DateTime.Now;
-            if (_interactive)
-            {
-                // La identidad permanece visible mientras se procesa.
-                Terminal.WriteBlue("©Condor");
-                Terminal.WriteDim("Observa · Comprende · Planifica · Construye · Verifica");
-            }
         }
 
-        _ticker = new System.Threading.Timer(_ => Spin(), null, 250, 250);
+        if (_screen.Interactive)
+        {
+            _ticker = new System.Threading.Timer(_ => Spin(), null, 250, 250);
+        }
     }
 
     public void Report(AgentProgress progress)
@@ -50,20 +54,27 @@ public sealed class AgentProgressPresenter : IAgentProgressView, IDisposable
         lock (_gate)
         {
             _current = progress;
-            if (!_stopped)
+            if (_stopped) return;
+
+            if (_screen.Interactive)
             {
-                if (_interactive)
+                _screen.SetStatus(StatusLine(Icon(progress, interactive: true), progress, Elapsed()));
+            }
+            else
+            {
+                // Salida redirigida: una linea compacta SOLO cuando cambia el
+                // contenido real (fase/accion/ruta/iteracion/banderas), no cada tick.
+                var line = StatusLine(Icon(progress, interactive: false), progress, Elapsed());
+                if (line != _lastRedirectedLine)
                 {
-                    Draw(false);
-                }
-                else
-                {
-                    // Salida redirigida: una linea compacta por cambio de fase/accion.
-                    Console.WriteLine(CompactLine(progress));
+                    _lastRedirectedLine = line;
+                    Console.WriteLine(line);
                 }
             }
         }
     }
+
+    private string? _lastRedirectedLine;
 
     public void Stop(bool success, string? finalLine = null)
     {
@@ -74,17 +85,10 @@ public sealed class AgentProgressPresenter : IAgentProgressView, IDisposable
             _ticker?.Dispose();
             _ticker = null;
 
-            if (_interactive)
-            {
-                // Limpia el bloque transitorio (la linea de cabecera + el bloque de estado).
-                Clear();
-            }
-
+            // Libera la linea de estado; el resultado lo renderiza AgentRenderer.
+            // El historial archivado permanece visible en la zona persistente.
+            _screen.EndStatus();
             Console.WriteLine();
-            if (success)
-                Terminal.WriteSuccess(finalLine ?? "Condor termino.");
-            else
-                Terminal.WriteWarning(finalLine ?? "Condor no pudo completar la tarea.");
         }
     }
 
@@ -92,104 +96,43 @@ public sealed class AgentProgressPresenter : IAgentProgressView, IDisposable
     {
         lock (_gate)
         {
-            if (_stopped || !_interactive) return;
+            if (_stopped || !_screen.Interactive) return;
             _spin++;
-            Draw(false);
-        }
-    }
-
-    private void Draw(bool spinner)
-    {
-        var lines = BuildLines();
-        var height = lines.Count;
-
-        // Sube "height" lineas y las reescribe en su sitio.
-        if (height > 0 && _interactive)
-        {
-            Console.Write("\u001b[" + height + "A");
-        }
-
-        foreach (var line in lines)
-        {
-            Console.Write("\u001b[2K" + line + "\r\n");
-        }
-    }
-
-    private void Clear()
-    {
-        var height = CountBlockHeight();
-        if (height > 0)
-        {
-            Console.Write("\u001b[" + height + "A");
-            for (var i = 0; i < height; i++)
+            if (_current is not null)
             {
-                Console.Write("\u001b[2K" + (i < height - 1 ? "\r\n" : ""));
+                _screen.SetStatus(StatusLine(Frames[_spin % Frames.Length].ToString(), _current, Elapsed()));
             }
         }
     }
 
-    private int CountBlockHeight()
-    {
-        // Cabecera de identidad (2 lineas: ©Condor + eslogan) + el bloque de estado actual.
-        return BuildLines().Count + 2;
-    }
+    private string Elapsed() => FormatElapsed(DateTime.Now - _startedAt);
 
-    private List<string> BuildLines()
+    private static string Icon(AgentProgress p, bool interactive)
     {
-        var p = _current;
-        var el = DateTime.Now - _startedAt;
-        var elapsed = FormatElapsed(el);
-        var frame = _interactive ? Frames[_spin % Frames.Length] : "·";
-
-        // Indicador segun el estado del proveedor/modelo.
-        var icon = p?.Flag switch
+        return p.Flag switch
         {
             ProgressFlag.Recovering => "!",
             ProgressFlag.ProviderError => "X",
-            _ => frame
+            _ => interactive ? Frames[0] : "·"
         };
-
-        var lines = new List<string>
-        {
-            StatusLine(icon, p, elapsed)
-        };
-
-        // Lineas suplementarias solo cuando aportan contexto extra, sin perder
-        // nunca la linea de estado con el contador de tiempo.
-        if (p is not null && p.Flag != ProgressFlag.Normal)
-        {
-            lines.Add($"  Estado: {ModelStateLabel(p.Flag)}");
-            if (!string.IsNullOrWhiteSpace(p.Message))
-            {
-                lines.Add($"  Detalle: {p.Message}");
-            }
-        }
-        else if (!string.IsNullOrWhiteSpace(p?.Message))
-        {
-            lines.Add($"  {p!.Message}");
-        }
-        if (p?.ResourceState is { } rs)
-        {
-            var budget = p.SafeBudgetGb is { } sb ? $" · Presupuesto seguro: {sb.ToString("0.0")} GB" : "";
-            lines.Add($"  Recursos: {p.AvailableGb?.ToString("0.0") ?? "?"} GB disponibles{budget} · Estado: {rs}");
-        }
-        return lines;
     }
 
     private static string StatusLine(string icon, AgentProgress? p, string elapsed)
     {
         var sb = new System.Text.StringBuilder();
-        sb.Append("  ").Append(icon).Append(' ').Append(PhaseLabel(p?.Phase ?? AgentPhase.Understanding));
-        if (!string.IsNullOrWhiteSpace(p?.Action))
+        sb.Append("  ").Append(icon).Append(" [" + PhaseTag(p?.Phase ?? AgentPhase.Understanding) + "] ")
+          .Append(PhaseLabel(p?.Phase ?? AgentPhase.Understanding));
+        // Estado concreto: si hay mensaje, SIEMPRE se muestra (nunca una fase
+        // generica sin detalle). Es lo que hace honesta la espera o el bloqueo.
+        if (!string.IsNullOrWhiteSpace(p?.Message))
         {
-            sb.Append(" · Acción: ").Append(p.Action);
-            if (!string.IsNullOrWhiteSpace(p.Path)) sb.Append(' ').Append(p.Path);
+            sb.Append(" - ").Append(p.Message);
         }
-        if (p?.Iteration is { } iter)
+        if (!string.IsNullOrWhiteSpace(p?.Action) && !string.IsNullOrWhiteSpace(p.Path))
         {
-            sb.Append(" · Iteración: ").Append(iter);
+            sb.Append(' ').Append(p.Path);
         }
-        sb.Append(" · Tiempo: ").Append(elapsed);
+        sb.Append(' ').Append(elapsed);
         return sb.ToString();
     }
 
@@ -200,13 +143,20 @@ public sealed class AgentProgressPresenter : IAgentProgressView, IDisposable
             : string.Format("{0:00}:{1:00}", el.Minutes, el.Seconds);
     }
 
-    private static string ModelStateLabel(ProgressFlag flag)
-        => flag switch
+    /// <summary>Estado operacional real por fase del agente.</summary>
+    private static string PhaseTag(AgentPhase phase)
+    {
+        return phase switch
         {
-            ProgressFlag.Recovering => "recuperando proveedor",
-            ProgressFlag.ProviderError => "proveedor no disponible / detenido",
-            _ => "procesando"
+            AgentPhase.Understanding => "SOLICITUD",
+            AgentPhase.Observing => "AGENTE",
+            AgentPhase.Analyzing => "AGENTE",
+            AgentPhase.Building => "AGENTE",
+            AgentPhase.Verifying => "VERIFICACION",
+            AgentPhase.Finalizing => "RESPUESTA",
+            _ => "AGENTE"
         };
+    }
 
     private static string PhaseLabel(AgentPhase phase)
     {
@@ -220,22 +170,6 @@ public sealed class AgentProgressPresenter : IAgentProgressView, IDisposable
             AgentPhase.Finalizing => "Finalizando",
             _ => "Trabajando"
         };
-    }
-
-    private string CompactLine(AgentProgress p)
-    {
-        var icon = p.Flag switch
-        {
-            ProgressFlag.Recovering => "!",
-            ProgressFlag.ProviderError => "X",
-            _ => "·"
-        };
-        var line = StatusLine(icon, p, FormatElapsed(DateTime.Now - _startedAt));
-        if (!string.IsNullOrWhiteSpace(p.Message))
-        {
-            line += " · " + p.Message;
-        }
-        return line;
     }
 
     public void Dispose()

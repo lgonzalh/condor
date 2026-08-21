@@ -2,11 +2,13 @@ using Condor.Cli.Commands;
 using Condor.Cli.Presentation;
 using Condor.Cli.Routing;
 using Condor.Core.Contracts;
+using Condor.Core.Models;
 using Condor.Infrastructure;
 using Condor.Infrastructure.Agent;
 using Condor.Infrastructure.Context;
 using Condor.Infrastructure.Building;
 using Condor.Infrastructure.Cycle;
+using Condor.Infrastructure.DependencyBootstrap;
 using Condor.Infrastructure.Llm;
 using Condor.Infrastructure.Planning;
 using Condor.Infrastructure.State;
@@ -34,62 +36,114 @@ public static class Program
 
         var assessmentService = new AssessmentService();
         var stateStore = new LocalStateStore();
-        var llmClient = new OllamaClient();
 
-        // Comandos triviales no requieren preparacion.
-        if (IsVersion(args))
+        // Sesion unica y reutilizable del proveedor local para toda la ejecucion:
+        // un solo HttpClient y un unico modelo activo. Al terminar (normal, error,
+        // cancelacion o /salir) se libera el modelo mediante el mecanismo oficial
+        // de Ollama (keep_alive=0). Condor nunca gestiona procesos llama-server.
+        using var session = new LocalModelSession();
+        var llmClient = session.Llm;
+
+        // Token compartido de cancelacion cooperativa (Ctrl+C): al pulsar Ctrl+C
+        // se cancela cualquier operacion pendiente del agente en curso y luego se
+        // libera la sesion del proveedor en el cierre de consola.
+        using var shutdownCts = new System.Threading.CancellationTokenSource();
+
+        // Ctrl+C: ruta unica de shutdown. Antes de que el proceso termine se
+        // cancela de forma cooperativa la operacion pendiente y se libera la
+        // sesion del proveedor (keep_alive=0), evitando que el modelo quede
+        // retenido en RAM. Es un evento de consola, no un proceso a matar.
+        Console.CancelKeyPress += (_, e) =>
         {
-            Console.WriteLine(VersionInfo.Product + " " + VersionInfo.DisplayName);
-            return 0;
-        }
+            e.Cancel = true;
+            shutdownCts.Cancel();
+            session.ReleaseAsync().GetAwaiter().GetResult();
+        };
 
-        if (IsHelp(args))
+        // Rutas de terminacion unica: en finally se libera el modelo retenido en
+        // RAM. Esto garantiza que Condor no deja la sesion del proveedor ocupando
+        // memoria cuando termina, sin matar infraestructura externa.
+        try
         {
-            RenderHelp();
-            return 0;
-        }
-
-        if (args.Length == 0)
-        {
-            return await RunInteractiveAsync(assessmentService, stateStore, llmClient);
-        }
-
-        // Entrada con parametros (one-shot).
-        var first = string.Join(" ", args);
-        var route = IntentionRouter.Route(first);
-
-        if (route is SlashRoute slash)
-        {
-            if (slash.Kind != SlashCommandKind.Ayuda)
+            // Comandos triviales no requieren preparacion.
+            if (IsVersion(args))
             {
-                var prep = await PrepareOnceAsync(assessmentService, stateStore);
-                if (prep.NeedsIntervention)
-                {
-                    Terminal.WriteWarning(prep.Reason ?? "Preparacion pendiente.");
-                }
+                Console.WriteLine(VersionInfo.Product + " " + VersionInfo.DisplayName);
+                return 0;
             }
 
-            return await HandleSlashAsync(slash, assessmentService, stateStore, llmClient);
-        }
+            if (IsHelp(args))
+            {
+                RenderHelp();
+                return 0;
+            }
 
-        if (route is FreeIntentionRoute free && !string.IsNullOrWhiteSpace(free.Intention))
+            if (args.Length == 0)
+            {
+                return await RunInteractiveAsync(assessmentService, stateStore, llmClient, session, shutdownCts.Token);
+            }
+
+            // Entrada con parametros (one-shot).
+            var first = string.Join(" ", args);
+            var route = IntentionRouter.Route(first);
+
+            if (route is SlashRoute slash)
+            {
+                if (slash.Kind != SlashCommandKind.Ayuda)
+                {
+                    // Bootstrap de dependencias (Ollama) antes de preparar el modelo.
+                    var bootstrap = await RunBootstrapAsync(progress: null, shutdownCts.Token);
+                    if (!bootstrap.Ready)
+                    {
+                        RenderBootstrapFailure(bootstrap);
+                        return 1;
+                    }
+
+                    var prep = await PrepareOnceAsync(assessmentService, stateStore, session);
+                    if (prep.NeedsIntervention)
+                    {
+                        Terminal.WriteWarning(prep.Reason ?? "Preparacion pendiente.");
+                    }
+                }
+
+                return await HandleSlashAsync(slash, assessmentService, stateStore, llmClient, session);
+            }
+
+            if (route is FreeIntentionRoute free && !string.IsNullOrWhiteSpace(free.Intention))
+            {
+                // Bootstrap de dependencias (Ollama) antes de ejecutar el agente.
+                var bootstrap = await RunBootstrapAsync(progress: null, shutdownCts.Token);
+                if (!bootstrap.Ready)
+                {
+                    RenderBootstrapFailure(bootstrap);
+                    return 1;
+                }
+
+                // Intencion natural en una sola linea: se entrega al motor agente,
+                // que ya ejecuta su propia preparacion interna y actua con herramientas.
+                return await AgentCommand.ExecuteAsync(
+                    new AgentService(stateStore, assessmentService, session: session),
+                    args,
+                    shutdownCts.Token);
+            }
+
+            // Texto vacio: presentar el flujo interactivo.
+            return await RunInteractiveAsync(assessmentService, stateStore, llmClient, session, shutdownCts.Token);
+        }
+        finally
         {
-            // Intencion natural en una sola linea: se entrega al motor agente,
-            // que ya ejecuta su propia preparacion interna y actua con herramientas.
-            return await AgentCommand.ExecuteAsync(
-                new AgentService(stateStore, assessmentService, confirmation: PromptIfInteractive(args)),
-                args,
-                CancellationToken.None);
+            // Shutdown unico: libera la sesion del proveedor (keep_alive=0) y
+            // asegura que el modelo no queda retenido en RAM. Tolerante a errores.
+            await session.ReleaseAsync();
         }
-
-        // Texto vacio: presentar el flujo interactivo.
-        return await RunInteractiveAsync(assessmentService, stateStore, llmClient);
     }
 
     private static async Task<int> RunInteractiveAsync(
         IAssessmentService assessmentService,
         IStateStore stateStore,
-        ILlmClient llmClient)
+        ILlmClient llmClient,
+        LocalModelSession session,
+        System.Threading.CancellationToken shutdownToken)
     {
         // Preparacion automatica con feedback visual continuo y honesto: desde
         // el arranque hasta el prompt muestra las etapas reales (recursos,
@@ -99,9 +153,20 @@ public static class Program
         presenter.Start();
         var bridge = new StartupProgressObserverBridge(presenter);
 
-        var prep = await PrepareOnceAsync(assessmentService, stateStore, bridge);
+        // Bootstrap de dependencias: antes del flujo normal se detecta/prepara el
+        // entorno necesario (Ollama). El usuario no debe administrar dependencias
+        // manualmente: si falta, Condor lo instala/arranca y verifica el endpoint.
+        var bootstrap = await RunBootstrapAsync(bridge, shutdownToken);
+        if (!bootstrap.Ready)
+        {
+            presenter.Stop(false);
+            RenderBootstrapFailure(bootstrap);
+            return 1;
+        }
 
-        presenter.Stop(prep.Ready, prep.Reason ?? (prep.NeedsIntervention ? "Preparacion pendiente." : "Condor esta listo."));
+        var prep = await PrepareOnceAsync(assessmentService, stateStore, session, bridge);
+
+        presenter.Stop(prep.Ready);
 
         // Sin un modelo utilizable no se muestra el prompt ni se arranca la
         // sesion: Cóndor no puede operar. Se informa el motivo y se sale.
@@ -121,12 +186,18 @@ public static class Program
         }
 
         var interpreter = new Interpreter(
-            slash => HandleSlashAsync(slash, assessmentService, stateStore, llmClient),
+            slash => HandleSlashAsync(slash, assessmentService, stateStore, llmClient, session),
             free => AgentCommand.ExecuteAsync(
-                new AgentService(stateStore, assessmentService, confirmation: PromptIfInteractive()),
+                new AgentService(stateStore, assessmentService, session: session),
                 free.Intention.Split(' ', System.StringSplitOptions.RemoveEmptyEntries | System.StringSplitOptions.TrimEntries),
-                CancellationToken.None),
-            onBeforePrompt: () => Presentation.IdentityHeader.Render(prep.Model));
+                shutdownToken),
+            onBeforePrompt: () =>
+            {
+                // Redibuja la identidad (superior e inferior) en cada punto de
+                // espera de entrada para que no desaparezca por el desplazamiento.
+                Presentation.IdentityHeader.Render(prep.Model);
+                Presentation.IdentityHeader.RenderFooter(prep.Model);
+            });
 
         Terminal.WriteDim("Escribe '/ayuda' para los comandos de control o '/salir' para terminar.");
         Terminal.WriteLine();
@@ -137,40 +208,71 @@ public static class Program
     private static async Task<StartupPrepResult> PrepareOnceAsync(
         IAssessmentService assessmentService,
         IStateStore stateStore,
+        LocalModelSession session,
         IStartupProgressObserver? progress = null)
     {
         return await new StartupPreparer(
             assessmentService,
             stateStore,
-            modelAutoSetup: new ModelAutoSetupService(stateStore, assessmentService)).RunAsync(progress);
+            modelAutoSetup: new ModelAutoSetupService(stateStore, assessmentService, httpClient: session.SharedHttpClient)).RunAsync(progress);
     }
 
     /// <summary>
-    /// Confirmador interactivo de RAM solo cuando hay una consola real (no JSON,
-    /// no entrada redirigida). En one-shot --json o con entrada redirigida no se
-    /// pregunta, para no contaminar la salida ni bloquear procesos no interactivos.
+    /// Bootstrap de dependencias (Ollama) con feedback visible y honesto. Condor
+    /// detecta, instala/arranca y verifica el server real por si solo; el usuario
+    /// no gestiona dependencias manualmente. Devuelve el resultado sin lanzar
+    /// excepciones al usuario final.
     /// </summary>
-    private static IUserConfirmation? PromptIfInteractive(string[]? args = null)
+    private static async Task<DependencyBootstrapResult> RunBootstrapAsync(
+        IStartupProgressObserver? progress,
+        System.Threading.CancellationToken cancellationToken)
     {
-        if (Console.IsInputRedirected || Console.IsOutputRedirected)
+        return await new DependencyBootstrapper().RunAsync(progress, cancellationToken);
+    }
+
+    /// <summary>
+    /// Falla de bootstrap controlada y sin stack traces: explica el estado para
+    /// que el usuario sepa que ocurrio y como proseguir, con opcion de reintento.
+    /// </summary>
+    private static void RenderBootstrapFailure(DependencyBootstrapResult bootstrap)
+    {
+        Terminal.WriteLine();
+        Terminal.WriteWarning("⚠ No se pudo dejar el entorno listo automaticamente.");
+        Terminal.WriteLine();
+        if (bootstrap.Ollama is not null)
         {
-            return null;
+            var installed = bootstrap.Ollama.Health switch
+            {
+                OllamaHealth.NotInstalled => "NOK",
+                OllamaHealth.ServerAvailable => "OK",
+                _ => "OK"
+            };
+            var server = bootstrap.Ollama.Health switch
+            {
+                OllamaHealth.ServerAvailable => "OK",
+                _ => "ERROR"
+            };
+            Terminal.WriteDim("  Ollama instalado: [" + installed + "]");
+            Terminal.WriteDim("  Ollama Server:    [" + server + "]");
         }
 
-        if (args is not null &&
-            args.Contains("--json", StringComparer.OrdinalIgnoreCase))
+        if (!string.IsNullOrWhiteSpace(bootstrap.Reason))
         {
-            return null;
+            Terminal.WriteDim("  Motivo: " + bootstrap.Reason);
         }
 
-        return new Presentation.ConsoleRamConfirmation();
+        Terminal.WriteLine();
+        Terminal.WriteDim("  Puedes [Reintentar] ejecutando 'condor /preparar' o revisar");
+        Terminal.WriteDim("  la instalacion de Ollama y volver a intentarlo.");
+        Terminal.WriteLine();
     }
 
     private static async Task<int> HandleSlashAsync(
         SlashRoute route,
         IAssessmentService assessmentService,
         IStateStore stateStore,
-        ILlmClient llmClient)
+        ILlmClient llmClient,
+        LocalModelSession session)
     {
         var args = route.Arguments;
 
@@ -186,14 +288,14 @@ public static class Program
             SlashCommandKind.Verificar => await VerifyCommand.ExecuteAsync(
                 new VerificationService(stateStore), stateStore, args, CancellationToken.None),
             SlashCommandKind.Examinar => await ExamineCommand.ExecuteAsync(
-                new VisionService(stateStore), stateStore, args, CancellationToken.None),
+                new VisionService(stateStore, session: session), stateStore, args, CancellationToken.None),
             SlashCommandKind.Recomendar => await RecommendCommand.ExecuteAsync(stateStore, args, CancellationToken.None),
             SlashCommandKind.Consultar => await AskCommand.ExecuteAsync(llmClient, stateStore, args, CancellationToken.None),
             SlashCommandKind.VerificarSemantico => await CheckCommand.ExecuteAsync(
                 new SemanticVerificationService(stateStore), stateStore, args, CancellationToken.None),
             SlashCommandKind.Preparar => await PrepareCommand.ExecuteAsync(
                 new SetupService(stateStore, assessmentService),
-                new ModelAutoSetupService(stateStore, assessmentService),
+                new ModelAutoSetupService(stateStore, assessmentService, httpClient: session.SharedHttpClient),
                 args,
                 CancellationToken.None),
             SlashCommandKind.Avanzar => await AdvanceCommand.ExecuteAsync(
@@ -269,29 +371,22 @@ public static class Program
 
     private static void RenderWelcome(StartupPrepResult prep)
     {
-        // El banner de arranque (CONDOR / Observa·Comprende·Planifica·Construye·
-        // Verifica) ya lo mostro el presentador de arranque; aqui se muestra el
-        // build interno y el estado del entorno, antes de la invitacion al prompt.
-        Terminal.WriteDim(VersionInfo.DisplayName);
+        // La interfaz normal es minimalista: modelo, una instruccion y la barra
+        // de identidad inferior (que se dibuja junto al prompt). Nada de build
+        // interno, patrocinios, ni etapas internas.
         if (!string.IsNullOrWhiteSpace(prep.Model))
         {
-            Terminal.WriteSuccess("Modelo local listo: " + prep.Model);
+            Terminal.WriteDim("Modelo local: " + prep.Model);
         }
-        else if (!string.IsNullOrWhiteSpace(prep.Reason) && !prep.NeedsIntervention)
+        else if (!string.IsNullOrWhiteSpace(prep.Reason))
         {
-            Terminal.WriteDim("  " + prep.Reason);
+            // Nota gris y breve (p. ej. RAM baja) cuando la sesion arranca igual.
+            Terminal.WriteDim(prep.Reason);
         }
+
         Terminal.WriteLine();
-
-        if (prep.NeedsIntervention && !string.IsNullOrWhiteSpace(prep.Reason))
-        {
-            Terminal.WriteWarning("  " + prep.Reason);
-        }
-
-        Terminal.WriteDim("Escribe libremente lo que necesitas, por ejemplo:");
-        Terminal.WriteDim("  'revisa por que no compila este proyecto'");
-        Terminal.WriteDim("  'crea una pagina web sencilla para este proyecto'");
-        Terminal.WriteDim("  'continua el desarrollo de esta aplicacion'");
+        Terminal.WriteDim("Escribe lo que necesitas y Condor se encarga del resto.");
+        Terminal.WriteLine();
     }
 
     private static void RenderHelp()
