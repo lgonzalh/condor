@@ -13,5 +13,6 @@
   </Folder>
   <Folder Name="/Tests/Unit/">
     <Project Path="Tests/Unit/Condor.Core.Tests/Condor.Core.Tests.csproj" />
+    <Project Path="Tests/Unit/Condor.Cli.Tests/Condor.Cli.Tests.csproj" />
   </Folder>
 </Solution>

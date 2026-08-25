@@ -1,0 +1,374 @@
+using System.Text.RegularExpressions;
+using Condor.Cli.Tui;
+using Condor.Core.Models;
+
+namespace Condor.Cli.Tests;
+
+/// <summary>
+/// Identidad de la TUI: la mascota oficial y la leyenda institucional son parte
+/// fija e invariante de la interfaz (T-018).
+/// </summary>
+public class IdentidadTuiTests
+{
+    [Fact]
+    public void Leyenda_institucional_EsParteFijaDeLaCabecera()
+    {
+        var field = typeof(TuiHost).GetField("IdentityLine",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        var value = field?.GetValue(null) as string;
+
+        Assert.Equal("Hecho en Colombia · Modo Local 100%", value);
+    }
+
+    [Fact]
+    public void Mascota_AveV16_ConservaGeometria_Y_CorrigeContrasteOscuro()
+    {
+        Assert.Equal(13, CondorArt.Ave.Length);
+
+        // La cabeza terracota (167) y el gris medio del prototipo (242) permanecen.
+        Assert.Contains(CondorArt.Ave, row => row.Contains("\u001b[38;5;167m"));
+        Assert.Contains(CondorArt.Ave, row => row.Contains("\u001b[38;5;242m"));
+        Assert.Contains(CondorArt.Ave, row => row.Contains("\u001b[97m"));
+
+        // Las zonas antes en negro puro (232) usan ahora la escala oscura aprobada
+        // (#272727=235 / #2A2D30=236 / #111315=233): combinacion de varios tonos.
+        Assert.DoesNotContain(CondorArt.Ave, row => row.Contains("\u001b[38;5;232m"));
+        Assert.Contains(CondorArt.Ave, row => row.Contains("\u001b[38;5;235m"));
+        Assert.Contains(CondorArt.Ave, row => row.Contains("\u001b[38;5;236m"));
+        Assert.Contains(CondorArt.Ave, row => row.Contains("\u001b[38;5;233m"));
+    }
+
+    [Fact]
+    public void Mascota_Grande_DerivaDeLaRejillaOficialDelSvg()
+    {
+        Assert.Equal(12, CondorArt.Grande.Length);
+
+        // Toda fila conserva el ancho de 15 columnas (sin escalado).
+        Assert.All(CondorArt.Grande, row => Assert.Equal(15, Ansi.VisibleWidth(row)));
+
+        // Cabeza terracota (167), collar blanco (255) y pico dorado con fondo.
+        Assert.Contains(CondorArt.Grande, row => row.Contains("38;5;167"));
+        Assert.Contains(CondorArt.Grande, row => row.Contains("38;5;255"));
+        Assert.Contains(CondorArt.Grande, row => row.Contains("38;5;179") && row.Contains("48;5;167"));
+        Assert.Contains(CondorArt.Grande, row => row.Contains("38;5;179") && row.Contains("48;5;255"));
+
+        // El cuerpo usa la escala oscura aprobada con volumen (#454546/#272727/#111315).
+        Assert.Contains(CondorArt.Grande, row => row.Contains("38;5;238"));
+        Assert.Contains(CondorArt.Grande, row => row.Contains("38;5;235"));
+        Assert.Contains(CondorArt.Grande, row => row.Contains("38;5;233"));
+        // Ya no existe negro puro en el cuerpo del Grande.
+        Assert.DoesNotContain(CondorArt.Grande, row => row.Contains("38;5;232") || row.Contains("30m"));
+    }
+}
+
+/// <summary>
+/// Estados honestos: cada texto deriva del estado real del sistema y explica
+/// QUE se esta verificando o haciendo (nada de "Verificando..." ambiguo).
+/// </summary>
+public class EstadosHonestosTests
+{
+    [Theory]
+    [InlineData(StartupStage.VerifyingOllamaServer, "Verificando disponibilidad de Ollama Server")]
+    [InlineData(StartupStage.VerifyingModel, "Verificando modelo obtenido")]
+    [InlineData(StartupStage.DownloadingModel, "Descargando modelo")]
+    [InlineData(StartupStage.SelectingModel, "Seleccionando modelo adecuado para el equipo")]
+    [InlineData(StartupStage.ReviewingResources, "Revisando recursos del equipo")]
+    public void Estado_de_arranque_ExplicaLaOperacionReal(StartupStage stage, string esperado)
+    {
+        Assert.Equal(esperado, TuiStartupView.StageEstado(stage));
+    }
+
+    [Fact]
+    public void Estado_de_agente_Verificacion_NombraSuObjeto()
+    {
+        var estado = TuiAgentProgressView.PhaseEstado(AgentProgress.Of(AgentPhase.Verifying));
+        Assert.Equal("Verificando resultado de los cambios", estado);
+    }
+
+    [Fact]
+    public void Estado_de_agente_Observacion_IncluyeAccionYRuta()
+    {
+        var estado = TuiAgentProgressView.PhaseEstado(
+            AgentProgress.Of(AgentPhase.Observing, action: "list_dir", path: "Src"));
+        Assert.Equal("Observando el proyecto (list_dir Src)", estado);
+    }
+
+    [Fact]
+    public void Estado_de_agente_ErrorDeProveedor_SeExpresaClaro()
+    {
+        var estado = TuiAgentProgressView.PhaseEstado(
+            AgentProgress.Of(AgentPhase.Finalizing, flag: ProgressFlag.ProviderError));
+        Assert.Equal("El proveedor local no esta disponible ahora", estado);
+    }
+}
+
+/// <summary>
+/// Fotogramas de la pantalla persistente generados por el pintor real
+/// (seam interno sin consola): estructura, regiones e identidad visibles.
+/// </summary>
+public class FotogramasTuiTests
+{
+    /// <summary>Rejilla 110x34 del fotograma (los marcos usan posicionamiento absoluto).</summary>
+    private static string[] Grid(string frame)
+    {
+        const int cols = 110;
+        const int rows = 34;
+        var g = new char[rows][];
+        for (var r = 0; r < rows; r++)
+        {
+            g[r] = new string(' ', cols).ToCharArray();
+        }
+
+        var row = 0;
+        var col = 0;
+        for (var i = 0; i < frame.Length; i++)
+        {
+            if (frame[i] == '\u001b' && i + 1 < frame.Length && frame[i + 1] == '[')
+            {
+                var j = i + 2;
+                while (j < frame.Length && !char.IsLetter(frame[j]))
+                {
+                    j++;
+                }
+
+                if (j >= frame.Length)
+                {
+                    break;
+                }
+
+                var finalChar = frame[j];
+                var body = frame.Substring(i + 2, j - i - 2);
+                if (finalChar == 'H')
+                {
+                    var p = body.Split(';');
+                    row = Math.Max(0, int.Parse(p[0]) - 1);
+                    var c = p.Length > 1 && p[1].Length > 0 ? int.Parse(p[1]) : 1;
+                    col = Math.Max(0, c - 1);
+                }
+                else if (finalChar == 'J')
+                {
+                    for (var r = 0; r < rows; r++)
+                    {
+                        g[r] = new string(' ', cols).ToCharArray();
+                    }
+                }
+                else if (finalChar == 'K')
+                {
+                    for (var c = col; c < cols; c++)
+                    {
+                        g[row][c] = ' ';
+                    }
+                }
+
+                i = j;
+                continue;
+            }
+
+            if (!char.IsControl(frame[i]) && row < rows && col < cols)
+            {
+                g[row][col] = frame[i];
+                col++;
+            }
+        }
+
+        return g.Select(line => Ansi.StripSgr(new string(line)).TrimEnd()).ToArray();
+    }
+
+    private static TuiHost HostSesion()
+    {
+        var host = new TuiHost(forceInteractive: true);
+        host.Enter();
+        host.ShowSession("qwen2.5-coder:3b");
+        return host;
+    }
+
+    [Fact]
+    public void Sesion_MuestraIdentidad_Modelo_YRegiones()
+    {
+        using var host = HostSesion();
+        host.SetEstado("En espera de tu intencion", ActivityKind.Success);
+        host.AddActivity("Entorno listo. Modo Local 100% activo.", ActivityKind.Success);
+        var grid = Grid(host.SnapshotFullFrame());
+
+        // Cabecera consolidada en UNA linea superior: identidad + modelo real,
+        // sin bloque "Modelo:/Modo:" que invada la mascota.
+        var titulo = grid[0];
+        Assert.Contains("CONDOR", titulo);
+        Assert.Contains("Hecho en Colombia · Modo Local 100% · qwen2.5-coder:3b", titulo);
+        Assert.Single(Regex.Matches(titulo, "Modo Local 100%"));
+
+        // La zona de la mascota queda libre de texto de modelo.
+        Assert.DoesNotContain(grid, line => line.Contains("Modelo:"));
+        Assert.DoesNotContain(grid, line => line.Contains("Modo:"));
+
+        // Regiones intactas.
+        Assert.Contains(grid, line => line.Contains("Conversacion / Actividad"));
+
+        // Comunicacion directa SIN titulares "Estado:"/"Progreso:".
+        Assert.DoesNotContain(grid, line => line.Contains("Estado:"));
+        Assert.DoesNotContain(grid, line => line.Contains("Progreso:"));
+        Assert.Contains(grid, line => line.Contains("En espera de tu intencion"));
+
+        // Placeholder oficial vigente.
+        Assert.Contains(grid, line => line.Contains("¿que deseas construir...?"));
+        Assert.DoesNotContain(grid, line => line.Contains("Escriba una intencion"));
+        Assert.Contains(grid, line => line.Contains("Entorno listo"));
+    }
+
+    [Fact]
+    public void Mascota_Centrada_EnSuArea()
+    {
+        using var host = HostSesion();
+        var columna = host.ColumnaMascota();
+        var anchoMascota = TuiHost.AnchoVisibleMascota();
+
+        Assert.True(anchoMascota > 0);
+        // Centrado del bloque completo en la rejilla de prueba (110 columnas).
+        Assert.Equal(((110 - anchoMascota) / 2) + 1, columna);
+        // El bloque centrado no invade la cabecera ni se sale por la derecha.
+        Assert.True(columna >= 1);
+        Assert.True(columna - 1 + anchoMascota <= 110);
+
+        // El fotograma pinta el Ave en esa misma columna (primera fila del arte).
+        var grid = Grid(host.SnapshotFullFrame());
+        var filaArte = Ansi.StripSgr(CondorArt.Ave[0]).TrimEnd();
+        if (filaArte.Length > 0)
+        {
+            var pintada = grid[1]; // fila logica 2 -> indice 1
+            var idx = pintada.IndexOf(filaArte.TrimStart(), StringComparison.Ordinal);
+            Assert.True(idx >= 0);
+            Assert.Equal(columna - 1 + (filaArte.Length - filaArte.TrimStart().Length), idx);
+        }
+    }
+
+    [Fact]
+    public void Mascota_ZonaLibre_DeTextoDeModelo()
+    {
+        using var host = HostSesion();
+        var grid = Grid(host.SnapshotFullFrame());
+
+        // Filas del area de la mascota (2..14): ninguna contiene datos de modelo.
+        for (var r = 1; r <= 13; r++)
+        {
+            Assert.DoesNotContain("qwen2.5-coder", grid[r]);
+            Assert.DoesNotContain("Modelo:", grid[r]);
+            Assert.DoesNotContain("Modo:", grid[r]);
+        }
+    }
+
+    [Fact]
+    public void Cabecera_Modelo_Dinamico_SigueAlModeloReal()
+    {
+        using var host = HostSesion();
+        host.SetEstado("x");
+
+        host.SetModel("qwen2.5-coder:0.5b");
+        var conMedio = Grid(host.SnapshotFullFrame())[0];
+        Assert.Contains("· qwen2.5-coder:0.5b", conMedio);
+
+        host.SetModel("qwen2.5-coder:3b");
+        var conOtro = Grid(host.SnapshotFullFrame())[0];
+        Assert.Contains("· qwen2.5-coder:3b", conOtro);
+        Assert.DoesNotContain("qwen2.5-coder:0.5b", conOtro);
+    }
+
+    [Fact]
+    public void Sesion_EnMarcha_MuestraEstadoRealDeVerificacion()
+    {
+        using var host = HostSesion();
+        var view = new TuiAgentProgressView(host);
+        view.Start("hola");
+        view.Report(AgentProgress.Of(AgentPhase.Verifying, iteration: 2));
+        var frame = Ansi.StripSgr(host.SnapshotFullFrame());
+
+        Assert.Contains("Verificando resultado de los cambios", frame);
+        Assert.Contains("Iteracion 2", frame);
+        Assert.Contains("Condor esta trabajando", frame);
+    }
+
+    [Fact]
+    public void Bienvenida_PresentaMascotaGrande()
+    {
+        var host = new TuiHost(forceInteractive: true);
+        host.Enter();
+        host.ShowWelcome();
+        var frame = Ansi.StripSgr(host.SnapshotFullFrame());
+
+        // La mascota Grande ocupa su bloque completo en la bienvenida y la
+        // identidad institucional aparece bajo ella.
+        Assert.Contains("CONDOR", frame);
+        Assert.Contains("Observa · Comprende · Planifica · Construye · Verifica", frame);
+        Assert.Contains("Hecho en Colombia · Modo Local 100%", frame);
+    }
+
+    [Fact]
+    public void Bienvenida_SinTitularesEstadoProgreso()
+    {
+        var host = new TuiHost(forceInteractive: true);
+        host.Enter();
+        host.ShowWelcome();
+        host.SetEstado("Preparando dependencias locales");
+        host.SetProgreso("etapa 1/5");
+        var frame = Ansi.StripSgr(host.SnapshotFullFrame());
+
+        // La comunicacion es directa, sin titulares artificiales.
+        Assert.DoesNotContain("Estado:", frame);
+        Assert.DoesNotContain("Progreso:", frame);
+        Assert.Contains("Preparando dependencias locales", frame);
+        Assert.Contains("etapa 1/5", frame);
+    }
+}
+
+/// <summary>
+/// Comentarios del usuario (-texto-): se distinguen de instrucciones/comandos
+/// y nunca se interpretan como tarea a ejecutar (T-018).
+/// </summary>
+public class ComentariosUsuarioTests
+{
+    [Theory]
+    [InlineData("-asi de esta manera-")]
+    [InlineData("-nota interna-")]
+    [InlineData("-a-")]
+    public void TextoEntreGuiones_EsComentario(string texto)
+    {
+        Assert.True(CondorTui.EsComentarioUsuario(texto));
+    }
+
+    [Theory]
+    [InlineData("hola")]
+    [InlineData("/ayuda")]
+    [InlineData("/salir")]
+    [InlineData("-")]
+    [InlineData("--")]
+    [InlineData("---")]
+    [InlineData("")]
+    [InlineData("a-")]
+    [InlineData("-a")]
+    [InlineData("texto normal -con guion- dentro")]
+    public void OtrosTextos_NoSonComentario(string texto)
+    {
+        Assert.False(CondorTui.EsComentarioUsuario(texto));
+    }
+
+    [Fact]
+    public void Nulo_NoEsComentario()
+    {
+        Assert.False(CondorTui.EsComentarioUsuario(null!));
+    }
+}
+
+public class UtilidadesAnsiTests
+{
+    [Fact]
+    public void StripSgr_DejaSoloTextoVisible()
+    {
+        var text = "\u001b[38;5;167m▄▄\u001b[0m hola";
+        Assert.Equal("▄▄ hola", Ansi.StripSgr(text));
+    }
+
+    [Fact]
+    public void VisibleWidth_IgnoraSecuencias()
+    {
+        Assert.Equal(4, Ansi.VisibleWidth("\u001b[97m████\u001b[0m"));
+    }
+}

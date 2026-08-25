@@ -19,6 +19,7 @@ public sealed class ModelAutoSetupService : IModelAutoSetupService
     private readonly ModelSetupLimits _limits;
     private readonly OllamaModelOperator _operator;
     private readonly ModelKardex _kardex = new();
+    private bool _assessmentCached;
 
     public ModelAutoSetupService(
         IStateStore stateStore,
@@ -36,11 +37,14 @@ public sealed class ModelAutoSetupService : IModelAutoSetupService
     public async Task<ModelSelectionResult> EnsureModelAsync(
         string? purpose = null,
         CancellationToken cancellationToken = default,
-        IStartupProgressObserver? progress = null)
+        IStartupProgressObserver? progress = null,
+        AssessmentResult? cachedAssessment = null)
     {
         // Seleccion clasica (misma comportamiento previo) para el arranque y usos
         // que no requieren el harness por tarea. Conserva la regresion existente.
-        var assessment = await _stateStore.LoadAssessmentAsync(cancellationToken);
+        // Si se proporciona un assessment cacheado (ejecutado una sola vez en el
+        // bootstrap), se reutiliza para evitar repetir la deteccion secuencial.
+        var assessment = cachedAssessment ?? await _stateStore.LoadAssessmentAsync(cancellationToken);
 
         if (assessment is null && _assessmentService is not null)
         {
@@ -48,7 +52,12 @@ public sealed class ModelAutoSetupService : IModelAutoSetupService
             await _stateStore.SaveAssessmentAsync(assessment, cancellationToken);
         }
 
-        var authoritativeAssessment = await LoadAuthoritativeAssessmentAsync(assessment, cancellationToken);
+        // Con assessment cacheado, no es necesario ejecutar LoadAuthoritativeAssessmentAsync
+        // (que realizaria otra ejecucion completa de AssessmentService.ExecuteAsync).
+        _assessmentCached = cachedAssessment is not null;
+        var authoritativeAssessment = cachedAssessment is not null
+            ? assessment
+            : await LoadAuthoritativeAssessmentAsync(assessment, cancellationToken);
 
         var selection = ModelSelector.RecommendFromCatalog(authoritativeAssessment, ModelCatalog.Default);
 
@@ -282,6 +291,14 @@ public sealed class ModelAutoSetupService : IModelAutoSetupService
     private async Task RefreshAssessmentAsync(CancellationToken cancellationToken)
     {
         if (_assessmentService is null)
+        {
+            return;
+        }
+
+        // Si se proporciono un assessment cacheado en EnsureModelAsync, no es
+        // necesario refrescar: el assessment ya esta actualizado. Esto evita
+        // ejecuciones redundantes de los 6+ detectores secuenciales.
+        if (_assessmentCached)
         {
             return;
         }

@@ -27,6 +27,7 @@ public class OllamaHealthChecker
 
     private readonly OllamaDetector _detector;
     private readonly string _apiBase;
+    private static readonly HttpClient SharedHttp = new() { Timeout = TimeSpan.FromMilliseconds(DefaultProbeTimeoutMilliseconds) };
 
     public OllamaHealthChecker(OllamaDetector? detector = null, string? apiBase = null)
     {
@@ -55,8 +56,7 @@ public class OllamaHealthChecker
     {
         try
         {
-            using var http = new HttpClient { Timeout = TimeSpan.FromMilliseconds(DefaultProbeTimeoutMilliseconds) };
-            var version = await http.GetFromJsonAsync<OllamaVersionCheck>(_apiBase + "/api/version", cancellationToken);
+            var version = await SharedHttp.GetFromJsonAsync<OllamaVersionCheck>(_apiBase + "/api/version", cancellationToken);
             return !string.IsNullOrWhiteSpace(version?.Version);
         }
         catch

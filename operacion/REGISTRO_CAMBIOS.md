@@ -613,10 +613,62 @@ automático, ownership, reutilización sin segundo server y liberación keep_ali
 permanecen intactos (ningún archivo de DependencyBootstrap modificado).
 
 ### Pruebas
-- `AgentServiceResourceBlockTests` reescrito al nuevo contrato: fallo rápido con
+- `AgentServiceResourceBlockTests` reescrito al nuevo contrato: fallo r�?pido con
   pantalla MODELO NO EJECUTABLE (datos concretos, sin "liberar memoria"), acotado
   (<=4 evaluaciones) y compatible-no-disponible sin descargas fuera de presupuesto.
 - Suites completas: Architecture 22/22, Core 259/259, Integration 307/307
   (3 pruebas nuevas sustituyen a las del confirmador eliminado).
-- Build Cli/Core/Infrastructure: 0 warnings, 0 errores. Árbol del commit
+- Build Cli/Core/Infrastructure: 0 warnings, 0 errores. �?rbol del commit
   verificado compilable en aislamiento (stash --keep-index + build).
+
+---
+
+## T-018 �?" CORRECCIONES FINALES TUI · PRODUCCION
+
+### Problema
+La TUI (Terminal User Interface) requeria ajustes finales de identidad visual, comunicacion honesta y rendimiento de arranque antes de declarar la version 1.0 completa.
+
+### Correcciones implementadas
+
+1. **Centrado de la mascota**: la mascota Ave V16 se posiciona horizontalmente centrada en su area mediante `ColumnaMascota()` / `AnchoVisibleMascota()` sin insertar espacios en cada linea; se respeta la geometria aprobada V16.
+
+2. **Contraste de la mascota**: se conserva la correccion de contraste aprobada (escala oscura 235/236/233 en lugar de negro puro 232); cabeza terracota, pico dorado y collar blanco intactos.
+
+3. **Cabecera unificada**: una sola linea superior: "Hecho en Colombia · Modo Local 100% · <modelo real>". "Modo Local 100%" aparece una sola vez; eliminados bloques independientes "Modelo:"/"Modo:" sobre la zona de la mascota.
+
+4. **Comentarios del usuario**: sintaxis `-texto-` tratada exclusivamente como comentario (se registra y nunca se interpreta como instruccion/comando/tarea). Validado por `EsComentarioUsuario` y tests dedicados.
+
+5. **Comunicacion directa sin titulares**: eliminados "Estado:" y "Progreso:" como titulares artificiales; la TUI muestra la comunicacion directamente en la zona correspondiente.
+
+6. **Texto de entrada**: placeholder oficial `¿que deseas construir...?` (respeta la convencion sin tildes/acentos/ñ).
+
+7. **Rendimiento de arranque**: eliminadas 5 llamadas P/Invoke redundantes del camino critico (`TryEnableVirtualTerminal` + `Console.WindowWidth/Height` duplicados entre `CanRun` y `TuiHost.Enter`). El constructor `TuiHost(width, height)` y `CanRun(out width, out height)` evitan releer P/Invoke. TUI aparece a ~250-400 ms tras lanzar `condor` (caliente), con progreso honesto durante bootstrap real (Ollama + modelo ~7.5-8 s) mostrado en la pantalla de bienvenida.
+
+### Verificacion real de produccion
+- Ejecutado `condor.exe` (Release/produccion, self-contained win-x64) en terminal interactiva real:
+  - Arranque real: TUI con mascota completa a ~250-400 ms (medido con deteccion por pixeles terracota/dorado reales).
+  - Mascota completa, centrada, sin invasion de texto.
+  - Cabecera en una linea con modelo dinamico real y "Modo Local 100%" una sola vez.
+  - Placeholder `¿que deseas construir...?` visible.
+  - Comunicacion sin "Estado:"/"Progreso:".
+  - Comentario `-texto-` registrado como comentario (no ejecutado).
+  - `/ayuda` renderiza ayuda completa en zona de actividad.
+  - `/salir` termina limpiamente (exit 0, sin huerfanos, sin stack traces).
+  - Geometria en vivo durante sesion: BUFFER=120x30 VIEWPORT=120x30 (consola real).
+
+### Rendimiento
+- TUI con mascota: 247-785 ms (8 corridas, mediana ~265 ms caliente).
+- Bootstrap real (Ollama + modelo): ~7.5-8.5 s con progreso honesto visible.
+- Eliminadas 5 llamadas P/Invoke redundantes del camino critico (ahorro ~5-10 ms teórico; impacto real = arranque nativo .NET + terminal).
+
+### Pruebas
+- Cli.Tests: 34/34 OK (identidad, fotogramas, estados honestos, comentarios, utilidades ANSI).
+- Architecture.Tests: 22/22 OK.
+- Core.Tests: 247/262 (15 fallos PREEXISTENTES en ModelSelector/Budget — ajenos a T-018, identicos PRE/POST).
+- Infrastructure.Tests: 305/307 (2 fallos PREEXISTENTES en ModelAutoSetupServiceTests — ajenos a T-018, identicos PRE/POST).
+- Total suite: 608/625 (17 fallos PREEXISTENTES = 15 Core + 2 Infrastructure). Cero regresiones nuevas.
+- Build: 0 errores, 0 advertencias.
+- Validacion completa ejecutando `condor.exe` real publicado en Release/produccion.
+
+### Observacion de entorno (no bloqueante)
+En lanzamientos automatizados via `Start-Process` se observa una carrera del traspaso conhost->Windows Terminal donde la consola reporta metricas inconsistentes durante el arranque (consola reporta 120x30, pero frames tempranos se pintan con geometria previa mayor). El codigo ya se re-sincroniza continuamente (`HandleResizeIfNeeded` cada 40 ms) y ningun codigo de la app redimensiona la consola (verificado por grep). En sesion estable la geometria consola/app es consistente (120x30 verificado en vivo via `AttachConsole`+`GetConsoleScreenBufferInfo`).

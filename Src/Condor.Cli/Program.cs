@@ -80,6 +80,14 @@ public static class Program
 
             if (args.Length == 0)
             {
+                // Experiencia TUI persistente cuando hay terminal interactiva con
+                // VT y tamano suficiente; en otro caso, la CLI clasica establecida
+                // (redireccion de E/S para E2E/pipelines queda intacta).
+                if (Tui.CondorTui.CanRun(out var tuiWidth, out var tuiHeight))
+                {
+                    return await Tui.CondorTui.RunAsync(assessmentService, stateStore, session, shutdownCts.Token, tuiWidth, tuiHeight);
+                }
+
                 return await RunInteractiveAsync(assessmentService, stateStore, llmClient, session, shutdownCts.Token);
             }
 
@@ -156,7 +164,7 @@ public static class Program
         // Bootstrap de dependencias: antes del flujo normal se detecta/prepara el
         // entorno necesario (Ollama). El usuario no debe administrar dependencias
         // manualmente: si falta, Condor lo instala/arranca y verifica el endpoint.
-        var bootstrap = await RunBootstrapAsync(bridge, shutdownToken);
+        var bootstrap = await RunBootstrapAsync(bridge, shutdownToken, assessmentService);
         if (!bootstrap.Ready)
         {
             presenter.Stop(false);
@@ -164,7 +172,7 @@ public static class Program
             return 1;
         }
 
-        var prep = await PrepareOnceAsync(assessmentService, stateStore, session, bridge);
+        var prep = await PrepareOnceAsync(assessmentService, stateStore, session, bridge, bootstrap.Assessment);
 
         presenter.Stop(prep.Ready);
 
@@ -209,12 +217,13 @@ public static class Program
         IAssessmentService assessmentService,
         IStateStore stateStore,
         LocalModelSession session,
-        IStartupProgressObserver? progress = null)
+        IStartupProgressObserver? progress = null,
+        AssessmentResult? cachedAssessment = null)
     {
         return await new StartupPreparer(
             assessmentService,
             stateStore,
-            modelAutoSetup: new ModelAutoSetupService(stateStore, assessmentService, httpClient: session.SharedHttpClient)).RunAsync(progress);
+            modelAutoSetup: new ModelAutoSetupService(stateStore, assessmentService, httpClient: session.SharedHttpClient)).RunAsync(progress, cachedAssessment: cachedAssessment);
     }
 
     /// <summary>
@@ -225,9 +234,10 @@ public static class Program
     /// </summary>
     private static async Task<DependencyBootstrapResult> RunBootstrapAsync(
         IStartupProgressObserver? progress,
-        System.Threading.CancellationToken cancellationToken)
+        System.Threading.CancellationToken cancellationToken,
+        IAssessmentService? assessmentService = null)
     {
-        return await new DependencyBootstrapper().RunAsync(progress, cancellationToken);
+        return await new DependencyBootstrapper(assessmentService: assessmentService).RunAsync(progress, cancellationToken);
     }
 
     /// <summary>
@@ -267,7 +277,8 @@ public static class Program
         Terminal.WriteLine();
     }
 
-    private static async Task<int> HandleSlashAsync(
+    /// <summary>Enrutado de comandos "/" compartido por la CLI clasica y la TUI.</summary>
+    internal static async Task<int> HandleSlashAsync(
         SlashRoute route,
         IAssessmentService assessmentService,
         IStateStore stateStore,
@@ -354,10 +365,10 @@ public static class Program
     private static void RenderStartupFailure(string? reason)
     {
         Terminal.WriteLine();
-        Terminal.WriteWarning("⚠ Cóndor no puede iniciar.");
+        Terminal.WriteWarning("Condor no puede iniciar.");
         Terminal.WriteLine();
         Terminal.WriteDim("  No hay modelos locales disponibles.");
-        Terminal.WriteDim("  Se intentó preparar un modelo compatible, pero no fue posible.");
+        Terminal.WriteDim("  Se intento preparar un modelo compatible, pero no fue posible.");
         Terminal.WriteLine();
         if (!string.IsNullOrWhiteSpace(reason))
         {
@@ -376,7 +387,7 @@ public static class Program
         // interno, patrocinios, ni etapas internas.
         if (!string.IsNullOrWhiteSpace(prep.Model))
         {
-            Terminal.WriteDim("Modelo local: " + prep.Model);
+            Terminal.WriteDim("Modelo local listo: " + prep.Model);
         }
         else if (!string.IsNullOrWhiteSpace(prep.Reason))
         {
@@ -405,26 +416,37 @@ public static class Program
         Terminal.WriteLine("  condor <tu intencion>        Ejecuta la intencion con el motor agente.");
         Terminal.WriteLine();
         Terminal.WriteLine("Comandos de control (con /):");
-        Terminal.WriteLine("  /analizar                    Analiza el proyecto o directorio actual.");
-        Terminal.WriteLine("  /contexto                    Reconstruye el contexto del proyecto.");
-        Terminal.WriteLine("  /planear \"<solicitud>\"       Genera un plan de trabajo.");
-        Terminal.WriteLine("  /construir                   Aplica los cambios del plan.");
-        Terminal.WriteLine("  /verificar                   Comprueba los cambios aplicados.");
-        Terminal.WriteLine("  /avanzar \"<solicitud>\"        Ejecuta el ciclo de ingenieria parcial.");
-        Terminal.WriteLine("  /examinar \"<imagen>\"         Analiza una imagen localmente.");
-        Terminal.WriteLine("  /recomendar \"<tipo>\"         Recomienda un modelo para el equipo.");
-        Terminal.WriteLine("  /consultar \"<mensaje>\"       Consulta al modelo local.");
-        Terminal.WriteLine("  /verificar-semantico         Compila y ejecuta las pruebas del proyecto.");
-        Terminal.WriteLine("  /preparar                    Refresca la preparacion del entorno.");
-        Terminal.WriteLine("  /ayuda                       Muestra esta ayuda.");
-        Terminal.WriteLine("  /version                     Muestra la version.");
-        Terminal.WriteLine("  /salir                       Termina la sesion interactiva.");
+        WriteHelpCommand("/analizar", "Analiza el proyecto o directorio actual.");
+        WriteHelpCommand("/contexto", "Reconstruye el contexto del proyecto.");
+        WriteHelpCommand("/planear \"<solicitud>\"", "Genera un plan de trabajo.");
+        WriteHelpCommand("/construir", "Aplica los cambios del plan.");
+        WriteHelpCommand("/verificar", "Comprueba los cambios aplicados.");
+        WriteHelpCommand("/avanzar \"<solicitud>\"", "Ejecuta el ciclo de ingenieria parcial.");
+        WriteHelpCommand("/examinar \"<imagen>\"", "Analiza una imagen localmente.");
+        WriteHelpCommand("/recomendar \"<tipo>\"", "Recomienda un modelo para el equipo.");
+        WriteHelpCommand("/consultar \"<mensaje>\"", "Consulta al modelo local.");
+        WriteHelpCommand("/verificar-semantico", "Compila y ejecuta las pruebas del proyecto.");
+        WriteHelpCommand("/preparar", "Refresca la preparacion del entorno.");
+        WriteHelpCommand("/ayuda", "Muestra esta ayuda.");
+        WriteHelpCommand("/version", "Muestra la version.");
+        WriteHelpCommand("/salir", "Termina la sesion interactiva.");
         Terminal.WriteLine();
         Terminal.WriteLine("Contracciones:");
-        Terminal.WriteLine("  -v, --version                Muestra la version.");
-        Terminal.WriteLine("  -h, --help                   Muestra esta ayuda.");
+        WriteHelpCommand("-v, --version", "Muestra la version.");
+        WriteHelpCommand("-h, --help", "Muestra esta ayuda.");
         Terminal.WriteLine();
         Terminal.WriteDim("No necesitas conocer modelos, herramientas, fases internas ni rutas.");
         Terminal.WriteDim("Escribe lo que necesitas y Condor se encarga del resto.");
+    }
+
+    private static void WriteHelpCommand(string command, string description)
+    {
+        var useColor = Terminal.UseColor;
+        var reset = "\u001b[0m";
+        var bold = "\u001b[1m";
+        var dim = "\u001b[2m";
+        var cmd = useColor ? bold + command + reset : command;
+        var desc = useColor ? dim + description + reset : description;
+        Console.WriteLine("  " + cmd.PadRight(useColor ? command.Length + 10 : 28) + " " + desc);
     }
 }

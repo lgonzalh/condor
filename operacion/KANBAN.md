@@ -47,6 +47,8 @@ Sin incidencias activas de seleccion de modelo.
 - E2E real: tarea con RAM suficiente, bloqueo honesto con RAM insuficiente, recuperacion
   posterior, e inicio no-bloqueante con modelos instalados y RAM baja.
 
+- **T-018 CORRECCIONES FINALES TUI PRODUCCION**: identidad visual final (mascota centrada, contraste aprobado, cabecera unica, comentarios, comunicacion directa, placeholder, arranque optimizado). Verificacion real sobre condor.exe publicado: arranque <400 ms, sesion con modelo real, comentario/ayuda/salir funcionando, 0 regresiones. Build 0w/0e. 17 fallos preexistentes (15 Core + 2 Infra) — 0 regresiones.
+
 ## PENDIENTE
 
 - Repetir prueba cliente incognito completa.

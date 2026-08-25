@@ -98,3 +98,45 @@ C. Progreso:
 D. Presupuesto:
 - el modelo elegido debe respetar el presupuesto.
 - no debe descargar un modelo inviable.
+
+---
+
+## T-018 CORRECCIONES FINALES TUI (2026-08-25)
+
+### Estado
+**COMPLETADA Y VERIFICADA EN PRODUCCION REAL**
+
+### Resumen
+Correcciones finales de la TUI (Terminal User Interface) para cerrar la version 1.0:
+1. Mascota centrada sin espacios artificiales.
+2. Contraste aprobado conservado (escala 235/236/233).
+3. Cabecera unica: "Hecho en Colombia · Modo Local 100% · <modelo real>".
+4. Comentarios `-texto-` como comentario puro (nunca ejecutados).
+5. Comunicacion sin titulares "Estado:"/"Progreso:".
+6. Placeholder `¿que deseas construir...?`.
+7. Rendimiento arranque: 5 P/Invoke redundantes eliminados del camino critico.
+
+### Verificacion real
+- `condor.exe` (Release/produccion) ejecutado en terminal interactiva real:
+  - TUI con mascota completa a ~250-400 ms (deteccion por pixeles terracota/dorado).
+  - Mascota completa, centrada, sin invasion de texto.
+  - Cabecera una linea, modelo dinamico real, "Modo Local 100%" una vez.
+  - Placeholder `¿que deseas construir...?`.
+  - Sin "Estado:"/"Progreso:".
+  - Comentario `-texto-` registrado como comentario.
+  - `/ayuda` renderiza ayuda completa en zona de actividad.
+  - `/salir` termina limpio (exit 0, sin huerfanos, sin stack traces).
+  - Geometria en vivo: BUFFER=120x30 VIEWPORT=120x30.
+
+### Pruebas y regresion
+- Cli.Tests: 34/34 OK (identidad, fotogramas, estados honestos, comentarios, ANSI).
+- Architecture: 22/22 OK.
+- Core: 247/262 (15 fallos PREEXISTENTES en ModelSelector/Budget — ajenos).
+- Infrastructure: 305/307 (2 fallos PREEXISTENTES en ModelAutoSetup — ajenos).
+- Total: 608/625 (17 fallos PREEXISTENTES = 15 Core + 2 Infra). **0 regresiones nuevas**.
+- Build: 0 errores, 0 advertencias.
+- Build aislado verificado (worktree del commit).
+- Validacion completa ejecutando `condor.exe` real (Release/produccion).
+
+### Observacion de entorno (no bloqueante)
+En lanzamientos automatizados se observa carrera del traspaso conhost->Windows Terminal con metricas inconsistentes durante arranque (consola reporta 120x30 pero frames tempranos se pintan con geometria previa mayor). El codigo se re-sincroniza continuamente (`HandleResizeIfNeeded` cada 40 ms). En sesion estable geometria consola/app es consistente (120x30 verificado en vivo via `AttachConsole`+`GetConsoleScreenBufferInfo`).

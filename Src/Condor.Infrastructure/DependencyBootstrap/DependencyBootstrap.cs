@@ -21,10 +21,14 @@ namespace Condor.Infrastructure.DependencyBootstrap;
 public sealed class DependencyBootstrapper
 {
     private readonly OllamaProvisioner _ollamaProvisioner;
+    private readonly IAssessmentService? _assessmentService;
 
-    public DependencyBootstrapper(OllamaProvisioner? ollamaProvisioner = null)
+    public DependencyBootstrapper(
+        OllamaProvisioner? ollamaProvisioner = null,
+        IAssessmentService? assessmentService = null)
     {
         _ollamaProvisioner = ollamaProvisioner ?? new OllamaProvisioner();
+        _assessmentService = assessmentService;
     }
 
     /// <summary>
@@ -40,12 +44,29 @@ public sealed class DependencyBootstrapper
         var ollama = await _ollamaProvisioner.ProvisionAsync(progress, cancellationToken);
         Step(progress, StartupStage.BootstrappingDependencies, "Dependencias verificadas.", isCompleted: true);
 
+        // Ejecutar una unica vez el assessment completo (detectores de hardware,
+        // Ollama, etc.) para que los componentes posteriores (StartupPreparer,
+        // ModelAutoSetupService) no lo repitan innecesariamente.
+        AssessmentResult? assessment = null;
+        if (_assessmentService is not null)
+        {
+            try
+            {
+                assessment = await _assessmentService.ExecuteAsync(new AssessmentRequest(), cancellationToken);
+            }
+            catch
+            {
+                // Si falla, los componentes posteriores manejan su propio fallback.
+            }
+        }
+
         return new DependencyBootstrapResult
         {
             Ready = ollama.Ok,
             Ollama = ollama,
             Reason = ollama.Ok ? null : ollama.Reason,
-            Diagnostic = ollama.Diagnostic
+            Diagnostic = ollama.Diagnostic,
+            Assessment = assessment
         };
     }
 
@@ -64,4 +85,11 @@ public sealed class DependencyBootstrapResult
 
     /// <summary>Detalle tecnico para log/diagnostico (no UI).</summary>
     public string? Diagnostic { get; init; }
+
+    /// <summary>
+    /// Assessment completo ejecutado una sola vez durante el bootstrap.
+    /// Los componentes posteriores lo reutilizan para evitar repetir la
+    /// deteccion secuencial de hardware (6+ detectores).
+    /// </summary>
+    public AssessmentResult? Assessment { get; init; }
 }

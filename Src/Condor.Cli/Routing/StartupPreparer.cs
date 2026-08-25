@@ -22,6 +22,7 @@ public sealed class StartupPreparer
     private readonly IStateStore _stateStore;
     private readonly ISetupService? _setup;
     private readonly IModelAutoSetupService? _modelAutoSetup;
+    private AssessmentResult? _cachedAssessment;
 
     public StartupPreparer(
         IAssessmentService assessment,
@@ -36,7 +37,7 @@ public sealed class StartupPreparer
     }
 
     /// <summary>
-    /// Detecta y deja preparado el entorno: evalúa hardware, RAM libre,
+    /// Detecta y deja preparado el entorno: evalua hardware, RAM libre,
     /// almacenamiento, GPU, Ollama y modelos, selecciona el modelo mas adecuado
     /// para la tarea/equipo y lo reutiliza u obtiene cuando es viable. Emite
     /// etapas reales de progreso (opcional) para reflejar que Condor esta
@@ -47,9 +48,11 @@ public sealed class StartupPreparer
     /// </summary>
     public async Task<StartupPrepResult> RunAsync(
         IStartupProgressObserver? progress = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        AssessmentResult? cachedAssessment = null)
     {
-        var assessment = await _stateStore.LoadAssessmentAsync(cancellationToken);
+        var assessment = cachedAssessment ?? await _stateStore.LoadAssessmentAsync(cancellationToken);
+        _cachedAssessment = cachedAssessment; // solo cacheamos si fue proporcionado explicitamente (bootstrap live), no del store
 
         // Analizando el entorno: siempre se reporta actividad real mientras Condor
         // observa los recursos (RAM, almacenamiento, Ollama). Con assessment previo
@@ -89,7 +92,7 @@ public sealed class StartupPreparer
 
         progress?.Report(StartupProgress.Of(StartupStage.ReviewingResources, completed: true));
         progress?.Report(StartupProgress.Of(StartupStage.EvaluatingModels));
-        var selection = await _modelAutoSetup.EnsureModelAsync(null, cancellationToken, progress);
+        var selection = await _modelAutoSetup.EnsureModelAsync(null, cancellationToken, progress, cachedAssessment: assessment);
         progress?.Report(StartupProgress.Of(StartupStage.EvaluatingModels, completed: true));
         var model = await ResolveReadyModelAsync(selection, cancellationToken);
 
@@ -159,14 +162,14 @@ public sealed class StartupPreparer
             var pressure = selection.Resources?.PressureLabel ?? "insuficiente";
             var message = "No hay ningun modelo viable para este equipo: " + pressure + " de recursos. " +
                           "Se evaluo el presupuesto seguro sin intentar cargas repetidas. " +
-                          "Libera memoria u obtén un modelo mas pequeno e intenta de nuevo con 'condor /preparar'.";
+                          "Libera memoria u obtenga un modelo mas pequeno e intenta de nuevo con 'condor /preparar'.";
             return string.IsNullOrWhiteSpace(full) ? message : message + " " + full;
         }
 
         if (string.IsNullOrWhiteSpace(reason))
         {
             return "No hay modelos locales disponibles y no fue posible obtener uno compatible automaticamente. " +
-                   "Verifica la conexión y que Ollama este activo, luego reintenta con 'condor /preparar'.";
+                   "Verifica la conexion y que Ollama este activo, luego reintenta con 'condor /preparar'.";
         }
 
         return reason;
@@ -190,7 +193,9 @@ public sealed class StartupPreparer
 
         try
         {
-            var live = await _assessment.ExecuteAsync(new AssessmentRequest(), cancellationToken);
+            // Reutilizar el assessment cacheado cuando este disponible; en caso
+            // contrario ejecutar una unica sondea live contra Ollama.
+            var live = _cachedAssessment ?? await _assessment.ExecuteAsync(new AssessmentRequest(), cancellationToken);
             var names = live.Tools?.Ollama?.Models?.Select(m => m.Name) ?? Enumerable.Empty<string>();
             return names.Any(n => n.Equals(expected, StringComparison.OrdinalIgnoreCase) ||
                                   n.EndsWith(":" + expected.Split(':').Last(), StringComparison.OrdinalIgnoreCase))
@@ -218,7 +223,8 @@ public sealed class StartupPreparer
     {
         try
         {
-            var live = await _assessment.ExecuteAsync(new AssessmentRequest(), cancellationToken);
+            // Reutilizar el assessment cacheado cuando este disponible.
+            var live = _cachedAssessment ?? await _assessment.ExecuteAsync(new AssessmentRequest(), cancellationToken);
             return live.Tools?.Ollama?.Models is { Count: > 0 };
         }
         catch
@@ -241,7 +247,7 @@ public sealed class StartupPreparer
             ? "RAM libre " + resources.FreeGb.ToString("0.0") + " GB · presupuesto seguro " + resources.SafeBudgetGb.ToString("0.0") + " GB · " + resources.PressureLabel + "."
             : "RAM disponible momentaneamente insuficiente.";
         return "Hay modelos instalados, pero la RAM libre actual no alcanza el presupuesto seguro para cargarlos ahora (" + detail + "). " +
-               "Cóndor arranco la sesion igualmente: decidira el modelo adecuado en cada tarea y lo cargara con una recuperacion acotada al liberarse memoria. " +
+               "Condor arranco la sesion igualmente: decidira el modelo adecuado en cada tarea y lo cargara con una recuperacion acotada al liberarse memoria. " +
                "Opcional: para liberar RAM puedes cerrar aplicaciones/procesos de alto consumo; no es obligatorio para continuar.";
     }
 }

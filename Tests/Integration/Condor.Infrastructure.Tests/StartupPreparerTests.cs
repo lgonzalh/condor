@@ -281,7 +281,7 @@ public class StartupPreparerTests
     {
         private readonly ModelSelectionResult _result;
         public StubModelAutoSetup(ModelSelectionResult result) => _result = result;
-        public Task<ModelSelectionResult> EnsureModelAsync(string? purpose = null, CancellationToken ct = default, IStartupProgressObserver? progress = null)
+        public Task<ModelSelectionResult> EnsureModelAsync(string? purpose = null, CancellationToken ct = default, IStartupProgressObserver? progress = null, AssessmentResult? cachedAssessment = null)
             => Task.FromResult(_result);
     }
 
