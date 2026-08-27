@@ -1,25 +1,27 @@
+using System;
+
 namespace Condor.Cli.Presentation;
 
 /// <summary>
 /// Zona de identidad de Condor en la interfaz interactiva. La identidad tiene
 /// DOS elementos permanentes y diferenciados:
 ///
-///   * Superior: "Condor" + eslogan + directorio de trabajo.
-///   * Inferior: "Â©Condor - <modelo local> - <tiempo>". El Â© solo aparece aqui.
+///   * Superior: "Condor" + eslogan + directorio de trabajo (Render). Sin ©.
+///   * Inferior: barra de identidad fija (©Condor · > dir · * modelo · estado · versión),
+///     implementada por CliStatusBar y redibujada en cada punto de espera de
+///     entrada y al final de cada respuesta. El © SOLO aparece en el pie.
 ///
 /// La cabecera superior se redibuja en cada punto de espera de entrada para que
-/// no desaparezca por el desplazamiento de la terminal; el pie inferior
-/// acompana esa misma redibujado para mantener la barra de identidad.
+/// no desaparezca por el desplazamiento; el pie (CliStatusBar) acompaña esa misma
+/// redibujado para mantener la barra de identidad.
 /// </summary>
 public static class IdentityHeader
 {
-    private static readonly DateTime SessionStart = DateTime.Now;
-
-    /// <summary>Barra superior: marca + eslogan + directorio, sin Â©.</summary>
+    /// <summary>Barra superior: marca + eslogan + directorio, sin ©.</summary>
     public static void Render(string? realModel, string? workingDirectory = null)
     {
         Terminal.WriteWhite("Condor");
-        Terminal.WriteDim("Observa Â· Comprende Â· Planifica Â· Construye Â· Verifica");
+        Terminal.WriteDim("Observa · Comprende · Planifica · Construye · Verifica");
         var dir = !string.IsNullOrWhiteSpace(workingDirectory)
             ? workingDirectory
             : Environment.CurrentDirectory;
@@ -27,16 +29,9 @@ public static class IdentityHeader
         Terminal.WriteDim("------------------------------------------------------");
     }
 
-    /// <summary>Barra inferior: Â©Condor - <modelo> - <tiempo>. El Â© solo aqui.</summary>
-    public static void RenderFooter(string? realModel)
+    /// <summary>Barra inferior fija: ©Condor · > dir · * modelo · estado · versión. El © SOLO aqui.</summary>
+    public static void RenderFooter(string? realModel, string? workingDirectory = null, string estado = "Entorno listo", bool failed = false)
     {
-        var model = string.IsNullOrWhiteSpace(realModel) ? "modelo local" : realModel;
-        Terminal.WriteWhite("Â©Condor - " + model + " - " + SessionElapsed());
-    }
-
-    private static string SessionElapsed()
-    {
-        var s = (DateTime.Now - SessionStart).TotalSeconds;
-        return s < 1 ? "0 s" : s.ToString("0.0") + " s";
+        CliStatusBar.RenderFooter(realModel, workingDirectory, estado, failed);
     }
 }

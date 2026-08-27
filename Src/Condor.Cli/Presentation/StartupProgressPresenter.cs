@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Condor.Core.Models;
 
@@ -12,6 +12,10 @@ namespace Condor.Cli.Presentation;
 /// la linea de estado se reescribe. Barra de progreso SOLO con porcentaje real
 /// de descarga reportado por Ollama; nunca inventa porcentajes. Degrada a lineas
 /// simples si la salida esta redirigida (p. ej. captura de E2E).
+///
+/// Las etiquetas provienen del origen unico de etiquetas (T-019): la CLI ya no
+/// mantiene su propia copia de etiquetas, por lo que la salida redirigida y la
+/// linea de estado usan el mismo texto honesto que la TUI.
 /// </summary>
 public sealed class StartupProgressPresenter : IStartupProgressView, IDisposable
 {
@@ -75,7 +79,7 @@ public sealed class StartupProgressPresenter : IStartupProgressView, IDisposable
                 // Salida redirigida (captura de E2E / pipelines): lineas sobrias,
                 // cada etapa terminada una sola vez y la etapa en curso solo cuando
                 // cambia (etapa o ~1% de descarga) para no inundar la salida.
-                if (progress.Completed && _finalizedStages.Add(StageCompletedLabel(progress.Stage)))
+                if (progress.Completed && _finalizedStages.Add(AgentProgressLabels.StageCompletedLabel(progress.Stage)))
                 {
                     Console.WriteLine(CompletedLine(progress));
                 }
@@ -96,7 +100,7 @@ public sealed class StartupProgressPresenter : IStartupProgressView, IDisposable
             // actividad persistente; la linea de estado muestra la etapa en curso.
             if (progress.Completed)
             {
-                if (_finalizedStages.Add(StageCompletedLabel(progress.Stage)))
+                if (_finalizedStages.Add(AgentProgressLabels.StageCompletedLabel(progress.Stage)))
                 {
                     _screen.ArchiveLine(CompletedLine(progress));
                 }
@@ -140,114 +144,32 @@ public sealed class StartupProgressPresenter : IStartupProgressView, IDisposable
     private string ActiveLine(StartupProgress p)
     {
         var frame = _screen.Interactive ? SpinnerFrames[_spin % SpinnerFrames.Length] : "_";
-        var time = "  " + FormatElapsed(DateTime.Now - _startedAt);
+        var time = "  " + AgentProgressLabels.FormatElapsed(DateTime.Now - _startedAt);
 
         if (p.DownloadPercent is { } percent)
         {
-            var bar = BuildBar(percent);
-            return "  " + frame + " [" + StageTag(p.Stage) + "] " + StageLabel(p.Stage) + "... " + bar + " " + FormatPercent(percent) + time;
+            var bar = AgentProgressLabels.BuildBar(percent);
+            return "  " + frame + " [" + AgentProgressLabels.StageTag(p.Stage) + "] " + AgentProgressLabels.StageLabel(p.Stage) + "... " + bar + " " + AgentProgressLabels.FormatPercent(percent) + time;
         }
 
-        return "  " + frame + " [" + StageTag(p.Stage) + "] " + StageLabel(p.Stage) + "... " + (p.Message ?? "") + time;
+        return "  " + frame + " [" + AgentProgressLabels.StageTag(p.Stage) + "] " + AgentProgressLabels.StageLabel(p.Stage) + "... " + (p.Message ?? "") + time;
     }
 
     private string CompactLine(StartupProgress p)
     {
-        var time = "  " + FormatElapsed(DateTime.Now - _startedAt);
+        var time = "  " + AgentProgressLabels.FormatElapsed(DateTime.Now - _startedAt);
         if (p.DownloadPercent is { } percent)
         {
-            return "  [" + StageTag(p.Stage) + "] " + StageLabel(p.Stage) + "... " + FormatPercent(percent) + time;
+            return "  [" + AgentProgressLabels.StageTag(p.Stage) + "] " + AgentProgressLabels.StageLabel(p.Stage) + "... " + AgentProgressLabels.FormatPercent(percent) + time;
         }
-        return "  [" + StageTag(p.Stage) + "] " + StageLabel(p.Stage) + "... " + (p.Message ?? "") + time;
+        return "  [" + AgentProgressLabels.StageTag(p.Stage) + "] " + AgentProgressLabels.StageLabel(p.Stage) + "... " + (p.Message ?? "") + time;
     }
 
     private string CompletedLine(StartupProgress p)
     {
-        var label = StageCompletedLabel(p.Stage);
+        var label = AgentProgressLabels.StageCompleted(p.Stage);
         var message = string.IsNullOrWhiteSpace(p.Message) ? "" : ": " + p.Message;
-        return "  " + Check + " [" + StageTag(p.Stage) + "] " + label + message;
-    }
-
-    private static string BuildBar(double percent)
-    {
-        const int width = 10;
-        var filled = (int)Math.Floor(percent / 100.0 * width);
-        if (filled < 0) filled = 0;
-        if (filled > width) filled = width;
-        return new string('█', filled) + new string('░', width - filled);
-    }
-
-    private static string FormatPercent(double percent)
-    {
-        return Math.Round(percent) + "%";
-    }
-
-    private static string FormatElapsed(TimeSpan el)
-    {
-        return el.TotalHours >= 1
-            ? string.Format("{0:00}:{1:00}:{2:00}", (int)el.TotalHours, el.Minutes, el.Seconds)
-            : string.Format("{0:00}:{1:00}", el.Minutes, el.Seconds);
-    }
-
-    /// <summary>Estado operacional real por etapa (nunca un generico sin detalle).</summary>
-    private static string StageTag(StartupStage stage)
-    {
-        return stage switch
-        {
-            StartupStage.PreparingEnvironment => "ENTORNO",
-            StartupStage.ReviewingResources => "MEMORIA",
-            StartupStage.DetectingOllama => "OLLAMA",
-            StartupStage.BootstrappingDependencies => "ENTORNO",
-            StartupStage.InstallingOllama => "OLLAMA",
-            StartupStage.StartingOllamaServer => "OLLAMA",
-            StartupStage.VerifyingOllamaServer => "OLLAMA",
-            StartupStage.EvaluatingModels => "MODELO",
-            StartupStage.SelectingModel => "MODELO",
-            StartupStage.DownloadingModel => "MODELO",
-            StartupStage.VerifyingModel => "VERIFICACION",
-            StartupStage.Ready => "DECISION",
-            _ => "ENTORNO"
-        };
-    }
-
-    private static string StageLabel(StartupStage stage)
-    {
-        return stage switch
-        {
-            StartupStage.PreparingEnvironment => "Preparando entorno",
-            StartupStage.ReviewingResources => "Revisando recursos",
-            StartupStage.DetectingOllama => "Detectando Ollama",
-            StartupStage.BootstrappingDependencies => "Preparando dependencias",
-            StartupStage.InstallingOllama => "Instalando Ollama",
-            StartupStage.StartingOllamaServer => "Iniciando Ollama Server",
-            StartupStage.VerifyingOllamaServer => "Verificando Ollama Server",
-            StartupStage.EvaluatingModels => "Evaluando modelos",
-            StartupStage.SelectingModel => "Seleccionando modelo",
-            StartupStage.DownloadingModel => "Descargando modelo",
-            StartupStage.VerifyingModel => "Verificando modelo",
-            StartupStage.Ready => "Entorno listo",
-            _ => "Preparando"
-        };
-    }
-
-    private static string StageCompletedLabel(StartupStage stage)
-    {
-        return stage switch
-        {
-            StartupStage.PreparingEnvironment => "Entorno preparado",
-            StartupStage.ReviewingResources => "Recursos detectados",
-            StartupStage.DetectingOllama => "Ollama disponible",
-            StartupStage.BootstrappingDependencies => "Dependencias preparadas",
-            StartupStage.InstallingOllama => "Ollama instalado",
-            StartupStage.StartingOllamaServer => "Ollama Server iniciado",
-            StartupStage.VerifyingOllamaServer => "Ollama Server disponible",
-            StartupStage.EvaluatingModels => "Modelos evaluados",
-            StartupStage.SelectingModel => "Modelo seleccionado",
-            StartupStage.DownloadingModel => "Modelo descargado",
-            StartupStage.VerifyingModel => "Modelo verificado",
-            StartupStage.Ready => "Entorno listo",
-            _ => "Entorno listo"
-        };
+        return "  " + Check + " [" + AgentProgressLabels.StageTag(p.Stage) + "] " + label + message;
     }
 
     public void Dispose()

@@ -1,4 +1,4 @@
-using Condor.Cli.Presentation;
+﻿using Condor.Cli.Presentation;
 using Condor.Core.Contracts;
 using Condor.Core.Models;
 using Condor.Core.Serialization;
@@ -49,13 +49,19 @@ public static class AgentCommand
             }
             else
             {
-                var finalLine = result.Success
-                    ? (IsInformational(result) ? "Condor termino." : "Cambios verificados.")
-                    : "Condor no pudo completar la tarea.";
-                presenter?.Stop(result.Success, finalLine);
+                // El cierre visual lo hace AgentProgressPresenter (solo separacion);
+                // el resultado real lo renderiza AgentRenderer. No se muestra aqui
+                // ningun mensaje de debug ("Condor termino.").
+                presenter?.Stop(result.Success);
 
                 Terminal.WriteLine();
                 AgentRenderer.RenderResult(result, elapsed);
+
+                // Barra de identidad fija tras la respuesta (T-020 P2): el © aparece
+                // SOLO en el pie de pagina, nunca en la cabecera superior. Refleja el
+                // estado real de la respuesta y persiste hasta el proximo prompt.
+                CliStatusBar.RenderFooter(result.Model, Environment.CurrentDirectory,
+                    result.Success ? "Listo" : "Error", !result.Success);
             }
 
             return result.Success ? 0 : 1;
@@ -65,9 +71,6 @@ public static class AgentCommand
             presenter?.Dispose();
         }
     }
-
-    private static bool IsInformational(AgentResult result)
-        => result.Checkpoint?.LastDecision == "describir";
 
     private static string BuildIntent(string[] args, bool outputJson)
     {

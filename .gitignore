@@ -18,3 +18,11 @@ TestResults/
 # Editor
 .idea/
 .vscode/
+
+# Artefactos sueltos de desarrollo TUI/CLI (T-019/T-020)
+/Release/
+/publish/
+err_cli.txt
+out_cli.txt
+validacion_tui.*
+=0

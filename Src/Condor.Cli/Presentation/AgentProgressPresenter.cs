@@ -1,4 +1,4 @@
-using Condor.Core.Contracts;
+﻿using Condor.Core.Contracts;
 using Condor.Core.Models;
 
 namespace Condor.Cli.Presentation;
@@ -10,6 +10,10 @@ namespace Condor.Cli.Presentation;
 /// operacion concreta, mensaje y tiempo transcurrido). Sin porcentajes
 /// inventados y sin redibujados de bloque que peleaban por el cursor. Degrada a
 /// lineas compactas deduplicadas si la salida esta redirigida (pipelines/E2E).
+///
+/// Estado concreto: proviene del origen unico de etiquetas (T-019); la CLI ya no
+/// mantiene su propia copia de fase/etiqueta, por lo que la linea de progreso del
+/// modo interactivo y la de salida redirigida usan el mismo texto honesto que la TUI.
 /// </summary>
 public sealed class AgentProgressPresenter : IAgentProgressView, IDisposable
 {
@@ -24,6 +28,7 @@ public sealed class AgentProgressPresenter : IAgentProgressView, IDisposable
     private bool _started;
 
     private AgentProgress? _current;
+    private string? _lastRedirectedLine;
 
     public AgentProgressPresenter() : this(TuiScreen.Shared)
     {
@@ -74,8 +79,6 @@ public sealed class AgentProgressPresenter : IAgentProgressView, IDisposable
         }
     }
 
-    private string? _lastRedirectedLine;
-
     public void Stop(bool success, string? finalLine = null)
     {
         lock (_gate)
@@ -105,7 +108,24 @@ public sealed class AgentProgressPresenter : IAgentProgressView, IDisposable
         }
     }
 
-    private string Elapsed() => FormatElapsed(DateTime.Now - _startedAt);
+    private string StatusLine(string icon, AgentProgress? p, string elapsed)
+    {
+        var pp = p ?? AgentProgress.Of(AgentPhase.Understanding);
+        var sb = new System.Text.StringBuilder();
+        sb.Append("  ").Append(icon).Append(" [").Append(AgentProgressLabels.PhaseTag(pp.Phase))
+            .Append("] ").Append(AgentProgressLabels.PhaseEstado(pp));
+        // Estado concreto: si hay mensaje, SIEMPRE se muestra (nunca una fase
+        // generica sin detalle). Es lo que hace honesta la espera o el bloqueo.
+        if (!string.IsNullOrWhiteSpace(pp.Message))
+        {
+            sb.Append(" - ").Append(pp.Message);
+        }
+
+        sb.Append(' ').Append(elapsed);
+        return sb.ToString();
+    }
+
+    private string Elapsed() => AgentProgressLabels.FormatElapsed(DateTime.Now - _startedAt);
 
     private static string Icon(AgentProgress p, bool interactive)
     {
@@ -114,61 +134,6 @@ public sealed class AgentProgressPresenter : IAgentProgressView, IDisposable
             ProgressFlag.Recovering => "!",
             ProgressFlag.ProviderError => "X",
             _ => interactive ? Frames[0] : "·"
-        };
-    }
-
-    private static string StatusLine(string icon, AgentProgress? p, string elapsed)
-    {
-        var sb = new System.Text.StringBuilder();
-        sb.Append("  ").Append(icon).Append(" [" + PhaseTag(p?.Phase ?? AgentPhase.Understanding) + "] ")
-          .Append(PhaseLabel(p?.Phase ?? AgentPhase.Understanding));
-        // Estado concreto: si hay mensaje, SIEMPRE se muestra (nunca una fase
-        // generica sin detalle). Es lo que hace honesta la espera o el bloqueo.
-        if (!string.IsNullOrWhiteSpace(p?.Message))
-        {
-            sb.Append(" - ").Append(p.Message);
-        }
-        if (!string.IsNullOrWhiteSpace(p?.Action) && !string.IsNullOrWhiteSpace(p.Path))
-        {
-            sb.Append(' ').Append(p.Path);
-        }
-        sb.Append(' ').Append(elapsed);
-        return sb.ToString();
-    }
-
-    private static string FormatElapsed(TimeSpan el)
-    {
-        return el.TotalHours >= 1
-            ? string.Format("{0:00}:{1:00}:{2:00}", (int)el.TotalHours, el.Minutes, el.Seconds)
-            : string.Format("{0:00}:{1:00}", el.Minutes, el.Seconds);
-    }
-
-    /// <summary>Estado operacional real por fase del agente.</summary>
-    private static string PhaseTag(AgentPhase phase)
-    {
-        return phase switch
-        {
-            AgentPhase.Understanding => "SOLICITUD",
-            AgentPhase.Observing => "AGENTE",
-            AgentPhase.Analyzing => "AGENTE",
-            AgentPhase.Building => "AGENTE",
-            AgentPhase.Verifying => "VERIFICACION",
-            AgentPhase.Finalizing => "RESPUESTA",
-            _ => "AGENTE"
-        };
-    }
-
-    private static string PhaseLabel(AgentPhase phase)
-    {
-        return phase switch
-        {
-            AgentPhase.Understanding => "Comprendiendo",
-            AgentPhase.Observing => "Observando",
-            AgentPhase.Analyzing => "Analizando",
-            AgentPhase.Building => "Construyendo",
-            AgentPhase.Verifying => "Verificando",
-            AgentPhase.Finalizing => "Finalizando",
-            _ => "Trabajando"
         };
     }
 
