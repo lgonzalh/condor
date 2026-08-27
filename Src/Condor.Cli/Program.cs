@@ -203,7 +203,7 @@ public static class Program
             {
                 // Redibuja la identidad (superior e inferior) en cada punto de
                 // espera de entrada para que no desaparezca por el desplazamiento.
-                Presentation.IdentityHeader.Render(prep.Model);
+                Presentation.IdentityHeader.Render(prep.Model, Environment.CurrentDirectory);
                 Presentation.IdentityHeader.RenderFooter(prep.Model);
             });
 
@@ -382,9 +382,8 @@ public static class Program
 
     private static void RenderWelcome(StartupPrepResult prep)
     {
-        // La interfaz normal es minimalista: modelo, una instruccion y la barra
-        // de identidad inferior (que se dibuja junto al prompt). Nada de build
-        // interno, patrocinios, ni etapas internas.
+        // La interfaz normal es minimalista: modelo, directorio, una instruccion
+        // y la barra de identidad inferior (que se dibuja junto al prompt).
         if (!string.IsNullOrWhiteSpace(prep.Model))
         {
             Terminal.WriteDim("Modelo local listo: " + prep.Model);
@@ -395,6 +394,7 @@ public static class Program
             Terminal.WriteDim(prep.Reason);
         }
 
+        Terminal.WriteDim("Directorio de trabajo: " + Environment.CurrentDirectory);
         Terminal.WriteLine();
         Terminal.WriteDim("Escribe lo que necesitas y Condor se encarga del resto.");
         Terminal.WriteLine();

@@ -4,30 +4,34 @@ namespace Condor.Cli.Presentation;
 /// Zona de identidad de Condor en la interfaz interactiva. La identidad tiene
 /// DOS elementos permanentes y diferenciados:
 ///
-///   * Superior: "Condor" + eslogan. Sin ©.
-///   * Inferior: "©Condor - &lt;modelo local&gt; - &lt;tiempo&gt;". El © solo aparece aqui.
+///   * Superior: "Condor" + eslogan + directorio de trabajo.
+///   * Inferior: "©Condor - <modelo local> - <tiempo>". El © solo aparece aqui.
 ///
 /// La cabecera superior se redibuja en cada punto de espera de entrada para que
 /// no desaparezca por el desplazamiento de la terminal; el pie inferior
-/// acompaña esa misma redibujado para mantener la barra de identidad.
+/// acompana esa misma redibujado para mantener la barra de identidad.
 /// </summary>
 public static class IdentityHeader
 {
     private static readonly DateTime SessionStart = DateTime.Now;
 
-    /// <summary>Barra superior: marca + eslogan, sin ©.</summary>
-    public static void Render(string? realModel)
+    /// <summary>Barra superior: marca + eslogan + directorio, sin ©.</summary>
+    public static void Render(string? realModel, string? workingDirectory = null)
     {
-        Terminal.WriteBlue("Condor");
+        Terminal.WriteWhite("Condor");
         Terminal.WriteDim("Observa · Comprende · Planifica · Construye · Verifica");
+        var dir = !string.IsNullOrWhiteSpace(workingDirectory)
+            ? workingDirectory
+            : Environment.CurrentDirectory;
+        Terminal.WriteDim("> " + dir);
         Terminal.WriteDim("------------------------------------------------------");
     }
 
-    /// <summary>Barra inferior: ©Condor - &lt;modelo&gt; - &lt;tiempo&gt;. El © solo aqui.</summary>
+    /// <summary>Barra inferior: ©Condor - <modelo> - <tiempo>. El © solo aqui.</summary>
     public static void RenderFooter(string? realModel)
     {
         var model = string.IsNullOrWhiteSpace(realModel) ? "modelo local" : realModel;
-        Terminal.WriteBlue("©Condor - " + model + " - " + SessionElapsed());
+        Terminal.WriteWhite("©Condor - " + model + " - " + SessionElapsed());
     }
 
     private static string SessionElapsed()

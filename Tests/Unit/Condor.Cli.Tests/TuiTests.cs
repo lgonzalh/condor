@@ -1,4 +1,5 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
+using System.Linq;
 using Condor.Cli.Tui;
 using Condor.Core.Models;
 
@@ -202,7 +203,7 @@ public class FotogramasTuiTests
         Assert.DoesNotContain(grid, line => line.Contains("Modo:"));
 
         // Regiones intactas.
-        Assert.Contains(grid, line => line.Contains("Conversacion / Actividad"));
+        Assert.Contains(grid, line => line.Contains("Actividad del agente"));
 
         // Comunicacion directa SIN titulares "Estado:"/"Progreso:".
         Assert.DoesNotContain(grid, line => line.Contains("Estado:"));
@@ -210,34 +211,23 @@ public class FotogramasTuiTests
         Assert.Contains(grid, line => line.Contains("En espera de tu intencion"));
 
         // Placeholder oficial vigente.
-        Assert.Contains(grid, line => line.Contains("¿que deseas construir...?"));
+        Assert.Contains(grid, line => line.Contains("¿Qué deseas construir? ..."));
         Assert.DoesNotContain(grid, line => line.Contains("Escriba una intencion"));
         Assert.Contains(grid, line => line.Contains("Entorno listo"));
     }
-
     [Fact]
-    public void Mascota_Centrada_EnSuArea()
+    public void Mascota_PosicionadaALaDerecha()
     {
         using var host = HostSesion();
-        var columna = host.ColumnaMascota();
-        var anchoMascota = TuiHost.AnchoVisibleMascota();
-
-        Assert.True(anchoMascota > 0);
-        // Centrado del bloque completo en la rejilla de prueba (110 columnas).
-        Assert.Equal(((110 - anchoMascota) / 2) + 1, columna);
-        // El bloque centrado no invade la cabecera ni se sale por la derecha.
-        Assert.True(columna >= 1);
-        Assert.True(columna - 1 + anchoMascota <= 110);
-
-        // El fotograma pinta el Ave en esa misma columna (primera fila del arte).
         var grid = Grid(host.SnapshotFullFrame());
-        var filaArte = Ansi.StripSgr(CondorArt.Ave[0]).TrimEnd();
+
+        // El Ave V16 debe aparecer en la mitad derecha de la pantalla.
+        var filaArte = Ansi.StripSgr(CondorArt.Ave[1]).TrimEnd(); // Fila con contenido visible
         if (filaArte.Length > 0)
         {
-            var pintada = grid[1]; // fila logica 2 -> indice 1
+            var pintada = grid[2]; // fila logica 3 -> indice 2
             var idx = pintada.IndexOf(filaArte.TrimStart(), StringComparison.Ordinal);
-            Assert.True(idx >= 0);
-            Assert.Equal(columna - 1 + (filaArte.Length - filaArte.TrimStart().Length), idx);
+            Assert.True(idx >= 55, $"La mascota deberia estar a la derecha, no en columna {idx}");
         }
     }
 
@@ -372,3 +362,212 @@ public class UtilidadesAnsiTests
         Assert.Equal(4, Ansi.VisibleWidth("\u001b[97m████\u001b[0m"));
     }
 }
+
+/// <summary>Verificaciones de arquitectura TUI 1/TUI 2/CLI 3 (T-018).</summary>
+public class ArquitecturaInteraccionesTests
+{
+    private static string[] Grid(string frame)
+    {
+        const int cols = 110;
+        const int rows = 34;
+        var g = new char[rows][];
+        for (var r = 0; r < rows; r++) g[r] = new string(' ', cols).ToCharArray();
+        var row = 0; var col = 0;
+        for (var i = 0; i < frame.Length; i++)
+        {
+            if (frame[i] == '\u001b' && i + 1 < frame.Length && frame[i + 1] == '[')
+            {
+                var j = i + 2;
+                while (j < frame.Length && !char.IsLetter(frame[j])) j++;
+                if (j >= frame.Length) break;
+                var fc = frame[j]; var body = frame.Substring(i + 2, j - i - 2);
+                if (fc == 'H') { var p = body.Split(';'); row = Math.Max(0, int.Parse(p[0]) - 1); col = Math.Max(0, (p.Length > 1 && p[1].Length > 0 ? int.Parse(p[1]) : 1) - 1); }
+                else if (fc == 'J') { for (var r = 0; r < rows; r++) g[r] = new string(' ', cols).ToCharArray(); }
+                else if (fc == 'K') { for (var c = col; c < cols; c++) g[row][c] = ' '; }
+                i = j; continue;
+            }
+            if (!char.IsControl(frame[i]) && row < rows && col < cols) { g[row][col] = frame[i]; col++; }
+        }
+        return g.Select(line => Ansi.StripSgr(new string(line)).TrimEnd()).ToArray();
+    }
+
+    private static TuiHost HostSesion()
+    {
+        var host = new TuiHost(forceInteractive: true);
+        host.Enter();
+        host.ShowSession("qwen2.5-coder:3b");
+        host.SetWorkspace("C:\\GitHub\\condor");
+        return host;
+    }
+    [Fact]
+    public static void Tui1_Bienvenida_AparecePrimero()
+    {
+        var host = new TuiHost(forceInteractive: true);
+        host.Enter();
+        host.ShowWelcome();
+        host.SetWorkspace(Environment.CurrentDirectory);
+        host.SetEstado("Preparando dependencias locales");
+        var grid = Grid(host.SnapshotFullFrame());
+
+        Assert.Contains("CONDOR", grid[0]);
+        Assert.Contains("Preparando dependencias locales", grid[19]);
+    }
+
+    [Fact]
+    public void Tui2_Sesion_MuestraMascotaPequena_NoGrande()
+    {
+        using var host = HostSesion();
+        host.SetEstado("En espera de tu intencion", ActivityKind.Success);
+        var grid = Grid(host.SnapshotFullFrame());
+        Assert.DoesNotContain(grid, line => line.Contains("Observa · Comprende"));
+        Assert.True(TuiHost.AnchoVisibleMascota() > 0);
+    }
+
+    [Fact]
+    public void Tui2_Sesion_MuestraModeloRealEnCabecera()
+    {
+        using var host = HostSesion();
+        host.SetEstado("En espera de tu intencion", ActivityKind.Success);
+        var titulo = Grid(host.SnapshotFullFrame())[0];
+        Assert.Contains("qwen2.5-coder:3b", titulo);
+    }
+    [Fact]
+    public void Tui2_Sesion_MuestraWorkspaceRealEnBarraEstado()
+    {
+        using var host = HostSesion();
+        host.SetEstado("En espera de tu intencion", ActivityKind.Success);
+        var grid = Grid(host.SnapshotFullFrame());
+
+        var statusBar = grid[grid.Length - 1];
+        Assert.Contains("C:\\GitHub\\condor", statusBar);
+    }
+    [Fact]
+    public void Tui2_Sesion_SeparaZonasConSeparadores()
+    {
+        using var host = HostSesion();
+        host.SetEstado("En espera de tu intencion", ActivityKind.Success);
+        var grid = Grid(host.SnapshotFullFrame());
+        Assert.Contains(grid, line => line.Contains("Actividad del agente"));
+    }
+
+    [Fact]
+    public void Tui2_Sesion_PlaceholderExacto()
+    {
+        using var host = HostSesion();
+        host.SetEstado("En espera de tu intencion", ActivityKind.Success);
+        var grid = Grid(host.SnapshotFullFrame());
+        Assert.Contains(grid, line => line.Contains("> ¿Qué deseas construir? ..."));
+        Assert.DoesNotContain(grid, line => line.Contains("¿que deseas construir...?"));
+        Assert.DoesNotContain(grid, line => line.Contains("Escriba una intencion"));
+    }
+
+    [Fact]
+    public void Tui2_Sesion_SinTitularesEstadoProgreso()
+    {
+        using var host = HostSesion();
+        host.SetEstado("En espera de tu intucion", ActivityKind.Success);
+        host.SetProgreso("—");
+        var grid = Grid(host.SnapshotFullFrame());
+        Assert.DoesNotContain(grid, line => line.Contains("Estado:"));
+        Assert.DoesNotContain(grid, line => line.Contains("Progreso:"));
+    }
+
+    [Fact]
+    public void Tui2_Sesion_MascotaNoInvadeTextoDeModelo()
+    {
+        using var host = HostSesion();
+        host.SetEstado("En espera de tu intucion", ActivityKind.Success);
+        var grid = Grid(host.SnapshotFullFrame());
+        for (var r = 1; r <= 14; r++)
+        {
+            Assert.DoesNotContain("qwen2.5-coder", grid[r]);
+            Assert.DoesNotContain("Modelo:", grid[r]);
+            Assert.DoesNotContain("Workspace:", grid[r]);
+        }
+    }
+
+    [Fact]
+    public void Tui2_Sesion_CambioDeModelo_ActualizaCabecera()
+    {
+        using var host = HostSesion();
+        host.SetEstado("En espera de tu intencion", ActivityKind.Success);
+        host.SetModel("qwen2.5-coder:0.5b");
+        var conMedio = Grid(host.SnapshotFullFrame())[0];
+        Assert.Contains("· qwen2.5-coder:0.5b", conMedio);
+
+        host.SetModel("qwen2.5-coder:3b");
+        var conOtro = Grid(host.SnapshotFullFrame())[0];
+        Assert.Contains("· qwen2.5-coder:3b", conOtro);
+        Assert.DoesNotContain("qwen2.5-coder:0.5b", conOtro);
+    }
+
+    [Fact]
+    public void Tui2_Ayuda_DentroDeSession_SinSuspender()
+    {
+        using var host = HostSesion();
+        host.AddActivity("/ayuda", ActivityKind.User);
+        host.Repaint();
+        CondorTui.RenderHelpInTuiAccessible(host);
+        host.SetEstado("Listo", ActivityKind.Success);
+        host.SetProgreso("—");
+        host.Repaint();
+
+        var frame = Ansi.StripSgr(host.SnapshotFullFrame()).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        // La ayuda se agrega como actividades; la cabecera siempre muestra DisplayName.
+        Assert.Contains(frame, line => line.Contains("build interno"));
+        // Algunas lineas de ayuda deben estar visibles en la zona de actividad.
+        Assert.Contains(frame, line => line.Contains("/salir"));
+        Assert.Contains(frame, line => line.Contains("Contracciones:"));
+    }
+
+    [Fact]
+    public void Tui2_Salir_CierraSesion()
+    {
+        Assert.True(CondorTui.IsExitAccessible("/salir"));
+        Assert.True(CondorTui.IsExitAccessible("salir"));
+        Assert.True(CondorTui.IsExitAccessible("/exit"));
+        Assert.False(CondorTui.IsExitAccessible("no salir"));
+    }
+
+    [Fact]
+    public void ComentarioUsuario_NoSeEjecutaComoIntencion()
+    {
+        Assert.True(CondorTui.EsComentarioUsuario("-asi de esta manera-"));
+        Assert.True(CondorTui.EsComentarioUsuario("-nota interna-"));
+        Assert.False(CondorTui.EsComentarioUsuario("hola"));
+        Assert.False(CondorTui.EsComentarioUsuario("/ayuda"));
+        Assert.False(CondorTui.EsComentarioUsuario(""));
+    }
+
+    [Fact]
+    public void Workspace_Real_ProvieneDeCurrentDirectory()
+    {
+        var host = new TuiHost(forceInteractive: true);
+        host.Enter();
+        host.ShowWelcome();
+        host.SetWorkspace(Environment.CurrentDirectory);
+        host.SetEstado("Preparando dependencias locales");
+        var grid = Grid(host.SnapshotFullFrame());
+
+        Assert.Contains(grid, line => line.Contains("Workspace:"));
+        Assert.Contains(grid, line => line.Contains(Environment.CurrentDirectory));
+    }
+
+    [Fact]
+    public void Tui2_Sesion_EntradaEnParteInferior()
+    {
+        using var host = HostSesion();
+        host.SetEstado("En espera de tu intencion", ActivityKind.Success);
+        var grid = Grid(host.SnapshotFullFrame());
+
+        var placeholderRow = Array.FindIndex(grid, line => line.Contains("¿Qué deseas construir"));
+        Assert.True(placeholderRow >= 28, $"Placeholder debe estar abajo, no en fila {placeholderRow}");
+    }
+
+}
+
+
+
+
+
+

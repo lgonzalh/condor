@@ -31,14 +31,13 @@ public enum ActivityKind
 ///
 /// Estructura (sesion):
 ///
-///   CONDOR v1.0          Hecho en Colombia · Modo Local 100% · &lt;modelo real&gt;
-///   [ Condor Ave V16 ]
-///   ── Conversacion / Actividad ────────────────────────────────
+///   CONDOR  v1.0 · build interno X        Hecho en Colombia · Modo Local 100% [· modelo]
+///   [ Condor Ave V16 a la derecha ]
+///   ── Actividad del agente ────────────────────────────────
 ///   (historial vivo de la conversacion y la actividad)
 ///   ── Observa · Comprende · Planifica · Construye · Verifica ──
-///   &lt;comunicacion directa sin titulares&gt;
-///   › ¿que deseas construir...?
-///   (ayudas de teclado)
+///   &gt; ¿que deseas construir...?
+///   (barra de estado: workspace | modelo | estado | version)
 ///
 /// La identidad institucional y el modelo REAL seleccionado comparten UNA sola
 /// linea superior, fuera del area de la mascota; "Modo Local 100%" aparece una
@@ -48,12 +47,12 @@ public sealed class TuiHost : IDisposable
 {
     private const string IdentityLine = "Hecho en Colombia · Modo Local 100%";
     private const string Slogan = "Observa · Comprende · Planifica · Construye · Verifica";
-    private const string Placeholder = "¿que deseas construir...?";
+    private const string Placeholder = "¿Qué deseas construir? ...";
     internal const int MinWidth = 80;
     internal const int MinHeight = 24;
 
-    private const int HeaderHeight = 15;          // titulo + Ave V16 (13 filas) + respiro
-    private const int BottomRows = 5;             // separador + comunicacion (2 filas) + entrada + ayudas
+    private const int HeaderHeight = 15;          // titulo (1) + Ave V16 (13) + separador (1)
+    private const int BottomRows = 4;             // separador entrada + entrada + progreso + barra estado
 
     private static readonly string[] SpinnerFrames = { "◐", "◓", "◑", "◒" };
 
@@ -65,9 +64,11 @@ public sealed class TuiHost : IDisposable
     private int _height;
     private bool _entered;
     private bool _disposed;
+    private bool _forceInteractive;
 
     private HostMode _mode = HostMode.Welcome;
     private string? _model;
+    private string? _workspace;
     private string _estado = "Iniciando";
     private ActivityKind _estadoKind = ActivityKind.System;
     private string _progreso = "";
@@ -80,13 +81,12 @@ public sealed class TuiHost : IDisposable
     private bool _dirtyStatus;
     private bool _dirtyInput;
 
-    private int ActivityTop => HeaderHeight + 1;                 // debajo del separador rotulado
-    private int SepActivityRow => HeaderHeight;
-    private int SepSloganRow => _height - BottomRows;
-    private int EstadoRow => _height - BottomRows + 1;
-    private int ProgresoRow => _height - BottomRows + 2;
-    public int InputRow => _height - BottomRows + 3;
-    private int HintsRow => _height - BottomRows + 4;
+    private int ActivityTop => HeaderHeight + 1;                 // debajo del separador de actividad
+    private int SepActivityRow => HeaderHeight;                  // fila del separador "Actividad del agente"
+    private int SepInputRow => _height - BottomRows;             // separador antes de la entrada
+    public int InputRow => _height - BottomRows + 1;             // fila de entrada
+    private int ProgresoRow => _height - BottomRows + 2;        // fila de progreso / iteracion
+    private int StatusBarRow => _height - BottomRows + 3;        // fila de barra de estado (ultima)
     private int ActivityHeight => Math.Max(0, _height - BottomRows - HeaderHeight - 1);
 
     public TuiHost()
@@ -115,8 +115,6 @@ public sealed class TuiHost : IDisposable
         Supported = true;
         _forceInteractive = true;
     }
-
-    private bool _forceInteractive;
 
     /// <summary>La TUI requiere terminal interactiva con soporte VT.</summary>
     public bool Supported { get; }
@@ -214,6 +212,21 @@ public sealed class TuiHost : IDisposable
 
             _model = model;
             _dirtyHeader = true;
+            _dirtyStatus = true;
+        }
+    }
+
+    public void SetWorkspace(string? workspace)
+    {
+        lock (_gate)
+        {
+            if (_workspace == workspace)
+            {
+                return;
+            }
+
+            _workspace = workspace;
+            _dirtyStatus = true;
         }
     }
 
@@ -437,6 +450,7 @@ public sealed class TuiHost : IDisposable
                     PaintChromeLocked(sb);
                     PaintActivityLocked(sb);
                     PaintStatusLocked(sb);
+                    PaintProgresoLocked(sb);
                     PaintInputRegionLocked(sb);
                 }
             }
@@ -447,8 +461,8 @@ public sealed class TuiHost : IDisposable
                     PaintHeaderLocked(sb);
                     if (_mode == HostMode.Session)
                     {
-                        PaintSeparatorLocked(sb, SepActivityRow, "Conversacion / Actividad");
-                        PaintSeparatorLocked(sb, SepSloganRow, null);
+                        PaintSeparatorLocked(sb, SepActivityRow, "Actividad del agente");
+                        PaintSeparatorLocked(sb, SepInputRow, null);
                     }
                 }
 
@@ -460,6 +474,7 @@ public sealed class TuiHost : IDisposable
                 if (_dirtyStatus)
                 {
                     PaintStatusLocked(sb);
+                    PaintProgresoLocked(sb);
                 }
 
                 if (_dirtyInput && _mode == HostMode.Session)
@@ -499,33 +514,28 @@ public sealed class TuiHost : IDisposable
 
         PaintTitleRowLocked(sb);
         PaintHeaderLocked(sb);
-        PaintSeparatorLocked(sb, SepActivityRow, "Conversacion / Actividad");
-        PaintSeparatorLocked(sb, SepSloganRow, null);
-        PaintHintsLocked(sb);
+        PaintSeparatorLocked(sb, SepActivityRow, "Actividad del agente");
+        PaintSeparatorLocked(sb, SepInputRow, null);
     }
 
     private void PaintTitleRowLocked(System.Text.StringBuilder sb)
     {
         // Linea superior UNICA: identidad institucional + modelo REAL actual.
         // "Modo Local 100%" aparece una sola vez y el modelo es dinamico.
-        var identity = IdentityLine;
-        if (!string.IsNullOrWhiteSpace(_model))
-        {
-            var budgetForModel = _width - 16 - (identity.Length + 3);
-            if (budgetForModel > 3)
-            {
-                identity += " · " + Clip(_model!, Math.Min(budgetForModel, 40));
-            }
-        }
-
         sb.Append(Ansi.At(1, 2));
         sb.Append(Ansi.ClearLine);
         sb.Append(Ansi.Bold + Ansi.FgBlanco + "CONDOR" + Ansi.Reset);
-        sb.Append(Ansi.FgGris + "  v" + VersionInfo.PublicVersion + Ansi.Reset);
+        sb.Append(Ansi.FgGris + "  " + VersionInfo.DisplayName + Ansi.Reset);
 
-        var col = Math.Max(18, _width - identity.Length - 1);
+        var right = IdentityLine;
+        if (!string.IsNullOrWhiteSpace(_model))
+        {
+            right += " · " + _model;
+        }
+
+        var col = Math.Max(18, _width - right.Length - 1);
         sb.Append(Ansi.At(1, col));
-        sb.Append(Ansi.FgDorado + identity + Ansi.Reset);
+        sb.Append(Ansi.FgDorado + right + Ansi.Reset);
     }
 
     private void PaintHeaderLocked(System.Text.StringBuilder sb)
@@ -536,23 +546,22 @@ public sealed class TuiHost : IDisposable
             return;
         }
 
-        // Mascota oficial de trabajo (Condor Ave V16) acompana toda la sesion.
-        // Ningun texto invade su area: la informacion vive en la linea superior.
-        // El centrado se resuelve posicionando el bloque completo dentro de su
-        // area (sin insertar espacios en cada linea ni alterar la geometria).
-        var columna = ColumnaMascota();
+        // Mascota oficial de trabajo (Condor Ave V16) acompana toda la sesion,
+        // anclada a la DERECHA. Ningun texto invade su area: la informacion
+        // vive en la linea superior. El bloque se posiciona completo.
+        var columna = ColumnaMascotaDerecha();
         for (var i = 0; i < CondorArt.Ave.Length && i + 2 <= HeaderHeight; i++)
         {
-            var row = 3 + i - 1; // fila 2..14
+            var row = 2 + i; // fila 2..14
             sb.Append(Ansi.At(row, columna));
             sb.Append(Ansi.ClearLine);
             sb.Append(Ansi.Paint(CondorArt.Ave[i]) + Ansi.Reset);
         }
     }
 
-    /// <summary>Columna (1-based) que centra el bloque completo del Ave en el ancho actual.</summary>
-    internal int ColumnaMascota()
-        => Math.Max(1, ((_width - AnchoVisibleMascota()) / 2) + 1);
+    /// <summary>Columna (1-based) que ancla el Ave completo a la derecha del ancho actual.</summary>
+    internal int ColumnaMascotaDerecha()
+        => Math.Max(1, _width - AnchoVisibleMascota() - 5);
 
     /// <summary>Ancho visible maximo de las filas del Ave (sin secuencias SGR).</summary>
     internal static int AnchoVisibleMascota()
@@ -568,22 +577,25 @@ public sealed class TuiHost : IDisposable
     private void PaintWelcomeHeaderLocked(System.Text.StringBuilder sb)
     {
         // Bienvenida con Condor Grande centrado (mockup "01. INICIO").
-        var artLeft = Math.Max(1, (_width - CondorArt.GrandeWidth) / 2);
-        for (var i = 0; i < CondorArt.Grande.Length; i++)
-        {
-            sb.Append(Ansi.At(2 + i, artLeft));
-            sb.Append(Ansi.Paint(CondorArt.Grande[i]) + Ansi.Reset);
-        }
-
         var title = "CONDOR";
-        sb.Append(Ansi.At(15, Math.Max(1, (_width - title.Length) / 2)));
+        sb.Append(Ansi.At(1, Math.Max(1, (_width - title.Length) / 2)));
         sb.Append(Ansi.Bold + Ansi.FgBlanco + title + Ansi.Reset);
 
-        sb.Append(Ansi.At(16, Math.Max(1, (_width - Slogan.Length) / 2)));
+        sb.Append(Ansi.At(2, Math.Max(1, (_width - Slogan.Length) / 2)));
         sb.Append(Ansi.FgTerracota + Slogan + Ansi.Reset);
 
-        sb.Append(Ansi.At(17, Math.Max(1, (_width - IdentityLine.Length) / 2)));
+        sb.Append(Ansi.At(3, Math.Max(1, (_width - IdentityLine.Length) / 2)));
         sb.Append(Ansi.FgDorado + IdentityLine + Ansi.Reset);
+
+        sb.Append(Ansi.At(4, Math.Max(1, (_width - VersionInfo.DisplayName.Length) / 2)));
+        sb.Append(Ansi.FgGris + VersionInfo.DisplayName + Ansi.Reset);
+
+        var artLeft = Math.Max(1, (_width - CondorArt.GrandeWidth) / 2);
+        for (var i = 0; i < CondorArt.Grande.Length && 5 + i <= 16; i++)
+        {
+            sb.Append(Ansi.At(5 + i, artLeft));
+            sb.Append(Ansi.Paint(CondorArt.Grande[i]) + Ansi.Reset);
+        }
     }
 
     private void PaintSeparatorLocked(System.Text.StringBuilder sb, int row, string? label)
@@ -593,7 +605,7 @@ public sealed class TuiHost : IDisposable
         sb.Append(Ansi.FgGris + "──" + Ansi.Reset);
         if (label is null)
         {
-            sb.Append(Ansi.FgGris + " " + Slogan + " " + new string('─', Math.Max(0, _width - Slogan.Length - 5)) + Ansi.Reset);
+            sb.Append(Ansi.FgGris + new string('─', Math.Max(0, _width - 2)) + Ansi.Reset);
             return;
         }
 
@@ -645,16 +657,45 @@ public sealed class TuiHost : IDisposable
             return;
         }
 
-        var frame = _busy ? SpinnerFrames[_spin % SpinnerFrames.Length] + " " : "";
-
-        // Comunicacion directa sin titulares: el contenido se presenta tal cual.
-        sb.Append(Ansi.At(EstadoRow + 1, 1));
+        // Barra de estado persistente en la ULTIMA fila: workspace | modelo | estado | version.
+        sb.Append(Ansi.At(StatusBarRow + 1, 1));
         sb.Append(Ansi.ClearLine);
-        sb.Append(" " + EstadoColor(_estadoKind) + frame + Clip(_estado, _width - 4) + Ansi.Reset);
+        var frame = _busy ? SpinnerFrames[_spin % SpinnerFrames.Length] + " " : "";
+        var version = VersionInfo.DisplayName;
+        var versionCol = Math.Max(1, _width - version.Length - 2);
+        // Anchos dinamicos generosos: el estado NUNCA se recorta (debe verse completo).
+        var workspaceWidth = 28;
+        var modelWidth = 22;
+        var statusWidth = Math.Max(30, _width - version.Length - 2 - 4 - 3 - 3 - 3 - 3 - workspaceWidth - modelWidth - (_busy ? 2 : 0));
+        var workspace = Clip(_workspace ?? "—", workspaceWidth);
+        sb.Append(Ansi.FgGris + " " + Ansi.FgDorado + ">" + Ansi.Reset);
+        sb.Append(Ansi.FgBlanco + " " + workspace + Ansi.Reset);
+        sb.Append(Ansi.FgGris + " | " + Ansi.Reset);
+        var model = Clip(_model ?? "—", modelWidth);
+        sb.Append(Ansi.FgTerracota + "*" + Ansi.Reset);
+        sb.Append(Ansi.FgBlanco + " " + model + Ansi.Reset);
+        sb.Append(Ansi.FgGris + " | " + Ansi.Reset);
+        var status = _estado; // nunca se recorta
+        sb.Append(EstadoColor(_estadoKind) + frame + status + Ansi.Reset);
+        sb.Append(Ansi.At(StatusBarRow + 1, versionCol));
+        sb.Append(Ansi.FgGris + version + Ansi.Reset);
+    }
+
+    /// <summary>
+    /// Linea de progreso/iteracion justo encima de la barra de estado. Mantiene
+    /// visible la informacion de ejecucion (p. ej. "Iteracion 2") durante la sesion.
+    /// </summary>
+    private void PaintProgresoLocked(System.Text.StringBuilder sb)
+    {
+        if (_mode == HostMode.Welcome)
+        {
+            return; // el progreso se muestra en PaintWelcomeStatusLocked
+        }
 
         sb.Append(Ansi.At(ProgresoRow + 1, 1));
         sb.Append(Ansi.ClearLine);
-        sb.Append(" " + Ansi.FgGris + Clip(string.IsNullOrWhiteSpace(_progreso) ? "—" : _progreso, _width - 4) + Ansi.Reset);
+        var progreso = string.IsNullOrWhiteSpace(_progreso) ? "—" : _progreso;
+        sb.Append(Ansi.FgGris + " " + Ansi.FgCian + progreso + Ansi.Reset);
     }
 
     private string EstadoColor(ActivityKind kind)
@@ -674,13 +715,17 @@ public sealed class TuiHost : IDisposable
     /// </summary>
     private void PaintWelcomeStatusLocked(System.Text.StringBuilder sb)
     {
+        sb.Append(Ansi.At(18, 3));
+        sb.Append(Ansi.ClearLine);
+        sb.Append(Ansi.FgGris + "Workspace: " + Clip(_workspace ?? "—", _width - 16) + Ansi.Reset);
+
+        sb.Append(Ansi.At(19, 3));
+        sb.Append(Ansi.ClearLine);
+        sb.Append(Ansi.FgGris + Clip(string.IsNullOrWhiteSpace(_progreso) ? "—" : _progreso, _width - 6) + Ansi.Reset);
+
         sb.Append(Ansi.At(20, 3));
         sb.Append(Ansi.ClearLine);
         sb.Append(EstadoColor(_estadoKind) + Clip(_estado, _width - 6) + Ansi.Reset);
-
-        sb.Append(Ansi.At(21, 3));
-        sb.Append(Ansi.ClearLine);
-        sb.Append(Ansi.FgGris + Clip(string.IsNullOrWhiteSpace(_progreso) ? "—" : _progreso, _width - 6) + Ansi.Reset);
     }
 
     /// <summary>Pinta la region de entrada. El contenido lo dibuja el editor.</summary>
@@ -700,22 +745,8 @@ public sealed class TuiHost : IDisposable
         else
         {
             // Estado inicial de la zona de entrada: la invitacion al usuario.
-            sb.Append(" " + Ansi.Bold + Ansi.FgDorado + "›" + Ansi.Reset + " " + Ansi.FgGris + Placeholder + Ansi.Reset);
+            sb.Append(" " + Ansi.Bold + Ansi.FgDorado + "> " + Ansi.Reset + Ansi.FgGris + Placeholder + Ansi.Reset);
         }
-
-        PaintHintsLocked(sb);
-    }
-
-    private void PaintHintsLocked(System.Text.StringBuilder sb)
-    {
-        if (_mode == HostMode.Welcome)
-        {
-            return;
-        }
-
-        sb.Append(Ansi.At(HintsRow + 1, 1));
-        sb.Append(Ansi.ClearLine);
-        sb.Append(" " + Ansi.FgGris + "Enter enviar · Tab completar · ↑↓ historial · /ayuda · /salir terminar" + Ansi.Reset);
     }
 
     /// <summary>Dibuja la linea de entrada con cursor en bloque (caret inverso).</summary>
@@ -744,11 +775,11 @@ public sealed class TuiHost : IDisposable
         var width = Math.Max(10, _width - 4);
         if (buffer.Length == 0)
         {
-            sb.Append(" " + Ansi.Bold + Ansi.FgDorado + "›" + Ansi.Reset + " " + Ansi.FgGris + Placeholder + Ansi.Reset);
+            sb.Append(" " + Ansi.Bold + Ansi.FgDorado + "> " + Ansi.Reset + Ansi.FgGris + Placeholder + Ansi.Reset);
             return sb.ToString();
         }
 
-        sb.Append(" " + Ansi.Bold + Ansi.FgDorado + "›" + Ansi.Reset + " ");
+        sb.Append(" " + Ansi.Bold + Ansi.FgDorado + "> " + Ansi.Reset);
         var budget = width - 2;
         var start = 0;
         if (buffer.Length > budget)
