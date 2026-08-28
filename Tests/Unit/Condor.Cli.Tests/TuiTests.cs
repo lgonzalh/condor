@@ -22,21 +22,22 @@ public class IdentidadTuiTests
     }
 
     [Fact]
-    public void Mascota_AveV16_ConservaGeometria_Y_CorrigeContrasteOscuro()
+    public void Mascota_Ave_Pequena_DerivaDeGrandeAl50_ReutilizaPaleta()
     {
-        Assert.Equal(13, CondorArt.Ave.Length);
+        Assert.Equal(6, CondorArt.Ave.Length);
+        Assert.All(CondorArt.Ave, row => Assert.Equal(8, Ansi.VisibleWidth(row)));
 
-        // La cabeza terracota (167) y el gris medio del prototipo (242) permanecen.
         Assert.Contains(CondorArt.Ave, row => row.Contains("\u001b[38;5;167m"));
-        Assert.Contains(CondorArt.Ave, row => row.Contains("\u001b[38;5;242m"));
-        Assert.Contains(CondorArt.Ave, row => row.Contains("\u001b[97m"));
+        Assert.Contains(CondorArt.Ave, row => row.Contains("\u001b[38;5;255m"));
 
-        // Las zonas antes en negro puro (232) usan ahora la escala oscura aprobada
-        // (#272727=235 / #2A2D30=236 / #111315=233): combinacion de varios tonos.
-        Assert.DoesNotContain(CondorArt.Ave, row => row.Contains("\u001b[38;5;232m"));
-        Assert.Contains(CondorArt.Ave, row => row.Contains("\u001b[38;5;235m"));
-        Assert.Contains(CondorArt.Ave, row => row.Contains("\u001b[38;5;236m"));
+        Assert.Contains(CondorArt.Ave, row => row.Contains("\u001b[38;5;179m") && row.Contains("\u001b[48;5;167m"));
+        Assert.Contains(CondorArt.Ave, row => row.Contains("\u001b[38;5;179m") && row.Contains("\u001b[48;5;255m"));
+
         Assert.Contains(CondorArt.Ave, row => row.Contains("\u001b[38;5;233m"));
+        Assert.Contains(CondorArt.Ave, row => row.Contains("\u001b[38;5;235m"));
+        Assert.Contains(CondorArt.Ave, row => row.Contains("\u001b[38;5;238m"));
+
+        Assert.DoesNotContain(CondorArt.Ave, row => row.Contains("\u001b[38;5;232m") || row.Contains("\u001b[38;5;242m"));
     }
 
     [Fact]

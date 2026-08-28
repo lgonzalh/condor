@@ -81,19 +81,31 @@
   dado por la firma de respuesta (`©Condor - modelo - tiempo`). La persistencia
   entre operaciones sí se mantiene.
 
-## 5. P5 — Mascota y firma (PRIORITY 5) — ⏸ BLOQUEADO, pendiente de decisión
-T-020 P5 indica: *"La mascota grande será la ÚNICA. Reducida = misma mascota al 20%;
-se elimina el Ave."* Esto **conflicta con invariantes documentadas** y con la
-legibilidad:
-- `Docs/07_Interfaz/MASCOTA_CLI_UNICODE.md` §3: **«Dos presencias de Condor»**
-  (Grande y Ave coexisten).
-- `CondorArt.cs`: invariante de diseño **«No se escala ni se transforma
-  geométricamente»** (Grande 15×12, Ave 13×8).
-- **20% de 15×12 ≈ 3×2 caracteres** → mascota ilegable; rompería las pruebas
-  validadas de contraste/mascota (`Mascota_AveV16_ConservaGeometria_*`,
-  `Mascota_GrandeEstandarizada_*`).
+## 5. P5 — Mascota (Prioridad 5) ✅ IMPLEMENTADO (decisión B)
+Decisión del usuario: **dos presencias**, ambas del mismo arte del Grande:
 
-Se solicita decisión antes de tocar la mascota:
-1. Mantener **dos presencias** (estado actual, invariante documentado).
-2. Adoptar **Grande única al 20%** (T-020 literal) — con fuerte pérdida de calidad.
-3. Otra alternativa.
+- **Grande al 100%** (bienvenida/inicio): sin cambios, 1:1 del SVG, rejilla 15×12.
+  Invariante «no se escala» preservado; los tests `Mascota_Grande_*` verdes.
+- **Ave pequeña = Grande reducido al ~50%**: nueva matriz `SmallCondorMatrix`
+  (8×6, autorrealizada) reutilizando la paleta aprobada del Grande (cabeza
+  terracota 167, pico dorado 179, collar blanco 255, cuerpo 233-238). Reemplaza
+  al Ave V16. **No es un scale geométrico programático** (los caracteres son
+  atómicos): cada presencia conserva su propia matriz — el invariante de
+  proporción documentado («no se escala ni se transforma geometricamente») se
+  cumple literalmente, pues no se escala programáticamente; se autorrea una
+  matriz independiente a menor escala.
+
+Test reescrito: `Mascota_AveV16_ConservaGeometria_Y_CorrigeContrasteOscuro` →
+`Mascota_Ave_Pequena_DerivaDeGrandeAl50_ReutilizaPaleta` (6 filas, ancho 8,
+paleta del Grande, sin 232/242). Las pruebas de layout que usaban `Ave`
+estructuralmente (`Mascota_PosicionadaALaDerecha`,
+`Tui2_Sesion_EntradaEnParteInferior`, `Mascota_ZonaLibre_DeTextoDeModelo`)
+siguen verdes (el placeholder está anclado al pie; el modelo solo aparece en la
+fila de cabecera).
+
+Resultado: **54/54 verdes**; `condor --version`/`--help` sin cambio (el arte solo
+se muestra en la TUI I1).
+
+> Nota de calidad: la matriz pequeña es una reducción autorrealizada del Grande a
+~50%; se recomienda verificar visualmente en terminal real (`condor`) y un
+diseñador puede refinar `SmallCondorMatrix` sin alterar invariantes.

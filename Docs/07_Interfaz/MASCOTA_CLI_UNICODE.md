@@ -24,10 +24,16 @@ monoespaciados y colores ANSI.
 
 ### 1. Dos presencias de Condor
 
-Condor utiliza dos representaciones:
+(T-020 P5) Condor utiliza dos representaciones del mismo arte del Grande:
 
-- Condor Grande: bienvenida e inicio.
-- Condor Ave: mascota pequena de trabajo.
+- Condor **Grande**: bienvenida e inicio. Arte 1:1 del SVG oficial, rejilla 15×12,
+  al 100%. No se escala (invariante de proporción).
+- Condor **Ave pequeña**: mascota de trabajo durante la sesión. Es el Grande
+  reducido al ~50% (`SmallCondorMatrix`, 8×6), reutilizando su misma paleta
+  aprobada (cabeza terracota 167, pico dorado 179, collar blanco 255, cuerpo
+  233-238). Es una matriz manuscrita independiente (no un scale geométrico
+  programático); cada presencia conserva su propia matriz y la capa de
+  presentación solamente la pinta.
 
 La mascota de trabajo no intenta reproducir un condor zoologicamente
 detallado. Su objetivo es que el usuario reconozca inmediatamente un ave
