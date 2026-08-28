@@ -591,7 +591,7 @@ public sealed class TuiHost : IDisposable
         sb.Append(Ansi.FgGris + VersionInfo.DisplayName + Ansi.Reset);
 
         var artLeft = Math.Max(1, (_width - CondorArt.GrandeWidth) / 2);
-        for (var i = 0; i < CondorArt.Grande.Length && 5 + i <= 16; i++)
+        for (var i = 0; i < CondorArt.Grande.Length && 5 + i <= 18; i++)
         {
             sb.Append(Ansi.At(5 + i, artLeft));
             sb.Append(Ansi.Paint(CondorArt.Grande[i]) + Ansi.Reset);

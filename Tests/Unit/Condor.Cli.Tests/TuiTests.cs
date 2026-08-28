@@ -1,4 +1,4 @@
-﻿using System.Text.RegularExpressions;
+using System.Text.RegularExpressions;
 using System.Linq;
 using Condor.Cli.Tui;
 using Condor.Core.Models;
@@ -22,44 +22,38 @@ public class IdentidadTuiTests
     }
 
     [Fact]
-    public void Mascota_Ave_Pequena_DerivaDeGrandeAl50_ReutilizaPaleta()
+    public void Mascota_Grande_EsElAnsiOriginalV16()
     {
-        Assert.Equal(6, CondorArt.Ave.Length);
-        Assert.All(CondorArt.Ave, row => Assert.Equal(8, Ansi.VisibleWidth(row)));
+        // T-018: Grande es 100% del ANSI original (condor_unicode_v16.ps1) con la gama
+        // de colores restituida: el cuerpo (antes casi-negro 232) usa la escala oscura
+        // visible 235/236/233; se conservan 242 (sombreado), 167 (cabeza) y 97 (blanco).
+        Assert.Equal(13, CondorArt.Grande.Length);
 
-        Assert.Contains(CondorArt.Ave, row => row.Contains("\u001b[38;5;167m"));
-        Assert.Contains(CondorArt.Ave, row => row.Contains("\u001b[38;5;255m"));
+        Assert.Contains(CondorArt.Grande, row => row.Contains("38;5;235"));
+        Assert.Contains(CondorArt.Grande, row => row.Contains("38;5;236"));
+        Assert.Contains(CondorArt.Grande, row => row.Contains("38;5;233"));
+        Assert.Contains(CondorArt.Grande, row => row.Contains("\u001b[38;5;242m"));
+        Assert.Contains(CondorArt.Grande, row => row.Contains("\u001b[38;5;167m"));
+        Assert.Contains(CondorArt.Grande, row => row.Contains("\u001b[97m"));
 
-        Assert.Contains(CondorArt.Ave, row => row.Contains("\u001b[38;5;179m") && row.Contains("\u001b[48;5;167m"));
-        Assert.Contains(CondorArt.Ave, row => row.Contains("\u001b[38;5;179m") && row.Contains("\u001b[48;5;255m"));
-
-        Assert.Contains(CondorArt.Ave, row => row.Contains("\u001b[38;5;233m"));
-        Assert.Contains(CondorArt.Ave, row => row.Contains("\u001b[38;5;235m"));
-        Assert.Contains(CondorArt.Ave, row => row.Contains("\u001b[38;5;238m"));
-
-        Assert.DoesNotContain(CondorArt.Ave, row => row.Contains("\u001b[38;5;232m") || row.Contains("\u001b[38;5;242m"));
+        // Ya no existe casi-negro puro, ni paleta SVG (collar 255 / pico dorado 179).
+        Assert.DoesNotContain(CondorArt.Grande, row => row.Contains("\u001b[38;5;232m"));
+        Assert.DoesNotContain(CondorArt.Grande, row => row.Contains("38;5;255"));
+        Assert.DoesNotContain(CondorArt.Grande, row => row.Contains("38;5;179"));
     }
 
     [Fact]
-    public void Mascota_Grande_DerivaDeLaRejillaOficialDelSvg()
+    public void Mascota_Ave_Pequena_EsElGrandeReducidoAl50()
     {
-        Assert.Equal(12, CondorArt.Grande.Length);
+        // T-018: la pequena es el Grande al 50% mediante una transformacion determinista
+        // (Scale50) sobre la MISMA fuente con la misma gama de colores. Nunca una segunda matriz.
+        Assert.Equal(7, CondorArt.Ave.Length);
+        Assert.Equal(CondorArt.Scale50(CondorArt.Grande), CondorArt.Ave);
 
-        // Toda fila conserva el ancho de 15 columnas (sin escalado).
-        Assert.All(CondorArt.Grande, row => Assert.Equal(15, Ansi.VisibleWidth(row)));
-
-        // Cabeza terracota (167), collar blanco (255) y pico dorado con fondo.
-        Assert.Contains(CondorArt.Grande, row => row.Contains("38;5;167"));
-        Assert.Contains(CondorArt.Grande, row => row.Contains("38;5;255"));
-        Assert.Contains(CondorArt.Grande, row => row.Contains("38;5;179") && row.Contains("48;5;167"));
-        Assert.Contains(CondorArt.Grande, row => row.Contains("38;5;179") && row.Contains("48;5;255"));
-
-        // El cuerpo usa la escala oscura aprobada con volumen (#454546/#272727/#111315).
-        Assert.Contains(CondorArt.Grande, row => row.Contains("38;5;238"));
-        Assert.Contains(CondorArt.Grande, row => row.Contains("38;5;235"));
-        Assert.Contains(CondorArt.Grande, row => row.Contains("38;5;233"));
-        // Ya no existe negro puro en el cuerpo del Grande.
-        Assert.DoesNotContain(CondorArt.Grande, row => row.Contains("38;5;232") || row.Contains("30m"));
+        // Conserva la gama restituida (y no el casi-negro 232) con la misma identidad.
+        Assert.Contains(CondorArt.Ave, row => row.Contains("38;5;235"));
+        Assert.Contains(CondorArt.Ave, row => row.Contains("\u001b[38;5;167m"));
+        Assert.DoesNotContain(CondorArt.Ave, row => row.Contains("\u001b[38;5;232m"));
     }
 }
 
