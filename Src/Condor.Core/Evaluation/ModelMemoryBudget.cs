@@ -50,19 +50,27 @@ public static class ModelMemoryBudget
     {
         var safe = SafeBudgetGb(ramTotalGb, ramFreeGb);
         var peak = EstimatePeakGb(weightGb, contextKbGb);
-        return peak <= safe;
+        return peak < safe;
     }
 
     /// <summary>
     /// Cumple las DOS condiciones de carga definitivas: porcentaje de RAM total
     /// permitido (RAM total = 100%) Y presupuesto seguro (RAM libre real menos
     /// reservaSO, reservaCondor y margen). Cache no cuenta como RAM garantizada.
+    /// ESTRICTO: peak < headroom (no <=).
     /// </summary>
     public static bool FitsInRamStrict(double weightGb, double contextKbGb, double ramTotalGb, double ramFreeGb)
     {
         var peak = EstimatePeakGb(weightGb, contextKbGb);
         var headroom = HeadroomGb(ramFreeGb, SystemReserveGb, CondorReserveGb, OperatingMarginGb(ramTotalGb));
-        return ClassifyCandidate(peak, ramTotalGb, headroom) != ResourcePressure.Insufficient;
+
+        // Condicion 1: porcentaje de RAM total permitido
+        var byRatio = ClassifyByRatio(peak, ramTotalGb);
+        if (byRatio == ResourcePressure.Insufficient)
+            return false;
+
+        // Condicion 2: presupuesto seguro ESTRICTO (peak < headroom)
+        return peak < headroom;
     }
 
     // Disco: espacio libre - reserva de trabajo - margen anti-saturacion.
@@ -96,9 +104,9 @@ public static class ModelMemoryBudget
         return ResourcePressure.Insufficient;
     }
 
-    /// <summary>True si el candidato cabe dentro del presupuesto seguro (headroom).</summary>
+    /// <summary>True si el candidato cabe dentro del presupuesto seguro (headroom) - ESTRICTO.</summary>
     public static bool FitsSafeBudget(double candidatePeakGb, double headroomGb)
-        => headroomGb >= candidatePeakGb;
+        => headroomGb > candidatePeakGb;
 
     /// <summary>
     /// Veredicto final de presion. El candidato DEBE cumplir AMBAS condiciones:
@@ -133,7 +141,10 @@ public static class ModelMemoryBudget
         {
             return new ResourceSnapshot
             {
-                TotalGb = 0, FreeGb = 0, AvailableGb = 0, CacheGb = 0,
+                TotalGb = 0,
+                FreeGb = 0,
+                AvailableGb = 0,
+                CacheGb = 0,
                 SystemReserveGb = SystemReserveGb,
                 CondorReserveGb = CondorReserveGb,
                 SafetyMarginGb = OperatingMarginGb(0),

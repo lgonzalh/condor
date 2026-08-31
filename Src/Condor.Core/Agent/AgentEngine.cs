@@ -178,7 +178,7 @@ public static class AgentEngine
             if (IntentNamesSpecificTarget(intention))
             {
                 if (distinctRead >= 1) return (true, null);
-                return (false, "La solicitud apunta a un archivo concreto; usa read_file sobre el archivo señalado para localizar el error (o un search de 'error' si no encuentras el archivo).");
+                return (false, "La solicitud apunta a un archivo concreto; usa read_file sobre el archivo senalado para localizar el error (o un search de 'error' si no encuentras el archivo).");
             }
 
             // Solicitud ABIERTA de deteccion de errores: exige alcance transversal
@@ -242,12 +242,43 @@ public static class AgentEngine
         var ext = idx >= 0 ? p.Substring(idx) : "";
         switch (ext.ToLowerInvariant())
         {
-            case ".cs": case ".vb": case ".fs": case ".ts": case ".js": case ".mjs": case ".cjs":
-            case ".py": case ".go": case ".rs": case ".java": case ".kt": case ".swift": case ".rb": case ".php":
-            case ".html": case ".htm": case ".css": case ".scss": case ".sass": case ".less":
-            case ".csproj": case ".fsproj": case ".vbproj": case ".sln": case ".slnx": case ".csx": case ".json":
-            case ".yaml": case ".yml": case ".xml": case ".ini": case ".cfg": case ".toml":
-            case ".md": case ".markdown": case ".txt":
+            case ".cs":
+            case ".vb":
+            case ".fs":
+            case ".ts":
+            case ".js":
+            case ".mjs":
+            case ".cjs":
+            case ".py":
+            case ".go":
+            case ".rs":
+            case ".java":
+            case ".kt":
+            case ".swift":
+            case ".rb":
+            case ".php":
+            case ".html":
+            case ".htm":
+            case ".css":
+            case ".scss":
+            case ".sass":
+            case ".less":
+            case ".csproj":
+            case ".fsproj":
+            case ".vbproj":
+            case ".sln":
+            case ".slnx":
+            case ".csx":
+            case ".json":
+            case ".yaml":
+            case ".yml":
+            case ".xml":
+            case ".ini":
+            case ".cfg":
+            case ".toml":
+            case ".md":
+            case ".markdown":
+            case ".txt":
                 return true;
             default:
                 return false;

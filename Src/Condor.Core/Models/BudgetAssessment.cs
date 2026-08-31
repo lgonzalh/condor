@@ -2,8 +2,11 @@ namespace Condor.Core.Models;
 
 /// <summary>
 /// Veredicto auditable de presupuesto de RAM: stock, presupuesto y reserva.
-/// La RAM se trata como un recurso limitado con reserva operativa de seguridad;
-/// el presupuesto real = RAM libre - reservas - margen de estabilidad.
+/// La RAM se trata como un recurso limitado; el presupuesto real
+/// = RAM libre - reservas (sistema + Condor + margen operativo combinado),
+/// donde el margen operativo abarca reserva de seguridad y estabilidad
+/// (OperatingMarginGb sobre la RAM total). La formula esta unificada con
+/// ModelMemoryBudget para garantizar coincidencia entre admision y reporte.
 /// </summary>
 public sealed class BudgetAssessment
 {
@@ -26,8 +29,8 @@ public sealed class BudgetAssessment
     /// <summary>True si hay presupuesto positivo (headroom real y seguro).</summary>
     public bool IsBudgeted { get; init; }
 
-    /// <summary>True si el coste (peak estimado) del modelo entra en el presupuesto.</summary>
-    public bool Admits(double candidatePeakGb) => IsBudgeted && BudgetGb >= candidatePeakGb;
+    /// <summary>True si el coste (peak estimado) del modelo entra en el presupuesto (ESTRICTO: menor al presupuesto).</summary>
+    public bool Admits(double candidatePeakGb) => IsBudgeted && BudgetGb > candidatePeakGb;
 
     public static BudgetAssessment NoData() => new()
     {

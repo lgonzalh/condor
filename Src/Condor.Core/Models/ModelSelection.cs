@@ -8,22 +8,22 @@ public class ModelCandidate
     public string PullName { get; set; } = "";
     public long SizeBytes { get; set; }
     public string? Family { get; set; }
-        public string? ParameterSize { get; set; }
-        public string? Quantization { get; set; }
-        public List<string> Capabilities { get; set; } = new();
+    public string? ParameterSize { get; set; }
+    public string? Quantization { get; set; }
+    public List<string> Capabilities { get; set; } = new();
 
-        // Perfil de recursos del modelo (viabilidad real, no solo peso).
-        public double WeightGb { get; set; }
-        public int ContextWindow { get; set; }
+    // Perfil de recursos del modelo (viabilidad real, no solo peso).
+    public double WeightGb { get; set; }
+    public int ContextWindow { get; set; }
 
-        // Capacidad de ingenieria por dominio (consulta|coding|agente|vision).
-        public int CodingLevel { get; set; }
-        public int MultiFileLevel { get; set; }
-        public bool StructuredOutput { get; set; }
-        public bool ToolUse { get; set; }
-        public bool Stability { get; set; }
-        public string? Purpose { get; set; }
-    }
+    // Capacidad de ingenieria por dominio (consulta|coding|agente|vision).
+    public int CodingLevel { get; set; }
+    public int MultiFileLevel { get; set; }
+    public bool StructuredOutput { get; set; }
+    public bool ToolUse { get; set; }
+    public bool Stability { get; set; }
+    public string? Purpose { get; set; }
+}
 
 public class ModelSelectionResult
 {

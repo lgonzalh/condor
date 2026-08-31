@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Condor.Core.Catalog;
 using Condor.Core.Evaluation;
 using Condor.Core.Models;
 
@@ -29,14 +30,20 @@ public static class ModelSelector
             result.Limitations.Add("La memoria RAM no esta disponible; la seleccion es incierta.");
         }
 
-        // Instantanea de recursos con desglose y veredicto de presion (sin contar la cache).
+        // Presupuesto estricto usando BudgetPolicy (consistente con SelectForTask).
+        var budget = BudgetPolicy.Default.Assess(memory);
+        result.Budget = budget;
         result.Resources = ModelMemoryBudget.Snapshot(memory, candidatePeakGb: null);
+
+        var installed = (assessment.Tools?.Ollama?.Models ?? new List<ModelInfo>())
+            .Select(m => m.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         List<ModelCandidate> ordered;
 
         try
         {
-            ordered = OrderByCompatibility(catalog, memory, freeDiskBytes, purpose ?? "agente");
+            ordered = OrderByCompatibility(catalog, memory, freeDiskBytes, purpose ?? "agente", budget);
         }
         catch
         {
@@ -44,21 +51,13 @@ public static class ModelSelector
             return result;
         }
 
-        var installed = (assessment.Tools?.Ollama?.Models ?? new List<ModelInfo>())
-            .Select(m => m.Name)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
         var desired = ordered.FirstOrDefault();
 
         if (desired is null)
         {
-            // Distinguimos "catalogo vacio" de "ninguno cabe por recursos".
             var hasCandidates = catalog.Count > 0;
             if (hasCandidates)
             {
-                // Ninguno cabe: veredicto basado en el modelo mas pequeno del catalogo.
-                // El estado debe reflejar el motivo real: porcentaje de RAM total y
-                // presupuesto seguro, nunca ambos-reintentos.
                 var smallestPeak = catalog
                     .Where(c => c.WeightGb > 0)
                     .Select(c => ModelMemoryBudget.EstimatePeakGb(c.WeightGb, EstimateContextKbGb(c)))
@@ -87,8 +86,6 @@ public static class ModelSelector
         }
 
         // Clasificar la presion respecto al candidato elegido (para alertas honestas).
-        // En este punto el candidato YA cumplio ambas condiciones (porcentaje + presupuesto
-        // seguro), asi que su estado es Normal/Ajustado/Presion segun su porcentaje de RAM.
         var candidatePeak = (double)catalog
             .Where(c => c.Name.Equals(desired.Name, StringComparison.OrdinalIgnoreCase) ||
                         c.PullName.Equals(desired.PullName, StringComparison.OrdinalIgnoreCase))
@@ -186,7 +183,8 @@ public static class ModelSelector
         IReadOnlyList<ModelCandidate> catalog,
         MemoryInfo? memory,
         long freeDiskBytes,
-        string purpose)
+        string purpose,
+        BudgetAssessment budget)
     {
         var viable = new List<ModelCandidate>();
 
@@ -205,8 +203,18 @@ public static class ModelSelector
                 var freeGb = memory.FreeBytes / (double)ModelMemoryBudget.BytesPerGb;
 
                 // Ambas condiciones de carga: porcentaje de RAM total permitido Y
-                // presupuesto seguro (RAM libre real - reservas - margen).
-                if (!ModelMemoryBudget.FitsInRamStrict(candidate.WeightGb, contextGb, totalGb, freeGb))
+                // presupuesto estricto (BudgetPolicy: peak < budget).
+                var peak = ModelMemoryBudget.EstimatePeakGb(candidate.WeightGb, contextGb);
+
+                // Condicion 1: porcentaje de RAM total
+                var byRatio = ModelMemoryBudget.ClassifyByRatio(peak, totalGb);
+                if (byRatio == ResourcePressure.Insufficient)
+                {
+                    continue;
+                }
+
+                // Condicion 2: presupuesto estricto (peak < budget)
+                if (!budget.IsBudgeted || !budget.Admits(peak))
                 {
                     continue;
                 }
