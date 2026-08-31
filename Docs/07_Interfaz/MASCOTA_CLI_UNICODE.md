@@ -24,23 +24,28 @@ monoespaciados y colores ANSI.
 
 ### 1. Una sola fuente (dos presencias)
 
-(T-020 P5) Condor utiliza dos presencias de una UNICA fuente ANSI original
+(α.03) Condor utiliza dos presencias de una UNICA fuente ANSI original
 (`Docs/07_Interfaz/Mockups/condor_unicode_v16.ps1`, paleta 232/242/167/97):
 
 - Condor **Grande**: bienvenida e inicio. Es el 100% de la fuente ANSI original,
   tal cual: caracteres ANSI, filas, espacios, bloques y secuencias 256 (232
   cuerpo, 242 sombreado, 167 cabeza, 97 blanco) y sus resets. No deriva de SVG.
-- Condor **Ave pequeña**: mascota de trabajo durante la sesión. Es el Grande
-  reducido uniformemente al 50% mediante una transformacion determinista
-  (`CondorArt.Scale50`) sobre la MISMA fuente. No es un segundo diseño ni una
-  segunda representacion ni una segunda matriz. No existe paleta 235/236/233
-  ni escala de contraste posterior.
+  Invariante «no se escala / no se redibuja» preservado.
+- Condor **Ave pequeña**: mascota de trabajo durante la sesión. Es una
+  **adaptación gráfica compacta de la misma ave** (α.03), no un downscale ciego:
+  la reducción 50% (`Scale50`) perdía patas/garras y deformaba el pico. La
+  pequeña se construye con una matriz propia reducida (`CondorArt.PequenaMatrix`)
+  que conserva la identidad cromática y la anatomía (cabeza terracota, punta de
+  pico blanca, cuerpo gris, sombreado, ala/cola) y AÑADE patas y garras visibles.
+  No es un segundo diseño ni una segunda identidad: misma paleta y misma ave.
 
-La mascota de trabajo no intenta reproducir un condor zoologicamente
-detallado. Su objetivo es que el usuario reconozca inmediatamente un ave
-dentro de las restricciones de una terminal.
-
-**Interpretación de la fuente (T-‑018/auditoría α.02).** El ANSI original (`condor_unicode_v16.ps1`) es un cóndor alado en perfil: representa cabeza, cuerpo, alas y cola. **No** representa patas ni garras como elementos distintos del cuerpo, ni un collar separado del cuello. Conforme a la regla de «no redibujar / no sustituir», la mascota grande conserva **exactamente** esa representación ANSI (no se añaden patas/garras/collar); el «collar» se interpreta como el sombreado del cuello (ANSI 242) y la silueta alada del propio arte. La pequeña es `Scale50(Grande)`, misma identidad/paleta.
+**Interpretación de la fuente (T-018/auditoría α.02, ajustada en α.03).** El ANSI
+original (`condor_unicode_v16.ps1`) es un cóndor alado en perfil: representa cabeza,
+cuerpo, alas y cola; **no** representa patas ni garras como elementos distintos del
+cuerpo. Conforme a la regla de «no redibujar / no sustituir», la mascota **grande**
+conserva exactamente esa representación ANSI. En α.03 la mascota **pequeña** sí se
+adapta a tamaño reducido con patas y garras (requisito explícito de α.03), manteniendo
+la misma identidad cromática y anatómica.
 
 ### 2. Medio de representacion
 

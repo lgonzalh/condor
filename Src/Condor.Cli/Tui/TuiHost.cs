@@ -48,17 +48,26 @@ public sealed class TuiHost : IDisposable
     private const string IdentityLine = "Hecho en Colombia · Modo Local 100%";
     private const string Slogan = "Observa · Comprende · Planifica · Construye · Verifica";
     private const string Placeholder = "¿Qué deseas construir? ...";
+    private const string ActividadHeader = "ACTIVIDAD DEL AGENTE";
+    private const string RevisionHeader = "REVISIÓN DEL CÓDIGO";
+    private const string AnalisisHeader = "ANÁLISIS DEL AGENTE";
+    private const string RespuestaHeader = "RESPUESTA / INFORME DEL AGENTE";
     internal const int MinWidth = 80;
     internal const int MinHeight = 24;
 
-    private const int HeaderHeight = 15;          // titulo (1) + Ave V16 (13) + separador (1)
+    /// <summary>Ancho del panel lateral derecho de contexto persistente (mascota + workspace + modos).</summary>
+    internal const int PanelWidth = 30;
     private const int BottomRows = 4;             // separador entrada + entrada + progreso + barra estado
 
     private static readonly string[] SpinnerFrames = { "◐", "◓", "◑", "◒" };
 
     private readonly object _gate = new();
-    private readonly List<(string Text, ActivityKind Kind)> _activity = new();
-    private readonly List<(string Line, ActivityKind Kind)> _wrapped = new();
+    private readonly List<(string Text, ActivityKind Kind)> _revision = new();
+    private readonly List<(string Text, ActivityKind Kind)> _analisis = new();
+    private readonly List<(string Text, ActivityKind Kind)> _respuesta = new();
+    private readonly List<(string Line, ActivityKind Kind)> _revisionWrapped = new();
+    private readonly List<(string Line, ActivityKind Kind)> _analisisWrapped = new();
+    private readonly List<(string Line, ActivityKind Kind)> _respuestaWrapped = new();
 
     private int _width;
     private int _height;
@@ -81,13 +90,16 @@ public sealed class TuiHost : IDisposable
     private bool _dirtyStatus;
     private bool _dirtyInput;
 
-    private int ActivityTop => HeaderHeight + 1;                 // debajo del separador de actividad
-    private int SepActivityRow => HeaderHeight;                  // fila del separador "Actividad del agente"
+    // Filas logicas (0-based) de la sesion. La convencion de pintura usa At(fila+1): "fila" 0-based.
+    private int SepActivityRow => 1;                             // encabezado "ACTIVIDAD DEL AGENTE"
+    private int MainContentTop => 2;                             // primera fila de contenido/panel
     private int SepInputRow => _height - BottomRows;             // separador antes de la entrada
     public int InputRow => _height - BottomRows + 1;             // fila de entrada
-    private int ProgresoRow => _height - BottomRows + 2;        // fila de progreso / iteracion
+    private int ProgresoRow => _height - BottomRows + 2;         // fila de progreso / iteracion
     private int StatusBarRow => _height - BottomRows + 3;        // fila de barra de estado (ultima)
-    private int ActivityHeight => Math.Max(0, _height - BottomRows - HeaderHeight - 1);
+    private int PanelContentBottom => SepInputRow - 1;           // ultima fila utilizable de contenido/panel
+    private int MainCols => Math.Max(20, _width - PanelWidth - 2);     // ancho de la columna principal
+    private int PanelLeft => _width - PanelWidth + 1;                  // columna 1-based del panel derecho
 
     public TuiHost()
     {
@@ -287,8 +299,12 @@ public sealed class TuiHost : IDisposable
     }
 
     /// <summary>
-    /// Publica una linea en la zona Conversacion / Actividad. El texto se ajusta
-    /// al ancho actual; si la ventana cambia de tamano se reajusta completa.
+    /// Publica una linea en la zona Conversacion / Actividad de la sesion. El contenido
+    /// se enruta a la sub-etapa correspondiente de las tres etapas (α.03):
+    ///   · REVISION DEL CODIGO      -> entrada del usuario (lo que se revisa)
+    ///   · ANALISIS DEL AGENTE      -> eventos del sistema y advertencias (observacion/verificacion)
+    ///   · RESPUESTA / INFORME      -> resultado e informe de Condor (exito/error/final)
+    /// El texto se ajusta al ancho actual; si la ventana cambia de tamano se reajusta completo.
     /// </summary>
     public void AddActivity(string text, ActivityKind kind)
     {
@@ -306,16 +322,27 @@ public sealed class TuiHost : IDisposable
                 return;
             }
 
-            _activity.Add((text.TrimEnd(), kind));
-            if (_activity.Count > 400)
+            var bucket = BucketFor(kind);
+            bucket.Add((text.TrimEnd(), kind));
+            if (bucket.Count > 400)
             {
-                _activity.RemoveRange(0, _activity.Count - 400);
+                bucket.RemoveRange(0, bucket.Count - 400);
             }
 
             RewrapLocked();
             _dirtyActivity = true;
         }
     }
+
+    private List<(string Text, ActivityKind Kind)> BucketFor(ActivityKind kind) => kind switch
+    {
+        ActivityKind.User => _revision,
+        ActivityKind.Condor or ActivityKind.Success or ActivityKind.Error => _respuesta,
+        _ => _analisis
+    };
+
+    private List<(string Line, ActivityKind Kind)> WrappedFor(List<(string Text, ActivityKind Kind)> bucket) =>
+        bucket == _revision ? _revisionWrapped : bucket == _analisis ? _analisisWrapped : _respuestaWrapped;
 
     /// <summary>Ejecuta una accion fuera de la pantalla TUI (salida de comandos /).</summary>
     public void Suspend(Action action)
@@ -449,6 +476,7 @@ public sealed class TuiHost : IDisposable
                 {
                     PaintChromeLocked(sb);
                     PaintActivityLocked(sb);
+                    PaintRightPanelLocked(sb);   // se pinta al final: no es borrado por ClearLine de sub-paneles
                     PaintStatusLocked(sb);
                     PaintProgresoLocked(sb);
                     PaintInputRegionLocked(sb);
@@ -456,14 +484,11 @@ public sealed class TuiHost : IDisposable
             }
             else
             {
-                if (_dirtyHeader)
+                if (_dirtyHeader && _mode == HostMode.Session)
                 {
-                    PaintHeaderLocked(sb);
-                    if (_mode == HostMode.Session)
-                    {
-                        PaintSeparatorLocked(sb, SepActivityRow, "Actividad del agente");
-                        PaintSeparatorLocked(sb, SepInputRow, null);
-                    }
+                    PaintTitleRowLocked(sb);
+                    PaintFeedHeaderLocked(sb);
+                    PaintSeparatorLocked(sb, SepInputRow, null);
                 }
 
                 if (_dirtyActivity && _mode == HostMode.Session)
@@ -471,10 +496,18 @@ public sealed class TuiHost : IDisposable
                     PaintActivityLocked(sb);
                 }
 
-                if (_dirtyStatus)
+                // El panel derecho se repinta tras la actividad (que puede borrar su region
+                // con ClearLine) y cuando cambia el contexto (workspace/modelo/estado).
+                if ((_dirtyHeader || _dirtyActivity) && _mode == HostMode.Session)
+                {
+                    PaintRightPanelLocked(sb);
+                }
+
+                if (_dirtyStatus && _mode == HostMode.Session)
                 {
                     PaintStatusLocked(sb);
                     PaintProgresoLocked(sb);
+                    PaintRightPanelLocked(sb); // el panel muestra workspace/modelo (contexto persistente)
                 }
 
                 if (_dirtyInput && _mode == HostMode.Session)
@@ -513,8 +546,7 @@ public sealed class TuiHost : IDisposable
         }
 
         PaintTitleRowLocked(sb);
-        PaintHeaderLocked(sb);
-        PaintSeparatorLocked(sb, SepActivityRow, "Actividad del agente");
+        PaintFeedHeaderLocked(sb);
         PaintSeparatorLocked(sb, SepInputRow, null);
     }
 
@@ -538,32 +570,74 @@ public sealed class TuiHost : IDisposable
         sb.Append(Ansi.FgDorado + right + Ansi.Reset);
     }
 
-    private void PaintHeaderLocked(System.Text.StringBuilder sb)
+    /// <summary>Encabezado de la zona de actividad: "ACTIVIDAD DEL AGENTE" sobre la columna principal.</summary>
+    private void PaintFeedHeaderLocked(System.Text.StringBuilder sb)
     {
-        if (_mode == HostMode.Welcome)
-        {
-            PaintWelcomeHeaderLocked(sb);
-            return;
-        }
+        PaintSeparatorLocked(sb, SepActivityRow, ActividadHeader, MainCols);
+    }
 
-        // Mascota oficial de trabajo (Condor Ave V16) acompana toda la sesion,
-        // anclada a la DERECHA. Ningun texto invade su area: la informacion
-        // vive en la linea superior. El bloque se posiciona completo.
-        var columna = ColumnaMascotaDerecha();
-        for (var i = 0; i < CondorArt.Ave.Length && i + 2 <= HeaderHeight; i++)
+    /// <summary>
+    /// Panel lateral derecho de contexto persistente (α.03): la mascota PEQUENA (una sola)
+    /// arriba y, anclados abajo, el workspace, el modo del agente y el modelo en uso. No
+    /// invade la columna principal: solo ocupa las Columnas <see cref="PanelLeft"/>..ancho.
+    /// </summary>
+    private void PaintRightPanelLocked(System.Text.StringBuilder sb)
+    {
+        var left = PanelLeft;
+        var panelVisible = PanelWidth - 1;
+        for (var r = MainContentTop; r <= PanelContentBottom; r++)
         {
-            var row = 2 + i; // fila 2..14
-            sb.Append(Ansi.At(row, columna));
-            sb.Append(Ansi.ClearLine);
-            sb.Append(Ansi.Paint(CondorArt.Ave[i]) + Ansi.Reset);
+            sb.Append(Ansi.At(r + 1, left));
+            var contenido = PanelRowLocked(r);
+            var vis = Ansi.VisibleWidth(contenido);
+            if (vis > 0)
+            {
+                sb.Append(contenido);
+            }
+            var pad = Math.Max(0, panelVisible - vis);
+            if (pad > 0)
+            {
+                sb.Append(new string(' ', pad));
+            }
         }
     }
 
-    /// <summary>Columna (1-based) que ancla el Ave completo a la derecha del ancho actual.</summary>
-    internal int ColumnaMascotaDerecha()
-        => Math.Max(1, _width - AnchoVisibleMascota() - 5);
+    /// <summary>Contenido de una fila del panel derecho (mascota o contexto); vacio en el resto.</summary>
+    private string PanelRowLocked(int row)
+    {
+        // Mascota pequena (una sola) en la parte superior del panel.
+        var artRows = CondorArt.Ave;
+        var artIndex = row - MainContentTop;
+        if (artIndex >= 0 && artIndex < artRows.Length)
+        {
+            return Ansi.Paint(artRows[artIndex]);
+        }
 
-    /// <summary>Ancho visible maximo de las filas del Ave (sin secuencias SGR).</summary>
+        // Contexto persistente anclado al fondo del panel.
+        var ctxTop = Math.Max(MainContentTop + artRows.Length + 1, PanelContentBottom - 2);
+        if (row == ctxTop)
+        {
+            return Ansi.FgGris + "Workspace:" + Ansi.Reset + " " + Ansi.FgBlanco + Clip(_workspace ?? "—", panelWorkspaceWidth()) + Ansi.Reset;
+        }
+
+        if (row == ctxTop + 1)
+        {
+            return Ansi.FgGris + "Modo:" + Ansi.Reset + " " + Ansi.FgDorado + "Agente" + Ansi.Reset;
+        }
+
+        if (row == ctxTop + 2)
+        {
+            return Ansi.FgGris + "Modelo:" + Ansi.Reset + " " + Ansi.FgTerracota + Clip(_model ?? "—", panelWorkspaceWidth()) + Ansi.Reset;
+        }
+
+        return "";
+    }
+
+    private int panelWorkspaceWidth() => Math.Max(6, PanelWidth - 1 - 10);
+
+    /// <summary>
+    /// Ancho visible maximo de las filas del Ave (sin secuencias SGR).
+    /// </summary>
     internal static int AnchoVisibleMascota()
     {
         var maximo = 0;
@@ -600,37 +674,74 @@ public sealed class TuiHost : IDisposable
 
     private void PaintSeparatorLocked(System.Text.StringBuilder sb, int row, string? label)
     {
+        PaintSeparatorLocked(sb, row, label, _width);
+    }
+
+    private void PaintSeparatorLocked(System.Text.StringBuilder sb, int row, string? label, int width)
+    {
         sb.Append(Ansi.At(row + 1, 1)); // At() es 1-based sobre filas logicas 0-based
         sb.Append(Ansi.ClearLine);
         sb.Append(Ansi.FgGris + "──" + Ansi.Reset);
         if (label is null)
         {
-            sb.Append(Ansi.FgGris + new string('─', Math.Max(0, _width - 2)) + Ansi.Reset);
+            sb.Append(Ansi.FgGris + new string('─', Math.Max(0, width - 2)) + Ansi.Reset);
             return;
         }
 
         sb.Append(" " + Ansi.FgTerracota + label + Ansi.Reset + " ");
         var used = 4 + label.Length + 1;
-        sb.Append(Ansi.FgGris + new string('─', Math.Max(0, _width - used)) + Ansi.Reset);
+        sb.Append(Ansi.FgGris + new string('─', Math.Max(0, width - used)) + Ansi.Reset);
     }
 
+    /// <summary>
+    /// Pinta las tres sub-etapas de la zona de actividad (α.03): REVISION DEL CODIGO,
+    /// ANALISIS DEL AGENTE y RESPUESTA / INFORME DEL AGENTE. Cada una con su cabecera y
+    /// su contenido separado; no se mezclan visualmente.
+    /// </summary>
     private void PaintActivityLocked(System.Text.StringBuilder sb)
     {
-        var height = ActivityHeight;
-        if (height <= 0)
-        {
-            return;
-        }
+        var (revTop, anaTop, resTop, revPer, resPer) = RegionLayout();
+        PaintPanelLocked(sb, RevisionHeader, _revisionWrapped, revTop, revPer);
+        PaintPanelLocked(sb, AnalisisHeader, _analisisWrapped, anaTop, revPer);
+        PaintPanelLocked(sb, RespuestaHeader, _respuestaWrapped, resTop, resPer);
+    }
 
-        var take = Math.Min(height, _wrapped.Count);
-        var skip = _wrapped.Count - take;
-        for (var i = 0; i < height; i++)
+    /// <summary>
+    /// Distribuye las filas de la columna principal entre las tres sub-etapas (1 fila de
+    /// cabecera cada una + contenido). Devuelve la fila 0-based de inicio de cada cabecera
+    /// y las filas de contenido de cada una.
+    /// </summary>
+    private (int revTop, int anaTop, int resTop, int per, int resPer) RegionLayout()
+    {
+        var top = MainContentTop;
+        var bottom = PanelContentBottom;
+        var total = Math.Max(0, bottom - top + 1);
+        var content = Math.Max(0, total - 3); // 3 filas de cabecera
+        var per = content / 3;
+        var resPer = content - 2 * per;
+        var revTop = top;
+        var anaTop = revTop + 1 + per;
+        var resTop = anaTop + 1 + per;
+        return (revTop, anaTop, resTop, per, resPer);
+    }
+
+    private void PaintPanelLocked(
+        System.Text.StringBuilder sb,
+        string header,
+        List<(string Line, ActivityKind Kind)> wrapped,
+        int headerRow,
+        int contentRows)
+    {
+        PaintSeparatorLocked(sb, headerRow, header, MainCols);
+        var take = Math.Min(contentRows, wrapped.Count);
+        var skip = Math.Max(0, wrapped.Count - take);
+        for (var i = 0; i < contentRows; i++)
         {
-            sb.Append(Ansi.At(ActivityTop + 1 + i, 1));
+            sb.Append(Ansi.At(headerRow + 2 + i, 1));
             sb.Append(Ansi.ClearLine);
             if (i < take)
             {
-                var (line, kind) = _wrapped[skip + i];
+                var (line, kind) = wrapped[skip + i];
                 sb.Append(ActivityPrefix(kind) + line + Ansi.Reset);
             }
         }
@@ -815,13 +926,23 @@ public sealed class TuiHost : IDisposable
 
     private void RewrapLocked()
     {
-        _wrapped.Clear();
-        var width = Math.Max(20, _width - 4);
-        foreach (var (text, kind) in _activity)
+        var width = Math.Max(20, MainCols - 4);
+        RewrapBucket(_revision, _revisionWrapped, width);
+        RewrapBucket(_analisis, _analisisWrapped, width);
+        RewrapBucket(_respuesta, _respuestaWrapped, width);
+    }
+
+    private static void RewrapBucket(
+        List<(string Text, ActivityKind Kind)> source,
+        List<(string Line, ActivityKind Kind)> target,
+        int width)
+    {
+        target.Clear();
+        foreach (var (text, kind) in source)
         {
             foreach (var line in WordWrap(text, width))
             {
-                _wrapped.Add((line, kind));
+                target.Add((line, kind));
             }
         }
     }
