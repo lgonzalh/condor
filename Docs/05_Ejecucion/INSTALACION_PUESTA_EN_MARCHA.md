@@ -126,9 +126,9 @@ ingenieria cubre la tarea).
 Acciones de Condor (automaticas, durante la preparacion del arranque):
 
 - Evaluar el hardware (RAM total/libre, disco, GPU) y calcular el presupuesto
-  seguro: `RAM libre - margen operativo` (SO + Ollama + Condor + colchon
-  anti-swapping). Nunca se usa un porcentaje de RAM total si la RAM libre real
-  es menor, y el presupuesto nunca supera la RAM libre.
+  seguro: `RAM libre - reservaSistema - reservaCondor - margenOperativo`
+  (cada una con piso ~1.5 GB). Nunca se usa un porcentaje de RAM total si la
+  RAM libre real es menor, y el presupuesto nunca supera la RAM libre.
 - Descartar preventivamente modelos cuyo pico de memoria (peso + KV/contexto +
   overhead) supera el presupuesto seguro, aunque ya esten instalados.
 - Seleccionar el modelo de maxima capacidad de ingenieria viable dentro del

@@ -24,10 +24,12 @@ La TUI no es una capa decorativa: es la autoridad unica de renderizado durante l
 - Hilos de trabajo solo publican estado (`SetEstado`, `SetProgreso`, `AddActivity`); el hilo de interfaz repinta regiones sucias cada ~40 ms.
 - Tres modos: `Welcome` (Condor Grande), `Session` (Condor Ave + chrome), `Suspended` (comandos `/`).
 
-### 2. Dos mascotas oficiales
+### 2. Una sola mascota (dos presencias)
 
-- **Condor Grande** (bienvenida): derivada 1:1 de la mascota oficial `Assets/condor_mascota.svg` proyectada sobre rejilla 15x12 celdas con bloques Unicode; volumen por distancia al centro visual.
-- **Condor Ave V16** (trabajo): 13 filas pre-SGR del prototipo aprobado V16 (`Docs/07_Interfaz/Mockups/condor_unicode_v16.ps1`); contraste corregido: zonas antes en negro puro (232) usan escala oscura aprobada 235/236/233 ciclicamente.
+- **Condor Grande** (bienvenida): 100% de la fuente ANSI original (`Docs/07_Interfaz/Mockups/condor_unicode_v16.ps1`), tal cual: caracteres ANSI, filas, espacios, bloques y secuencias 256 (232 cuerpo, 242 sombreado, 167 cabeza, 97 blanco) y sus resets.
+- **Condor Ave pequena** (sesion): el Grande reducido uniformemente al 50% mediante una transformacion determinista (`CondorArt.Scale50`) sobre la MISMA base. No es un segundo diseno ni una segunda matriz.
+
+Fuente unica: ANSI original. Pipeline: ANSI ORIGINAL → GRANDE 100% → PEQUEÑA 50%.
 
 ### 3. Paleta institucional
 
@@ -164,12 +166,12 @@ Ejecucion de `condor.exe` (Release/produccion, self-contained win-x64) en termin
 |----------|---------------|--------|------------|
 | Condor.Cli.Tests | 34/34 | 0 | TUI: identidad, fotogramas, estados, comentarios, ANSI |
 | Architecture.Tests | 22/22 | 0 | Arquitectura |
-| Condor.Core.Tests | 247/262 | 15 | **PREEXISTENTES** (ModelSelector/Budget — ajenos a T-018) |
-| Condor.Infrastructure.Tests | 305/307 | 2 | **PREEXISTENTES** (ModelAutoSetup — ajenos a T-018) |
-| **Total** | **608/625** | **17** | **17 FALLOS PREEXISTENTES = 15 Core + 2 Infra** |
+| Condor.Core.Tests | 262/262 | 0 | Budget/model selection — resuelto por T-016 |
+| Condor.Infrastructure.Tests | 307/307 | 0 | ModelAutoSetup — resuelto por T-016 |
+| **Total** | **625/625** | **0** | **0 fallos tras unified budget formula (T-016)** |
 
 - **PRE-T-018** (primera ejecucion, antes de cambios): 608/625, 17 fallos (mismos 15 Core + 2 Infra).
-- **POST-T-018** (tras cambios): 608/625, 17 fallos (mismos 17 tests, mismos nombres).
+- **POST-T-018 + T-016** (tras correcciones integrales): 625/625, 0 fallos. Los 17 fallos preexistentes (BudgetPolicy/ModelSelector + ModelAutoSetup) fueron resueltos por la unificacion de la formula de presupuesto de memoria (T-016), sin regresiones en T-018.
 - **Regresiones nuevas: 0**.
 
 ### Build

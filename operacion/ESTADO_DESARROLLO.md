@@ -131,9 +131,9 @@ Correcciones finales de la TUI (Terminal User Interface) para cerrar la version 
 ### Pruebas y regresion
 - Cli.Tests: 34/34 OK (identidad, fotogramas, estados honestos, comentarios, ANSI).
 - Architecture: 22/22 OK.
-- Core: 247/262 (15 fallos PREEXISTENTES en ModelSelector/Budget — ajenos).
-- Infrastructure: 305/307 (2 fallos PREEXISTENTES en ModelAutoSetup — ajenos).
-- Total: 608/625 (17 fallos PREEXISTENTES = 15 Core + 2 Infra). **0 regresiones nuevas**.
+- Core: 262/262 (0 fallos tras unificacion de formula de presupuesto T-016).
+- Infrastructure: 307/307 (0 fallos tras unificacion de formula de presupuesto T-016).
+- Total: 625/625 (0 fallos). **0 regresiones nuevas**.
 - Build: 0 errores, 0 advertencias.
 - Build aislado verificado (worktree del commit).
 - Validacion completa ejecutando `condor.exe` real (Release/produccion).

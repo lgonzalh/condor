@@ -81,31 +81,26 @@
   dado por la firma de respuesta (`©Condor - modelo - tiempo`). La persistencia
   entre operaciones sí se mantiene.
 
-## 5. P5 — Mascota (Prioridad 5) ✅ IMPLEMENTADO (decisión B)
-Decisión del usuario: **dos presencias**, ambas del mismo arte del Grande:
+## 5. P5 — Mascota (Prioridad 5) ✅ IMPLEMENTADO (corrección T-020 P5)
+Decisión del usuario: **una sola identidad**, con dos presencias del mismo arte:
 
 - **Grande al 100%** (bienvenida/inicio): sin cambios, 1:1 del SVG, rejilla 15×12.
   Invariante «no se escala» preservado; los tests `Mascota_Grande_*` verdes.
-- **Ave pequeña = Grande reducido al ~50%**: nueva matriz `SmallCondorMatrix`
-  (8×6, autorrealizada) reutilizando la paleta aprobada del Grande (cabeza
-  terracota 167, pico dorado 179, collar blanco 255, cuerpo 233-238). Reemplaza
-  al Ave V16. **No es un scale geométrico programático** (los caracteres son
-  atómicos): cada presencia conserva su propia matriz — el invariante de
-  proporción documentado («no se escala ni se transforma geometricamente») se
-  cumple literalmente, pues no se escala programáticamente; se autorrea una
-  matriz independiente a menor escala.
+- **Ave pequeña = Grande reducido proporcionalmente 2:1**: la `SmallCondorMatrix`
+  (7×6, 6 filas) se deriva del `GrandeMatrix` mediante muestreo celda-centro
+  (una sola identidad, no una segunda mascota). Reutiliza la misma paleta aprobada
+  del Grande (cabeza terracota 167, pico dorado 179, collar blanco 255, cuerpo
+  233-238). La mitad inferior del pico (`b`/`48;5;167`) se pierde por el muestreo
+  2:1 de arte celular (propiedad inherente al escalado), pero la cabeza, el cuello,
+  el pico superior y el cuerpo conservan la misma identidad del Grande.
 
-Test reescrito: `Mascota_AveV16_ConservaGeometria_Y_CorrigeContrasteOscuro` →
-`Mascota_Ave_Pequena_DerivaDeGrandeAl50_ReutilizaPaleta` (6 filas, ancho 8,
-paleta del Grande, sin 232/242). Las pruebas de layout que usaban `Ave`
-estructuralmente (`Mascota_PosicionadaALaDerecha`,
+Test reescrito: `Mascota_Ave_Pequena_DerivaDeGrandeAl50_ReutilizaPaleta` →
+`Mascota_Ave_Pequena_EsElGrandeReducido2a1_ReutilizaPaleta` (6 filas, ancho 7,
+escala 2:1 celda-centro, paleta del Grande, sin 232/242/97m). Las pruebas de
+layout que usaban `Ave` estructuralmente (`Mascota_PosicionadaALaDerecha`,
 `Tui2_Sesion_EntradaEnParteInferior`, `Mascota_ZonaLibre_DeTextoDeModelo`)
 siguen verdes (el placeholder está anclado al pie; el modelo solo aparece en la
 fila de cabecera).
 
 Resultado: **54/54 verdes**; `condor --version`/`--help` sin cambio (el arte solo
 se muestra en la TUI I1).
-
-> Nota de calidad: la matriz pequeña es una reducción autorrealizada del Grande a
-~50%; se recomienda verificar visualmente en terminal real (`condor`) y un
-diseñador puede refinar `SmallCondorMatrix` sin alterar invariantes.

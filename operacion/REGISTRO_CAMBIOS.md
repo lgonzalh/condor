@@ -664,9 +664,9 @@ La TUI (Terminal User Interface) requeria ajustes finales de identidad visual, c
 ### Pruebas
 - Cli.Tests: 34/34 OK (identidad, fotogramas, estados honestos, comentarios, utilidades ANSI).
 - Architecture.Tests: 22/22 OK.
-- Core.Tests: 247/262 (15 fallos PREEXISTENTES en ModelSelector/Budget — ajenos a T-018, identicos PRE/POST).
-- Infrastructure.Tests: 305/307 (2 fallos PREEXISTENTES en ModelAutoSetupServiceTests — ajenos a T-018, identicos PRE/POST).
-- Total suite: 608/625 (17 fallos PREEXISTENTES = 15 Core + 2 Infrastructure). Cero regresiones nuevas.
+- Core.Tests: 262/262 (0 fallos — Budget/model selection resuelto por T-016).
+- Infrastructure.Tests: 307/307 (0 fallos — ModelAutoSetup resuelto por T-016).
+- Total suite: 625/625 (0 fallos tras unificacion de formula de presupuesto T-016). Cero regresiones nuevas.
 - Build: 0 errores, 0 advertencias.
 - Validacion completa ejecutando `condor.exe` real publicado en Release/produccion.
 

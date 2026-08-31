@@ -1,8 +1,8 @@
 # HARNESS DE PRESUPUESTO DINÁMICO Y SELECCIÓN INTELIGENTE DE MODELOS
 
-Version: 1.0.0
+Version: 1.1.0
 Estado: Vigente
-Fecha: 2026-08-20
+Fecha: 2026-08-25
 Nivel: Arquitectura de ejecución (motor de modelo)
 
 ## PROPOSITO
@@ -20,13 +20,20 @@ modelo solo porque "todavía cabe".
 ## FORMULA DE PRESUPUESTO
 
 ```
-presupuesto_real = RAM_libre - reservaSistema - reservaCondor
-                  - reservaOperativa - margenEstabilidad
+presupuesto_real = RAM_libre - reservaSistema(1.5 GB) - reservaCondor(1.5 GB) - margenOperativo(min 1.5 GB)
 ```
 
-- `reservaOperativa` = max(absoluto, RAM_libre * ratio). Nunca se presta al modelo.
+- `margenOperativo` = min(3, max(1.5, RAM_total * 0.08)). Combina la reserva
+  operativa de seguridad y el margen de estabilidad en un unico valor basado en
+  la RAM TOTAL (no en la libre). Se obtiene de
+  `ModelMemoryBudget.OperatingMarginGb(totalGb)`, manteniendo coincidencia
+  entre `BudgetPolicy.Assess` y `ModelMemoryBudget.Snapshot`.
+
+- Las tres componentes cada una tienen un PISO de ~1.5 GB: `reservaSistema = 1.5`,
+  `reservaCondor = 1.5` y `margenOperativo = max(1.5, ...)`. En equipos pequenos esto
+  suma ~4.5 GB de margen minimo garantizado.
 - `presupuesto_real` >= 0 y NUNCA supera la RAM libre real (la cache no cuenta).
-- `margenEstabilidad` = colchon anti-swapping para interoperar con el SO.
+- El margen operativo NUNCA se presta al modelo.
 
 ### Límites documentados
 
@@ -68,20 +75,10 @@ Reglas:
   presupuesto actual (el elegido).
 - **1+** = siguiente candidato razonable para cuando exista mayor margen.
 
-Cuando la RAM cambia, Cóndor reevalúa en un punto seguro y puede pasar de 1- a 1+
-(subir) o degradar, SIN interrumpir una inferencia en curso.
-
-## REEVALUACIÓN DINÁMICA (BudgetReevaluator)
-
-- Intervalo por defecto: **30 minutos** (configurable).
-- Puntos seguros: antes de una nueva inferencia, entre acciones, al iniciar/
-  finalizar tarea, o ante un cambio significativo de RAM.
-- Decisiones: `KeepCurrent` / `UpgradeToNext` / `Downgrade`, con motivo.
-- Límite de reevaluaciones (`maxReevaluations`): evita loops. Al agotarse,
-  conserva el modelo actual (CONTINUIDAD DEL TRABAJO > CAMBIO DE MODELO).
-- En una transición de modelo: libera el anterior (Ollama keep_alive=0) y
-  registra el nuevo en la sesión (sin duplicar runners, sin taskkill).
-- NUNCA cambia de modelo en medio de una inferencia.
+El modelo seleccionado (1-) permanece fijo durante toda la tarea. Cóndor ya no
+reevalúa ni cambia de modelo entre 1- y 1+ durante la ejecución: esto garantiza
+continuidad y evita loops de reevaluación. La transición 1-/1+ ocurre una sola
+vez al inicio, basada en el presupuesto de memoria real.
 
 ## ADAPTACIÓN DEL PROMPT (ModelPromptBuilder)
 
@@ -123,15 +120,15 @@ transición libera el anterior correctamente.
 | `TaskModelRequirement` + `TaskIntentClassifier` | Core | Qué capacidades exige la tarea |
 | `ModelEfficiencyEvaluator` | Core/Evaluation | Suficiencia + eficiencia + margen |
 | `ModelSelector.SelectForTask` | Core/Selection | Seleccion por tarea + 1-/1+ + instalado del usuario |
-| `BudgetReevaluator` | Core/Evaluation | Reevaluacion periodica en punto seguro con limite |
 | `ModelPromptBuilder` | Infrastructure/Agent | Adaptacion del prompt al modelo |
 | `ModelAutoSetupService.EnsureModelForRequirementAsync` | Infrastructure/Setup | Orquesta seleccion/descarga por tarea |
-| `AgentService` | Infrastructure/Agent | Wire del harness + reevaluacion en puntos seguros |
+| `AgentService` | Infrastructure/Agent | Wire del harness: modelo fijo para toda la tarea |
 
 ## LIMITACIONES E2E
 
-La politica por defecto (reserva 2 GB o 25% + reservas de sistema/Condor + margen)
-es conservadora a propósito. En equipos con poca RAM libre, puede reportar
-bloqueo TEMPORAL incluso cuando un modelo pequeño "cabría" numéricamente; esto es
-intencional (proteger la reserva antes de llegar a presupuesto≈0). La politica es
-configurable via `BudgetPolicy` para ajustar el balance en despliegue.
+La politica por defecto usa `margenOperativo = OperatingMarginGb(RAM_total)`
+= min(3, max(1.5, RAM_total * 0.08)), que combina la reserva operativa y el
+margen de estabilidad. En equipos con poca RAM libre, puede reportar bloqueo
+TEMPORAL incluso cuando un modelo pequeño "cabría" numéricamente; esto es
+intencional (proteger el margen antes de llegar a presupuesto≈0). La politica es
+configurable vía `BudgetPolicy` para ajustar el balance en despliegue.
