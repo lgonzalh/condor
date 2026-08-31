@@ -61,7 +61,7 @@ public class DirectoryScannerTests : IDisposable
             return;
         }
 
-var scan = new DirectoryScanner().Scan(root);
+        var scan = new DirectoryScanner().Scan(root);
 
         Assert.Equal(new[] { "enlace" }, scan.Directories.Select(d => d.RelativePath));
         Assert.True(scan.Directories[0].IsReparsePoint);
@@ -171,7 +171,7 @@ var scan = new DirectoryScanner().Scan(root);
             info.ArgumentList.Add("/J");
             info.ArgumentList.Add(enlace);
             info.ArgumentList.Add(destino);
-using var proceso = Process.Start(info);
+            using var proceso = Process.Start(info);
             if (proceso is null)
             {
                 return false;

@@ -12,8 +12,11 @@ public class ModelPromptBuilderTests
     {
         var sin = new ModelCandidate
         {
-            PullName = "tiny", ToolUse = false, StructuredOutput = false,
-            MultiFileLevel = 0, Capabilities = new List<string> { "completion" }
+            PullName = "tiny",
+            ToolUse = false,
+            StructuredOutput = false,
+            MultiFileLevel = 0,
+            Capabilities = new List<string> { "completion" }
         };
 
         var p = ModelPromptBuilder.BuildSystemPrompt("/dev", null, sin);
@@ -27,8 +30,11 @@ public class ModelPromptBuilderTests
     {
         var model = new ModelCandidate
         {
-            PullName = "qwen2.5-coder:3b", ToolUse = true, StructuredOutput = true,
-            MultiFileLevel = 2, Capabilities = new List<string> { "tool-use", "structured-output", "coding" }
+            PullName = "qwen2.5-coder:3b",
+            ToolUse = true,
+            StructuredOutput = true,
+            MultiFileLevel = 2,
+            Capabilities = new List<string> { "tool-use", "structured-output", "coding" }
         };
 
         var p = ModelPromptBuilder.BuildSystemPrompt("/dev", null, model);
@@ -41,7 +47,9 @@ public class ModelPromptBuilderTests
     {
         var model = new ModelCandidate
         {
-            PullName = "qwen2.5-coder:3b", ToolUse = true, StructuredOutput = true,
+            PullName = "qwen2.5-coder:3b",
+            ToolUse = true,
+            StructuredOutput = true,
             MultiFileLevel = 2
         };
 
@@ -56,7 +64,9 @@ public class ModelPromptBuilderTests
     {
         var model = new ModelCandidate
         {
-            PullName = "qwen2.5-coder:3b", ToolUse = true, StructuredOutput = true,
+            PullName = "qwen2.5-coder:3b",
+            ToolUse = true,
+            StructuredOutput = true,
             MultiFileLevel = 3
         };
 

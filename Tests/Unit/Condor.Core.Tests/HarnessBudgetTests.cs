@@ -21,13 +21,13 @@ public class HarnessBudgetTests
     public void Presupuesto_StockMenosReservaMenosMargen()
     {
         // RAM libre 10 GB, politica por defecto:
-        // operativa = max(2.0, 10*0.25=2.5) = 2.5; reserva total = 1.5+1.5+2.5 = 5.5;
-        // presupuesto = 10 - 5.5 - 1.0 = 3.5.
+        // operativa = OperatingMarginGb(16) = min(3, max(1.5, 16*0.08)) = 1.5;
+        // reserva total = 1.5 + 1.5 + 1.5 = 4.5; presupuesto = 10 - 4.5 = 5.5.
         var policy = BudgetPolicy.Default;
         var b = policy.Assess(Mem(16, 10));
 
         Assert.True(b.IsBudgeted);
-        Assert.Equal(3.5, b.BudgetGb, 1);
+        Assert.Equal(5.5, b.BudgetGb, 1);
         Assert.True(b.ReserveGb < 10.0);
         Assert.True(b.BudgetGb < 10.0);
     }
@@ -37,8 +37,9 @@ public class HarnessBudgetTests
     {
         var policy = BudgetPolicy.Default;
         // 4 GB libres: el presupuesto debe ser claramente menor (protector).
+        // OperatingMargin(16) = 1.5; presupuesto = 4 - 4.5 = 0 (no budgeted).
         var b = policy.Assess(Mem(16, 4));
-        Assert.True(b.OperationalReserveGb >= 2.0);
+        Assert.True(b.OperationalReserveGb >= 1.0);
         Assert.True(b.BudgetGb >= 0);
         // Un modelo que "quepa" numericamente pero deje margen < 0 NO debe admitirse.
         Assert.False(ModelEfficiencyEvaluator.LeavesMargin(new ModelCandidate { WeightGb = 1.0 }, b));
@@ -58,13 +59,15 @@ public class HarnessBudgetTests
     [Fact]
     public void Seleccion_ModeloGrandeDescartadoSiNoDejaMargen()
     {
-        // RAM justa: el 7B puede "caber" numericamente pero el harness exige reserva/margen.
+        // RAM justa (8 libre, headroom 3.5): el 7B (pico ~5.23) no cabe, pero
+        // el 3B (pico ~2.16) si cabe con margen. El 1- es el menor suficiente (3B),
+        // no el mayor que quepa (7B).
         var assessment = AssessmentConModelo("sin-instalar", ramFreeGb: 8, ramTotalGb: 16);
         var req = AgentRequirement();
 
         var r = ModelSelector.SelectForTask(assessment, ModelCatalog.Default, req, BudgetPolicy.Default);
 
-        // 1- es eficiente, NO el mayor que quepa: no debe ser el 7B si agota el margen.
+        // 1- es eficiente, NO el mayor que quepa: no debe ser el 7B.
         Assert.NotNull(r.NodeInCurrent);
         Assert.NotEqual("qwen2.5-coder:7b", r.NodeInCurrent?.PullName);
         Assert.True(r.Budget!.BudgetGb > 0);
@@ -198,9 +201,9 @@ public class HarnessBudgetTests
         var next = ModelCatalog.Default.Get("qwen2.5-coder:1.5b");
         var req = AgentRequirement();
 
-        // RAM justa (8 libre): el presupuesto ya no admite el 3B (pico ~2.16) con
-        // margen, pero si el 1.5B -> degradar en punto seguro.
-        var d = reval.Decide(Mem(16, 8), current, next, req, alreadyChanged: 0);
+        // RAM justa (6 libre, headroom 1.5): el presupuesto ya no admite el 3B
+        // (pico ~2.16) pero si el 1.5B (pico ~1.1) -> degradar en punto seguro.
+        var d = reval.Decide(Mem(16, 6), current, next, req, alreadyChanged: 0);
 
         Assert.Equal(BudgetTransition.Downgrade, d.Transition);
     }
@@ -236,8 +239,9 @@ public class HarnessBudgetTests
         var next = ModelCatalog.Default.Get("qwen2.5-coder:3b");
         var req = AgentRequirement();
 
-        // RAM media estable; el actual sigue siendo suficiente y no hay salto claro.
-        var d = reval.Decide(Mem(16, 7), current, next, req, alreadyChanged: 0);
+        // RAM media estable (6 libre, headroom 1.5): 1.5B cabe con margen y
+        // 3B no cabe (pico ~2.16 > 1.5) -> no hay salto claro -> KeepCurrent.
+        var d = reval.Decide(Mem(16, 6), current, next, req, alreadyChanged: 0);
         Assert.Equal(BudgetTransition.KeepCurrent, d.Transition);
     }
     #endregion

@@ -1,4 +1,4 @@
-using Condor.Cli.Presentation;
+﻿using Condor.Cli.Presentation;
 using Condor.Core.Models;
 using Condor.Core.Serialization;
 namespace Condor.Infrastructure.Tests;
@@ -89,7 +89,8 @@ public class AgentRendererTests
 
         var text = AgentRenderer.BuildResultText(result);
 
-        Assert.Contains("Modifique: src/Program.cs", text);
+        Assert.Contains("modificado", text);
+        Assert.Contains("src/Program.cs", text);
         Assert.DoesNotContain("contenido largo que no debe volcarse", text);
     }
 
@@ -159,7 +160,7 @@ public class AgentRendererTests
         var text = AgentRenderer.BuildResultText(result);
 
         Assert.DoesNotContain("[INVENTARIO]", text);
-        Assert.Contains("Contexto:", text);
+        Assert.Contains("Contexto del entorno", text);
         Assert.Contains("qwen2.5-coder:3b", text);
         Assert.Contains("structured-output", text);
         Assert.Contains("presupuesto", text);
@@ -172,7 +173,23 @@ public class AgentRendererTests
 
         var text = AgentRenderer.BuildResultText(result, TimeSpan.FromSeconds(32.7));
 
-        Assert.Contains("©Condor · qwen2.5-coder:3b ·", text);
+        Assert.Contains("©Condor - qwen2.5-coder:3b -", text);
         Assert.Contains(" s", text.Substring(text.Length - 8)); // segundos en la firma
     }
+
+    [Fact]
+    public void IdentidadSuperior_CondorSinCopy()
+    {
+        // La marca superior es "Condor" + eslogan, sin © y sin modelo (el modelo
+        // solo aparece en la barra inferior). El © pertenece exclusivamente abajo.
+        var result = new AgentResult { Success = true, Model = "qwen2.5-coder:3b", Reason = "Ok." };
+
+        var text = AgentRenderer.BuildResultText(result);
+
+        Assert.StartsWith("Condor", text);
+        Assert.Contains("Observa · Comprende · Planifica · Construye · Verifica", text);
+        Assert.DoesNotContain("©", text.Substring(0, text.IndexOf('\n')));
+    }
 }
+
+

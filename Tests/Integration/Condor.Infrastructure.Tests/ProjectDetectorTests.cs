@@ -227,7 +227,8 @@ public class ProjectDetectorTests : IDisposable
         Assert.Single(perfil.Git.Commits);
     }
 
-    private static ToolInfo? GitTool() { return GitDisponible() ? new ToolInfo { Name = "git", Path = "git", Status = DetectionStatus.Detected } : null; } private string NuevoDirectorio()
+    private static ToolInfo? GitTool() { return GitDisponible() ? new ToolInfo { Name = "git", Path = "git", Status = DetectionStatus.Detected } : null; }
+    private string NuevoDirectorio()
     {
         var directorio = Path.Combine(Path.GetTempPath(), "condor-t004-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directorio);
