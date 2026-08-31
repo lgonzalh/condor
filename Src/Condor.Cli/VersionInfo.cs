@@ -11,7 +11,7 @@ public static class VersionInfo
     public const string PublicVersion = "1.0";
 
     /// <summary>Build interno experimental (α.01, α.02, ...).</summary>
-    public const string InternalBuild = "α.02";
+    public const string InternalBuild = "α.03";
 
     /// <summary>Forma visible: "v1.0 · build interno α.01".</summary>
     public const string DisplayName = "v" + PublicVersion + " · build interno " + InternalBuild;
