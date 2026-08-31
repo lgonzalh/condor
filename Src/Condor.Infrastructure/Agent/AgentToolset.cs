@@ -297,9 +297,12 @@ public sealed class AgentToolset
         {
             var psi = new System.Diagnostics.ProcessStartInfo
             {
-                FileName = "git", WorkingDirectory = _root,
-                RedirectStandardOutput = true, RedirectStandardError = true,
-                UseShellExecute = false, CreateNoWindow = true
+                FileName = "git",
+                WorkingDirectory = _root,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
             };
             foreach (var part in args.Split(' ')) psi.ArgumentList.Add(part);
             using var p = System.Diagnostics.Process.Start(psi);

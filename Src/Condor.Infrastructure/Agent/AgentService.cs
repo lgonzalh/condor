@@ -22,7 +22,6 @@ public sealed class AgentService : IAgentService
     private readonly ILlmProviderDiagnostics _provider;
     private readonly AgentLimits _limits;
     private readonly LocalModelSession? _session;
-    private readonly BudgetReevaluator? _reevaluator;
 
     public AgentService(
         IStateStore stateStore,
@@ -30,8 +29,7 @@ public sealed class AgentService : IAgentService
         AgentLimits? limits = null,
         ILlmClient? llm = null,
         ILlmProviderDiagnostics? provider = null,
-        LocalModelSession? session = null,
-        BudgetReevaluator? reevaluator = null)
+        LocalModelSession? session = null)
     {
         _stateStore = stateStore;
         _assessmentService = assessmentService;
@@ -48,7 +46,6 @@ public sealed class AgentService : IAgentService
             _provider = provider ?? (_llm as ILlmProviderDiagnostics) ?? new OllamaClient();
         }
         _limits = limits ?? AgentLimits.Default;
-        _reevaluator = reevaluator ?? new BudgetReevaluator(BudgetPolicy.Default);
     }
 
     /// <summary>
@@ -77,9 +74,9 @@ public sealed class AgentService : IAgentService
         var modelSetup = CreateModelSetup();
         var selection = await modelSetup.EnsureModelForRequirementAsync(requirement, cancellationToken: cancellationToken);
 
-        if (selection.Desired is null && !selection.BlockedByResources)
-            return Fail("No hay un modelo compatible disponible para la tarea.", "", intention, steps, checkpoint);
-
+        // SelectForTask siempre marca BlockedByResources=true cuando Desired es null
+        // (viable vacio o presupuesto insuficiente); este caso cubre todos los
+        // caminos de fallo de seleccion y expone el motivo detallado.
         if (selection.Desired is null)
         {
             // Sin modelo utilizable: fallo RAPIDO y controlado. NO se pregunta al
@@ -163,11 +160,8 @@ public sealed class AgentService : IAgentService
             {
                 checkpoint.Iteration = iteration + 1;
 
-                // Punto seguro de reevaluacion del presupuesto (no se interrumpe
-                // una inferencia en curso). Si la RAM cambio y existe un 1+/1- mas
-                // adecuado, Condor cambia de modelo en este punto, de forma acotada.
-                model = await MaybeReevaluateBudgetAtSafePointAsync(
-                    model, selection.Desired, selection.NextCandidate, requirement, progress, cancellationToken);
+                // Modelo bloqueado para toda la tarea: no se reevalua ni cambia durante la ejecucion.
+                // El modelo seleccionado al inicio (selection.Desired) permanece fijo.
 
                 // 1. Modelo produce una decision estructurada. Se distingue el
                 //    fallo del proveedor (crash/caida/timeout) del protocolo del
@@ -302,10 +296,11 @@ public sealed class AgentService : IAgentService
                     Content = "Resultado de " + action.Action + "(" + (action.Path ?? "") + "):\n" + (step.Success ? (step.ResultPreview ?? "ok") : ("ERROR: " + (step.ResultPreview ?? "sin detalle")))
                 });
 
-                // 4b. Reevaluacion de recursos en cada accion (presupuesto dinamico):
-                //     si la presion empeora (Presion/Insuficiente), se advierte una vez
-                //     (sin saturar), y se reduce la carga propia al no lanzar build/test
-                //     pesado en ese instante si estamos en Presion.
+                // 4b. Monitoreo de recursos en cada accion (advertencia solo):
+                //     el MODELO esta bloqueado para toda la tarea. Si la presion de
+                //     RAM empeora, se advierte una vez (sin saturar) y se pospone
+                //     build/test pesado mientras el sistema esta en Presion. Nunca
+                //     se cambia el modelo durante la ejecucion.
                 EvaluateResourcesAndWarn(checkpoint, progress, ref resourcesWarned, iteration + 1);
 
                 // 5. Redundancia de observacion: si el modelo repite la MISMA
@@ -403,13 +398,17 @@ public sealed class AgentService : IAgentService
                         checkpoint.LastDecision = "describir";
                         progress?.Report(AgentProgress.Of(AgentPhase.Finalizing, message: "Preparando respuesta"));
                         var summary = action.Reason ?? action.Content ?? "";
-                        return new AgentResult {
+                        return new AgentResult
+                        {
                             Success = true,
                             Reason = string.IsNullOrWhiteSpace(summary)
                                 ? "Condor observo el directorio y describio lo encontrado."
                                 : summary,
                             Inventory = inventory,
-                            Model = model, Objective = intention, Steps = steps, Checkpoint = checkpoint
+                            Model = model,
+                            Objective = intention,
+                            Steps = steps,
+                            Checkpoint = checkpoint
                         };
                     }
 
@@ -631,12 +630,43 @@ public sealed class AgentService : IAgentService
     {
         switch (ext.ToLowerInvariant())
         {
-            case ".cs": case ".vb": case ".fs": case ".ts": case ".js": case ".mjs": case ".cjs":
-            case ".py": case ".go": case ".rs": case ".java": case ".kt": case ".swift": case ".rb": case ".php":
-            case ".html": case ".htm": case ".css": case ".scss": case ".sass": case ".less":
-            case ".csproj": case ".fsproj": case ".vbproj": case ".sln": case ".slnx": case ".csx": case ".json":
-            case ".yaml": case ".yml": case ".xml": case ".ini": case ".cfg": case ".toml":
-            case ".md": case ".markdown": case ".txt":
+            case ".cs":
+            case ".vb":
+            case ".fs":
+            case ".ts":
+            case ".js":
+            case ".mjs":
+            case ".cjs":
+            case ".py":
+            case ".go":
+            case ".rs":
+            case ".java":
+            case ".kt":
+            case ".swift":
+            case ".rb":
+            case ".php":
+            case ".html":
+            case ".htm":
+            case ".css":
+            case ".scss":
+            case ".sass":
+            case ".less":
+            case ".csproj":
+            case ".fsproj":
+            case ".vbproj":
+            case ".sln":
+            case ".slnx":
+            case ".csx":
+            case ".json":
+            case ".yaml":
+            case ".yml":
+            case ".xml":
+            case ".ini":
+            case ".cfg":
+            case ".toml":
+            case ".md":
+            case ".markdown":
+            case ".txt":
                 return true;
             default:
                 return false;
@@ -876,98 +906,6 @@ public sealed class AgentService : IAgentService
     }
 
     /// <summary>
-    /// Reevaluacion dinamica del presupuesto en un punto seguro (entre inferencias).
-    /// Si la RAM cambio de forma significativa y existe un candidato mas adecuado
-    /// (1+ al subir RAM, o una alternativa viable al bajar), Condor cambia el modelo
-    /// actual de forma ACOTADA (el reevaluador limita los cambios para evitar bucles)
-    /// y reregistra la sesion (libera el anterior, asegura el nuevo). Nunca interrumpe
-    /// una inferencia en curso. Devuelve el nombre de modelo a usar a continuacion.
-    /// </summary>
-    private async Task<string> MaybeReevaluateBudgetAtSafePointAsync(
-        string model,
-        ModelCandidate? node,
-        ModelCandidate? next,
-        TaskModelRequirement requirement,
-        IAgentProgressObserver? progress,
-        CancellationToken ct)
-    {
-        if (_reevaluator is null)
-        {
-            return model;
-        }
-
-        Condor.Core.Models.MemoryInfo? memory;
-        try
-        {
-            memory = await new MemoryDetector().DetectAsync(ct);
-        }
-        catch
-        {
-            return model;
-        }
-
-        // Reevaluamos solo cuando el intervalo haya transcurrido desde la ultima
-        // evaluacion para no reintentar en cada iteracion del loop (politica).
-        var elapsed = DateTime.UtcNow - _lastBudgetCheckUtc;
-        if (_lastBudgetCheckUtc != DateTime.MinValue && elapsed < _reevaluator.ReevaluationInterval)
-        {
-            return model;
-        }
-        _lastBudgetCheckUtc = DateTime.UtcNow;
-
-        var decision = _reevaluator.Decide(
-            memory, node ?? FindNodeByName(model), next, requirement, _budgetChanges);
-
-        switch (decision.Transition)
-        {
-            case BudgetTransition.UpgradeToNext:
-            case BudgetTransition.Downgrade:
-                if (string.IsNullOrWhiteSpace(decision.SuggestedModel))
-                {
-                    return model;
-                }
-
-                _budgetChanges++;
-                var newModel = decision.SuggestedModel!;
-                progress?.Report(AgentProgress.Of(
-                    AgentPhase.Verifying,
-                    message: "Presupuesto reevaluado (" + (decision.Budget?.BudgetGb.ToString("0.0") ?? "?") +
-                              " GB): " + (decision.Transition == BudgetTransition.UpgradeToNext ? "subiendo a 1+ " : "degradando a ") +
-                              newModel + " en punto seguro.",
-                    flag: ProgressFlag.Recovering));
-
-                if (_session is not null)
-                {
-                    // Liberar el modelo anterior como parte de la transicion (Ollama
-                    // keep_alive=0) y registrar el nuevo como sesion activa.
-                    await _session.ReleaseAsync(ct);
-                    await _session.EnsureAvailableAsync(newModel, ct);
-                }
-
-                return newModel;
-
-            default:
-                return model;
-        }
-    }
-
-    private ModelCandidate? FindNodeByName(string model)
-    {
-        foreach (var c in Condor.Core.Catalog.ModelCatalog.Default)
-        {
-            if (c.PullName.Equals(model, StringComparison.OrdinalIgnoreCase) ||
-                c.Name.Equals(model, StringComparison.OrdinalIgnoreCase))
-            {
-                return c;
-            }
-        }
-        return null;
-    }
-
-    private DateTime _lastBudgetCheckUtc = DateTime.MinValue;
-    private int _budgetChanges = 0;
-
-    /// <summary>
     /// Recopila el inventario objetivo del entorno y de la decision de modelo
     /// (recursos, CPU, almacenamiento, modelos instalados, modelo seleccionado,
     /// motivo y capacidades verificadas del catalogo). Solo usa datos reales
@@ -1053,7 +991,7 @@ public sealed class AgentService : IAgentService
         }
 
         var builder = new System.Text.StringBuilder("Presion de memoria: " + snapshot.FreeGb + " GB libres · estado " + snapshot.PressureLabel + ".");
-        builder.Append(" Condor reducirá temporalmente su carga.");
+        builder.Append(" Condor reducira temporalmente su carga.");
 
         if (snapshot.TopConsumers.Count > 0)
         {
