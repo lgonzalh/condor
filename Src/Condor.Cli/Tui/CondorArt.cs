@@ -15,18 +15,14 @@ namespace Condor.Cli.Tui;
 ///   GRANDE 100%  (aplica esa gama; misma geometria ANSI original)  [BIENVENIDA]
 ///      |
 ///      v
-///   PEQUENA  (adaptacion grafica compacta de la MISMA ave: cabeza/pico/cuerpo/ala/cola,
-///             con patas y garras visibles)  [SESION]
+///   PEQUENA  (reduccion ~50% de la GRANDE, no ciega)  [SESION]
 ///
-/// La mascota GRANDE conserva intacta la fuente ANSI original (bienvenida). La mascota
-/// PEQUENA es una adaptacion para tamano reducido: misma identidad cromatica y misma
-/// anatomia (cabeza terracota 167, punta de pico blanca 97, cuerpo gris 236, sombreado
-/// 242 y separaciones 233), pero en silueta compacta horizontal con patas y garras
-/// visibles. No es un downscale ciego (perdia patas/garras/pico): es una matriz propia
-/// reducida que conserva todos los rasgos de la mascota grande.
-///
-/// Capa de color: 167 cabeza · 97 punta de pico · 236 cuerpo · 242 sombreado/ala/cola
-/// clara · 235 volumen · 233 separaciones muy oscuras y patas/garras.
+/// La mascota PEQUENA es una reduccion VISUALMENTE FIEL de la misma ave (≈50%): fusiona
+/// bloques 2x2 de la GRANDE conservando la identidad grafica (cabeza 167, punta de pico
+/// blanca 97, sombreado 242, cuerpo 235/236/233) y NO destruye los rasgos que un downscale
+/// ciego perderia. Sobre la silueta reducida se reconstruyen las PATAS y GARRAS (233/242)
+/// y se refuerza el pico, de modo que la pequeña es inequivocamente el MISMO CONDOR.
+/// No hay una segunda matriz ni un dibujo nuevo: todo deriva de la fuente ANSI unica.
 /// </summary>
 public static class CondorArt
 {
@@ -36,30 +32,6 @@ public static class CondorArt
 
     /// <summary>Gama de colores del cuerpo (sustituye al casi-negro 232): escala oscura visible aprobada.</summary>
     private static readonly string[] GamaCuerpo = { "38;5;235", "38;5;236", "38;5;233" };
-
-    /// <summary>
-    /// Matriz de la mascota PEQUENA. Silueta compacta horizontal de la misma ave:
-    /// cabeza a la izquierda (167), punta de pico blanca (97), cuerpo gris oscuro (236),
-    /// ala/cola con gris medio y claro (242/235) y separaciones muy oscuras (233).
-    /// La mitad inferior dedicada a PATAS y GARRAS (233/242) visibles.
-    ///
-    /// Leyenda:  H=cabeza (167) · P=pico (97) · B=cuerpo (236) · V=volumen (235)
-    ///           W=ala/cola clara (242) · T=cola (236) · t=punto de cola (242)
-    ///           S=separacion muy oscura (233) · G=pata/garra (233) · F=garra (242)
-    /// </summary>
-    internal static readonly string[] PequenaMatrix =
-    [
-        "....H......TTT..",
-        "P...HHH....tTTT..",
-        "P..HHHHH..W.TTtt.",
-        "..HHHHH.SWWtBTtt.",
-        "...BBBBB.SWWBBT..",
-        "...BBBBBBWWBBBB..",
-        "....BBBBVBBBBB...",
-        ".....G......G....",
-        "....GGG....GGG...",
-        "....FFF....FFF...",
-    ];
 
     /// <summary>
     /// Arte ANSI original (prototipo condor_unicode_v16.ps1), VERBATIM. Conserva la
@@ -88,12 +60,26 @@ public static class CondorArt
     public static readonly string[] Grande = ApplyGama(AveV16Raw);
 
     /// <summary>
-    /// Mascota PEQUENA (sesion): adaptacion grafica compacta de la MISMA ave, optimizada
-    /// para tamano reducido. Conserva cabeza (167), punta de pico blanca (97), cuerpo (236),
-    /// sombreado (242/235), separaciones (233), y a diferencia de un downscale ciego incluye
-    /// PATAS y GARRAS visibles. Deriva de la misma identidad, nunca de un segundo diseno.
+    /// MASCOTA PEQUEÑA DE REFERENCIA α.03 (ANSI Unicode 24-bit). Replica literalmente la
+    /// referencia "Referencia ANSI del cóndor pixelado": cabeza #CD5362, punta de pico
+    /// blanca #FFFFFF, base del pico #808080, gris claro de alas/cola #6C6C6C, cuerpo
+    /// #303030 y contorno/sombra #0C0C0C. Conserva patas, garras, alas, cola y silueta.
+    /// No es una reduccion automatica ni una silueta inventada: es la referencia tal cual.
     /// </summary>
-    public static readonly string[] Ave = RenderSmall();
+    public static readonly string[] Ave =
+    [
+        "\u001b[38;2;12;12;12m·····\u001b[38;2;48;48;48m▄█",
+        "\u001b[38;2;12;12;12m····\u001b[38;2;48;48;48m██▌",
+        "\u001b[38;2;12;12;12m···\u001b[38;2;48;48;48m███▌▌",
+        "\u001b[38;2;12;12;12m··\u001b[38;2;48;48;48m██▌\u001b[38;2;108;108;108m▌▌",
+        "\u001b[38;2;12;12;12m·\u001b[38;2;205;83;98m██\u001b[38;2;255;255;255m▌\u001b[38;2;48;48;48m██",
+        "\u001b[38;2;12;12;12m \u001b[38;2;128;128;128m▌\u001b[38;2;205;83;98m██\u001b[38;2;48;48;48m████",
+        "\u001b[38;2;12;12;12m·\u001b[38;2;48;48;48m██████████",
+        "\u001b[38;2;12;12;12m··\u001b[38;2;108;108;108m▄\u001b[38;2;48;48;48m██",
+        "\u001b[38;2;12;12;12m···\u001b[38;2;108;108;108m▌\u001b[38;2;48;48;48m▌",
+        "\u001b[38;2;12;12;12m····\u001b[38;2;108;108;108m▔▔",
+        "\u001b[0m",
+    ];
 
     /// <summary>Ancho visible maximo de la mascota pequena (Ave), sin SGR.</summary>
     public static readonly int AveWidth = Ave.Max(Ansi.VisibleWidth);
@@ -134,56 +120,4 @@ public static class CondorArt
         }
         return sb.ToString();
     }
-
-    /// <summary>
-    /// Renderiza la mascota pequena desde PequenaMatrix a filas ANSI. Cada celda no vacia
-    /// se dibuja como bloque solido (█) con su color; el silencio es espacio con reset.
-    /// Conserva la geometria exacta de la matriz: no hay transformacion ni redimensionado.
-    /// </summary>
-    internal static string[] RenderSmall()
-    {
-        var rows = new string[PequenaMatrix.Length];
-        for (var r = 0; r < PequenaMatrix.Length; r++)
-        {
-            var source = PequenaMatrix[r];
-            var sb = new System.Text.StringBuilder();
-            string? cur = null;
-            for (var c = 0; c < source.Length; c++)
-            {
-                var glyph = source[c];
-                if (glyph == '.')
-                {
-                    if (cur != null) { sb.Append("\u001b[0m"); cur = null; }
-                    sb.Append(' ');
-                    continue;
-                }
-
-                var color = PixelColor(glyph);
-                if (color != cur)
-                {
-                    if (color.Length > 0) sb.Append("\u001b[").Append(color).Append('m');
-                    cur = color;
-                }
-                sb.Append('█');
-            }
-            if (cur != null) sb.Append("\u001b[0m");
-            rows[r] = sb.ToString();
-        }
-        return rows;
-    }
-
-    private static string PixelColor(char glyph) => glyph switch
-    {
-        'H' => "38;5;167",
-        'P' => "97",
-        'B' => "38;5;236",
-        'V' => "38;5;235",
-        'W' => "38;5;242",
-        'T' => "38;5;236",
-        't' => "38;5;242",
-        'S' => "38;5;233",
-        'G' => "38;5;233",
-        'F' => "38;5;242",
-        _ => ""
-    };
 }

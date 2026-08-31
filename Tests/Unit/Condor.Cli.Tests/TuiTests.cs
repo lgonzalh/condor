@@ -43,32 +43,27 @@ public class IdentidadTuiTests
     }
 
     [Fact]
-    public void Mascota_Ave_Pequena_ConservaIdentidadConPatasYGarras()
+    public void Mascota_Ave_Pequena_EsLaReferenciaANSI_ConservaIdentidad()
     {
-        // α.03: la pequeña es una adaptacion grafica compacta de la MISMA ave (misma
-        // identidad cromatica), no un downscale ciego. Conserva cabeza (167), punta de
-        // pico blanca (97), cuerpo (236), sombreado (242/235) y separaciones (233), y
-        // AÑADE patas y garras visibles en la mitad inferior. Misma paleta que la grande.
-        Assert.Equal(CondorArt.PequenaMatrix.Length, CondorArt.Ave.Length);
+        // α.03: la pequeña es la referencia ANSI 24-bit del MISMO Condor (cabeza #CD5362,
+        // punta de pico blanca #FFFFFF, base de pico #808080, cuerpo #303030, grises
+        // #6C6C6C y contorno #0C0C0C). No es monocromatica ni una silueta generica.
+        Assert.Equal(11, CondorArt.Ave.Length);
 
-        // Misma identidad cromatica de la grande (sin casi-negro 232).
-        Assert.Contains(CondorArt.Ave, row => row.Contains("38;5;167"));
-        Assert.Contains(CondorArt.Ave, row => row.Contains("\u001b[97m"));
-        Assert.Contains(CondorArt.Ave, row => row.Contains("38;5;236"));
-        Assert.Contains(CondorArt.Ave, row => row.Contains("38;5;242"));
-        Assert.Contains(CondorArt.Ave, row => row.Contains("38;5;235"));
-        Assert.Contains(CondorArt.Ave, row => row.Contains("38;5;233"));
-        Assert.DoesNotContain(CondorArt.Ave, row => row.Contains("\u001b[38;5;232m"));
+        // Paleta 24-bit de la referencia.
+        Assert.Contains(CondorArt.Ave, row => row.Contains("38;2;205;83;98"));   // cabeza roja
+        Assert.Contains(CondorArt.Ave, row => row.Contains("38;2;255;255;255")); // punta de pico blanca
+        Assert.Contains(CondorArt.Ave, row => row.Contains("38;2;128;128;128")); // base de pico (gris medio)
+        Assert.Contains(CondorArt.Ave, row => row.Contains("38;2;48;48;48"));    // cuerpo
+        Assert.Contains(CondorArt.Ave, row => row.Contains("38;2;108;108;108")); // alas/cola (gris claro)
+        Assert.Contains(CondorArt.Ave, row => row.Contains("38;2;12;12;12"));    // contorno/sombra
 
-        // Geometria compacta pero con cuerpo suficiente para patas y garras.
-        Assert.True(CondorArt.Ave.Length >= 8, "La pequeña necesita cuerpo + patas");
+        // No es monocromatico ni de paleta antigua.
+        Assert.DoesNotContain(CondorArt.Ave, row => row.Contains("38;5;"));
 
-        // Patas/garras en la mitad inferior (233/242); cabeza/pico en la superior (167/97).
-        var superiores = CondorArt.Ave[..(CondorArt.Ave.Length / 2)];
-        Assert.Contains(superiores, row => row.Contains("38;5;167"));
-        Assert.Contains(superiores, row => row.Contains("\u001b[97m"));
-        var inferiores = CondorArt.Ave[(CondorArt.Ave.Length / 2)..];
-        Assert.Contains(inferiores, row => row.Contains("38;5;233") || row.Contains("38;5;242"));
+        // Patas/garras y cuerpo/sombra en la parte inferior (referencia filas 8-11).
+        var inferiores = CondorArt.Ave[^4..];
+        Assert.Contains(inferiores, row => row.Contains("38;2;108;108;108"));
     }
 }
 
@@ -194,39 +189,42 @@ public class FotogramasTuiTests
     }
 
     [Fact]
-    public void Sesion_MuestraIdentidad_Modelo_YRegiones()
+    public void Sesion_MuestraIdentidad_Modelo_YContenidoDinamico()
     {
         using var host = HostSesion();
-        host.SetEstado("En espera de tu intencion", ActivityKind.Success);
+        host.SetEstado("Listo", ActivityKind.Success);
         host.AddActivity("Entorno listo. Modo Local 100% activo.", ActivityKind.Success);
         var grid = Grid(host.SnapshotFullFrame());
 
-        // Cabecera consolidada en UNA linea superior: identidad + modelo real.
+        // Cabecera UNICA: marca + version a la izquierda (una vez) y modelo a la derecha (una vez).
         var titulo = grid[0];
         Assert.Contains("CONDOR", titulo);
-        Assert.Contains("Hecho en Colombia · Modo Local 100% · qwen2.5-coder:3b", titulo);
-        Assert.Single(Regex.Matches(titulo, "Modo Local 100%"));
+        Assert.Contains("v1.0 · build interno α.03", titulo);
+        Assert.Contains("qwen2.5-coder:3b", titulo);
+        Assert.Single(Regex.Matches(titulo, "build interno"));
 
-        // α.03: zona de actividad con JERARQUIA clara: encabezado + tres sub-etapas.
-        Assert.Contains(grid, line => line.Contains("ACTIVIDAD DEL AGENTE"));
-        Assert.Contains(grid, line => line.Contains("REVISIÓN DEL CÓDIGO"));
-        Assert.Contains(grid, line => line.Contains("ANÁLISIS DEL AGENTE"));
-        Assert.Contains(grid, line => line.Contains("RESPUESTA / INFORME DEL AGENTE"));
+        // La version NO se repite en ningun otro lugar (estado/panel/pie).
+        Assert.DoesNotContain(grid.Skip(1), line => line.Contains("build interno"));
 
-        // α.03: panel derecho de contexto persistente (workspace + modo Agente + modelo).
-        Assert.Contains(grid, line => line.Contains("Workspace:"));
-        Assert.Contains(grid, line => line.Contains("Modo: Agente"));
-        Assert.Contains(grid, line => line.Contains("Modelo:"));
+        // Sin titulos conceptuales ni paneles titulados (UX tipo CLI profesional).
+        Assert.DoesNotContain(grid, line => line.Contains("ACTIVIDAD DEL AGENTE"));
+        Assert.DoesNotContain(grid, line => line.Contains("REVISIÓN DEL CÓDIGO"));
+        Assert.DoesNotContain(grid, line => line.Contains("ANÁLISIS DEL AGENTE"));
+        Assert.DoesNotContain(grid, line => line.Contains("RESPUESTA / INFORME DEL AGENTE"));
+        Assert.DoesNotContain(grid, line => line.Contains("Modo: Agente"));
+        Assert.DoesNotContain(grid, line => line.Contains("Modelo:"));
 
-        // Comunicacion directa SIN titulares "Estado:"/"Progreso:".
+        // Sin texto de espera redundante.
+        Assert.DoesNotContain(grid, line => line.Contains("En espera de tu intencion"));
+
+        // Comunicacion directa sin titulares "Estado:"/"Progreso:".
         Assert.DoesNotContain(grid, line => line.Contains("Estado:"));
         Assert.DoesNotContain(grid, line => line.Contains("Progreso:"));
-        Assert.Contains(grid, line => line.Contains("En espera de tu intencion"));
+        Assert.Contains(grid, line => line.Contains("Entorno listo"));
 
-        // Placeholder oficial vigente.
+        // Placeholder oficial vigente (unico indicador de entrada).
         Assert.Contains(grid, line => line.Contains("¿Qué deseas construir? ..."));
         Assert.DoesNotContain(grid, line => line.Contains("Escriba una intencion"));
-        Assert.Contains(grid, line => line.Contains("Entorno listo"));
     }
     [Fact]
     public void Mascota_PosicionadaALaDerecha()
@@ -267,11 +265,11 @@ public class FotogramasTuiTests
 
         host.SetModel("qwen2.5-coder:0.5b");
         var conMedio = Grid(host.SnapshotFullFrame())[0];
-        Assert.Contains("· qwen2.5-coder:0.5b", conMedio);
+        Assert.Contains("qwen2.5-coder:0.5b", conMedio);
 
         host.SetModel("qwen2.5-coder:3b");
         var conOtro = Grid(host.SnapshotFullFrame())[0];
-        Assert.Contains("· qwen2.5-coder:3b", conOtro);
+        Assert.Contains("qwen2.5-coder:3b", conOtro);
         Assert.DoesNotContain("qwen2.5-coder:0.5b", conOtro);
     }
 
@@ -284,8 +282,8 @@ public class FotogramasTuiTests
         view.Report(AgentProgress.Of(AgentPhase.Verifying, iteration: 2));
         var frame = Ansi.StripSgr(host.SnapshotFullFrame());
 
+        // Estado real de la fase + indicador de trabajo; la metadata tecnica es minima.
         Assert.Contains("Verificando resultado de los cambios", frame);
-        Assert.Contains("Iteracion 2", frame);
         Assert.Contains("Condor esta trabajando", frame);
     }
 
@@ -458,14 +456,16 @@ public class ArquitecturaInteraccionesTests
     public void Tui2_Sesion_SeparaZonasConSeparadores()
     {
         using var host = HostSesion();
-        host.SetEstado("En espera de tu intencion", ActivityKind.Success);
+        host.SetEstado("Listo", ActivityKind.Success);
         var grid = Grid(host.SnapshotFullFrame());
 
-        // α.03: zona de actividad con encabezado y tres sub-etapas separadas.
-        Assert.Contains(grid, line => line.Contains("ACTIVIDAD DEL AGENTE"));
-        Assert.Contains(grid, line => line.Contains("REVISIÓN DEL CÓDIGO"));
-        Assert.Contains(grid, line => line.Contains("ANÁLISIS DEL AGENTE"));
-        Assert.Contains(grid, line => line.Contains("RESPUESTA / INFORME DEL AGENTE"));
+        // UX tipo CLI profesional: UNA zona de trabajo con contenido dinamico, sin titulos
+        // conceptuales permanentes ni paneles titulados.
+        Assert.DoesNotContain(grid, line => line.Contains("ACTIVIDAD DEL AGENTE"));
+        Assert.DoesNotContain(grid, line => line.Contains("REVISIÓN DEL CÓDIGO"));
+        Assert.DoesNotContain(grid, line => line.Contains("ANÁLISIS DEL AGENTE"));
+        Assert.DoesNotContain(grid, line => line.Contains("RESPUESTA / INFORME DEL AGENTE"));
+        Assert.Contains(grid, line => line.Contains("CONDOR"));
     }
 
     [Fact]
@@ -511,11 +511,11 @@ public class ArquitecturaInteraccionesTests
         host.SetEstado("En espera de tu intencion", ActivityKind.Success);
         host.SetModel("qwen2.5-coder:0.5b");
         var conMedio = Grid(host.SnapshotFullFrame())[0];
-        Assert.Contains("· qwen2.5-coder:0.5b", conMedio);
+        Assert.Contains("qwen2.5-coder:0.5b", conMedio);
 
         host.SetModel("qwen2.5-coder:3b");
         var conOtro = Grid(host.SnapshotFullFrame())[0];
-        Assert.Contains("· qwen2.5-coder:3b", conOtro);
+        Assert.Contains("qwen2.5-coder:3b", conOtro);
         Assert.DoesNotContain("qwen2.5-coder:0.5b", conOtro);
     }
 

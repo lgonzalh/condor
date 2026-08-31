@@ -149,7 +149,7 @@ public static class CondorTui
         host.ShowSession(prep.Model);
         host.SetModel(prep.Model);
         host.SetWorkspace(bootstrap.Assessment?.WorkingDirectory ?? Environment.CurrentDirectory);
-        host.SetEstado("En espera de tu intencion", ActivityKind.Success);
+        host.SetEstado("Listo", ActivityKind.Success);
         host.SetProgreso("—");
 
         host.AddActivity("Entorno listo. Modo Local 100% activo.", ActivityKind.System);

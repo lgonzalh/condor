@@ -1,4 +1,4 @@
-# MASCOTA_CLI_UNICODE
+﻿# MASCOTA_CLI_UNICODE
 
 Version: 1.0.0
 Estado: En desarrollo
@@ -30,22 +30,13 @@ monoespaciados y colores ANSI.
 - Condor **Grande**: bienvenida e inicio. Es el 100% de la fuente ANSI original,
   tal cual: caracteres ANSI, filas, espacios, bloques y secuencias 256 (232
   cuerpo, 242 sombreado, 167 cabeza, 97 blanco) y sus resets. No deriva de SVG.
-  Invariante «no se escala / no se redibuja» preservado.
-- Condor **Ave pequeña**: mascota de trabajo durante la sesión. Es una
-  **adaptación gráfica compacta de la misma ave** (α.03), no un downscale ciego:
-  la reducción 50% (`Scale50`) perdía patas/garras y deformaba el pico. La
-  pequeña se construye con una matriz propia reducida (`CondorArt.PequenaMatrix`)
-  que conserva la identidad cromática y la anatomía (cabeza terracota, punta de
-  pico blanca, cuerpo gris, sombreado, ala/cola) y AÑADE patas y garras visibles.
-  No es un segundo diseño ni una segunda identidad: misma paleta y misma ave.
-
-**Interpretación de la fuente (T-018/auditoría α.02, ajustada en α.03).** El ANSI
-original (`condor_unicode_v16.ps1`) es un cóndor alado en perfil: representa cabeza,
-cuerpo, alas y cola; **no** representa patas ni garras como elementos distintos del
-cuerpo. Conforme a la regla de «no redibujar / no sustituir», la mascota **grande**
-conserva exactamente esa representación ANSI. En α.03 la mascota **pequeña** sí se
-adapta a tamaño reducido con patas y garras (requisito explícito de α.03), manteniendo
-la misma identidad cromática y anatómica.
+- Condor **Ave pequeña**: mascota de trabajo durante la sesión. Es la **referencia
+  ANSI 24-bit de α.03** (`CondorArt.Ave`), transcrita literalmente desde la
+  referencia visual "Referencia ANSI del cóndor pixelado". Conserva cabeza
+  #CD5362, punta de pico blanca #FFFFFF, base del pico #808080, gris claro
+  #6C6C6C, cuerpo #303030 y contorno #0C0C0C. No es una reduccion automatica ni
+  una segunda matriz: es la referencia tal cual, con patas y garras visibles.
+  No existe `Scale50` ni `PequenaMatrix`: la pequeña es la referencia tal cual.
 
 ### 2. Medio de representacion
 
@@ -111,9 +102,9 @@ Modelo conceptual:
 
 ```text
 Celda
- ├── glyph
- ├── foreground
- └── visible
+ â”œâ”€â”€ glyph
+ â”œâ”€â”€ foreground
+ â””â”€â”€ visible
 ```
 
 La salida de cada fila se escribe directamente al terminal.
@@ -303,7 +294,7 @@ con la informacion principal de la CLI.
 
 Las iteraciones no fueron desperdicio.
 
-Constituyen evidencia de diseño.
+Constituyen evidencia de diseÃ±o.
 
 ### V1-V3
 
@@ -381,7 +372,7 @@ La mascota se considera lista para integracion cuando:
 
 ## Trazabilidad
 
-Fuentes de diseño:
+Fuentes de diseÃ±o:
 
 - Mockups del flujo CLI de Condor.
 - Prototipos ejecutables de mascota V1-V16.
