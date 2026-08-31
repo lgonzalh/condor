@@ -34,7 +34,7 @@ public static class ExamineCommand
             Terminal.WriteLine();
             if (result.Status == DetectionStatus.Detected)
             {
-                Terminal.WriteSuccess("Condor examino la imagen.");
+                Terminal.WriteCyan("Condor examino la imagen.");
             }
             else
             {

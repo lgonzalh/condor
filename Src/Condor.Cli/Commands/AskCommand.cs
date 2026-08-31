@@ -67,7 +67,7 @@ public static class AskCommand
         }
 
         Terminal.WriteLine();
-        Terminal.WriteSuccess("Respuesta de " + (response.Model ?? model) + ":");
+        Terminal.WriteDim("Respuesta de " + (response.Model ?? model) + ":");
         Terminal.WriteLine();
         Terminal.WriteLine(response.Content ?? "");
         Terminal.WriteLine();

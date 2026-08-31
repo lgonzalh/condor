@@ -58,6 +58,6 @@ public static class PlanRenderer
     {
         return string.IsNullOrWhiteSpace(plan.RootName)
             ? "(sin proyecto)"
-            : plan.RootName + " | " + plan.WorkingDirectory;
+            : plan.RootName + " - " + plan.WorkingDirectory;
     }
 }

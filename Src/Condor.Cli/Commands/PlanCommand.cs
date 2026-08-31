@@ -39,7 +39,7 @@ public static class PlanCommand
             }
             else
             {
-                Terminal.WriteSuccess("Condor genero el plan de trabajo.");
+                Terminal.WriteCyan("Condor genero el plan de trabajo.");
             }
 
             Terminal.WriteLine();

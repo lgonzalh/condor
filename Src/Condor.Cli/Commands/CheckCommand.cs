@@ -44,7 +44,7 @@ public static class CheckCommand
             }
             else if (result.Status == DetectionStatus.Detected)
             {
-                Terminal.WriteSuccess("Condor verifico semanticamente el proyecto.");
+                Terminal.WriteCyan("Condor verifico semanticamente el proyecto.");
             }
             else
             {

@@ -75,6 +75,7 @@ public static class CondorTui
             : new TuiHost();
         host.Enter();
         host.ShowWelcome();
+        host.SetWorkspace(Environment.CurrentDirectory);
         host.Repaint(); // primera imagen inmediata: la TUI aparece sin esperar la preparacion
 
         // ---- Preparacion real del entorno (bootstrap Ollama + modelo) ----------
@@ -147,10 +148,11 @@ public static class CondorTui
         // ---- Sesion de trabajo: Condor Grande -> Condor Ave --------------------
         host.ShowSession(prep.Model);
         host.SetModel(prep.Model);
+        host.SetWorkspace(bootstrap.Assessment?.WorkingDirectory ?? Environment.CurrentDirectory);
         host.SetEstado("En espera de tu intencion", ActivityKind.Success);
         host.SetProgreso("—");
 
-        host.AddActivity("Entorno listo. Modo Local 100% activo.", ActivityKind.Success);
+        host.AddActivity("Entorno listo. Modo Local 100% activo.", ActivityKind.System);
         if (!string.IsNullOrWhiteSpace(prep.Model))
         {
             host.AddActivity("Modelo local listo: " + prep.Model, ActivityKind.System);
@@ -166,6 +168,7 @@ public static class CondorTui
         // ---- Bucle principal: teclado + repintado por regiones ------------------
         Console.TreatControlCAsInput = true;
         var input = new TuiInput(host);
+        host.Repaint();  // transición limpia: ClearScreen + TUI 2 (Ave) antes de cualquier elemento de TUI 2
         input.Render();
 
         Task<AgentResult>? running = null;
@@ -463,7 +466,7 @@ public static class CondorTui
         host.AddActivity("", ActivityKind.System);
         host.AddActivity("C O N D O R", ActivityKind.System);
         host.AddActivity("Observa · Comprende · Planifica · Construye · Verifica", ActivityKind.System);
-        host.AddActivity("v1.0 · build interno α.01", ActivityKind.System);
+        host.AddActivity(VersionInfo.DisplayName, ActivityKind.System);
         host.AddActivity("", ActivityKind.System);
         host.AddActivity("Condor es un agente de ingenieria. Escribe con palabras la intencion", ActivityKind.System);
         host.AddActivity("y Condor comprende, analiza, selecciona estrategia y modelo, actua con", ActivityKind.System);
@@ -496,4 +499,7 @@ public static class CondorTui
         host.AddActivity("No necesitas conocer modelos, herramientas, fases internas ni rutas.", ActivityKind.System);
         host.AddActivity("Escribe lo que necesitas y Condor se encarga del resto.", ActivityKind.System);
     }
+
+    internal static bool IsExitAccessible(string text) => IsExit(text);
+    internal static void RenderHelpInTuiAccessible(TuiHost host) => RenderHelpInTui(host);
 }

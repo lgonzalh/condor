@@ -66,7 +66,7 @@ public static class BuildRenderer
     {
         return string.IsNullOrWhiteSpace(result.RootName)
             ? "(sin proyecto)"
-            : result.RootName + " | " + result.WorkingDirectory;
+            : result.RootName + " - " + result.WorkingDirectory;
     }
 
     private static string KindLine(BuildActionKind kind)

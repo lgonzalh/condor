@@ -77,6 +77,6 @@ public static class SemanticVerificationRenderer
     {
         return string.IsNullOrWhiteSpace(result.RootName)
             ? (result.WorkingDirectory.Length > 0 ? result.WorkingDirectory : "(sin proyecto)")
-            : result.RootName + " | " + result.WorkingDirectory;
+            : result.RootName + " - " + result.WorkingDirectory;
     }
 }

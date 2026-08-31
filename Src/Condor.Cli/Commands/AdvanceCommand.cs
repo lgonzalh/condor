@@ -43,7 +43,7 @@ public static class AdvanceCommand
             }
             else
             {
-                Terminal.WriteSuccess("Condor completo un avance del ciclo de ingenieria.");
+                Terminal.WriteCyan("Condor completo un avance del ciclo de ingenieria.");
             }
 
             Terminal.WriteLine();

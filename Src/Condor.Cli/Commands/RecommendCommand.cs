@@ -48,7 +48,7 @@ public static class RecommendCommand
         if (result.HasRecommendation && result.Recommended is not null)
         {
             var recommended = result.Recommended;
-            Terminal.WriteSuccess("Modelo recomendado: " + recommended.Model.Name);
+            Terminal.WriteDim("Modelo recomendado: " + recommended.Model.Name);
             Terminal.WriteLine();
             RenderReasons(recommended);
             Terminal.WriteLine();

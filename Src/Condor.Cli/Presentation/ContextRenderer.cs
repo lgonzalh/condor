@@ -157,6 +157,6 @@ public static class ContextRenderer
     {
         return string.IsNullOrWhiteSpace(context.RootName)
             ? "(sin proyecto)"
-            : context.RootName + " | " + context.WorkingDirectory;
+            : context.RootName + " - " + context.WorkingDirectory;
     }
 }

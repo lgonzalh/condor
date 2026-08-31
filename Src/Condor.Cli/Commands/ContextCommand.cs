@@ -38,7 +38,7 @@ public static class ContextCommand
             }
             else
             {
-                Terminal.WriteSuccess("Condor reconstruyo el contexto del proyecto.");
+                Terminal.WriteCyan("Condor reconstruyo el contexto del proyecto.");
             }
 
             Terminal.WriteLine();

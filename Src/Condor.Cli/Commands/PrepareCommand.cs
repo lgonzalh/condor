@@ -38,7 +38,7 @@ public static class PrepareCommand
             Terminal.WriteLine();
             if (result.Status == DetectionStatus.Detected)
             {
-                Terminal.WriteSuccess("Condor esta listo para operar.");
+                Terminal.WriteCyan("Condor esta listo para operar.");
             }
             else
             {

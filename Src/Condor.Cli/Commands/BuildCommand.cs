@@ -42,7 +42,7 @@ public static class BuildCommand
             }
             else
             {
-                Terminal.WriteSuccess("Condor aplico los cambios del plan.");
+                Terminal.WriteCyan("Condor aplico los cambios del plan.");
             }
 
             Terminal.WriteLine();

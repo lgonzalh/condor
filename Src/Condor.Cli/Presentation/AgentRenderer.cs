@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using Condor.Core.Models;
 
 namespace Condor.Cli.Presentation;
@@ -13,8 +13,8 @@ public static class AgentRenderer
 {
     public static void RenderResult(AgentResult result, TimeSpan? elapsed = null)
     {
-        // Identidad permanente (Cóndor, en azul) + el modelo realmente utilizado.
-        Terminal.WriteBlue("©Condor - " + (string.IsNullOrWhiteSpace(result.Model) ? "modelo local" : result.Model));
+        // Identidad superior (Condor, blanco, sin ©) + eslogan.
+        Terminal.WriteWhite("Condor");
         Terminal.WriteDim("Observa · Comprende · Planifica · Construye · Verifica");
 
         if (!string.IsNullOrWhiteSpace(result.Objective))
@@ -23,7 +23,7 @@ public static class AgentRenderer
             Terminal.WriteLine("Tarea: " + result.Objective);
         }
 
-        // Contexto/decisiones de Condor (azul).
+        // Contexto/decisiones de Condor (cian).
         AppendInventoryColor(result.Inventory);
         var observed = result.Steps.Where(IsObservation).Select(s => s.Path)
             .Where(p => !string.IsNullOrWhiteSpace(p) && p != "." && p != "./")
@@ -31,7 +31,7 @@ public static class AgentRenderer
         if (observed.Count > 0)
         {
             Terminal.WriteLine();
-            Terminal.WriteBlue("Revisando: " + string.Join(", ", observed) + ".");
+            Terminal.WriteCyan("He revisado " + string.Join(", ", observed) + ".");
         }
 
         // Analisis producido por el modelo (gris) o error real (rojo).
@@ -50,12 +50,12 @@ public static class AgentRenderer
         {
             var paths = changes.Select(c => string.IsNullOrWhiteSpace(c.Path) ? "(archivo)" : c.Path).Distinct();
             Terminal.WriteLine();
-            Terminal.WriteBlue("Modifique: " + string.Join(", ", paths) + ".");
+            Terminal.WriteCyan("He modificado " + string.Join(", ", paths) + ".");
         }
 
         // Pie de respuesta (firma permanente).
         Terminal.WriteLine();
-        Terminal.WriteBlue(SignatureLine(result, elapsed));
+        Terminal.WriteWhite(SignatureLine(result, elapsed));
     }
 
     /// <summary>
@@ -68,9 +68,8 @@ public static class AgentRenderer
     {
         var sb = new StringBuilder();
 
-        // Identidad permanente de Condor: el modelo que se muestra es el REALMENTE
-        // utilizado (result.Model), nunca uno "sugerido". El eslogan acompania siempre.
-        sb.AppendLine("©Condor - " + (string.IsNullOrWhiteSpace(result.Model) ? "modelo local" : result.Model));
+        // Identidad superior de Condor (sin ©) + eslogan.
+        sb.AppendLine("Condor");
         sb.AppendLine("Observa · Comprende · Planifica · Construye · Verifica");
 
         // Tarea que se respondio.
@@ -89,7 +88,7 @@ public static class AgentRenderer
         if (observed.Count > 0)
         {
             sb.AppendLine();
-            sb.AppendLine("Revisando: " + string.Join(", ", observed) + ".");
+            sb.AppendLine("He revisado " + string.Join(", ", observed) + ".");
         }
 
         // El corazon de la respuesta: el analisis elaborado.
@@ -103,7 +102,7 @@ public static class AgentRenderer
         {
             var paths = changes.Select(c => string.IsNullOrWhiteSpace(c.Path) ? "(archivo)" : c.Path).Distinct();
             sb.AppendLine();
-            sb.AppendLine("Modifique: " + string.Join(", ", paths) + ".");
+            sb.AppendLine("He modificado " + string.Join(", ", paths) + ".");
         }
 
         // Firma permanente del ADN de Condor.
@@ -117,7 +116,8 @@ public static class AgentRenderer
     {
         var model = string.IsNullOrWhiteSpace(result.Model) ? "modelo local" : result.Model;
         var time = FormatElapsed(elapsed);
-        return "©Condor · " + model + " · " + time;
+        // Barra inferior de identidad: el © aparece SOLO aqui, nunca arriba.
+        return "©Condor - " + model + " - " + time;
     }
 
     private static string FormatElapsed(TimeSpan? elapsed)
@@ -156,11 +156,11 @@ public static class AgentRenderer
         if (parts.Count > 0)
         {
             sb.AppendLine();
-            sb.AppendLine("Contexto: " + string.Join(" · ", parts) + ".");
+            sb.AppendLine("Contexto del entorno: " + string.Join(" · ", parts) + ".");
         }
     }
 
-    /// <summary>Presenta el inventario del entorno en color de Condor (azul).</summary>
+    /// <summary>Presenta el inventario del entorno en color de Condor (cian).</summary>
     private static void AppendInventoryColor(AgentInventory? inv)
     {
         if (inv is null) return;
@@ -182,7 +182,9 @@ public static class AgentRenderer
         if (parts.Count > 0)
         {
             Terminal.WriteLine();
-            Terminal.WriteBlue("Contexto: " + string.Join(" · ", parts) + ".");
+            Terminal.WriteCyan("Contexto del entorno: " + string.Join(" · ", parts) + ".");
         }
     }
 }
+
+

@@ -42,7 +42,7 @@ public static class VerifyCommand
             }
             else
             {
-                Terminal.WriteSuccess("Condor verifico los cambios del proyecto.");
+                Terminal.WriteCyan("Condor verifico los cambios del proyecto.");
             }
 
             Terminal.WriteLine();
