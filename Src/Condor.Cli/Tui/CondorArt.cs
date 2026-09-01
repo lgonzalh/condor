@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 
 namespace Condor.Cli.Tui;
 
@@ -17,11 +17,11 @@ namespace Condor.Cli.Tui;
 ///      v
 ///   PEQUENA  (reduccion ~50% de la GRANDE, no ciega)  [SESION]
 ///
-/// La mascota PEQUENA es una reduccion VISUALMENTE FIEL de la misma ave (˜50%): fusiona
+/// La mascota PEQUENA es una reduccion VISUALMENTE FIEL de la misma ave (ï¿½50%): fusiona
 /// bloques 2x2 de la GRANDE conservando la identidad grafica (cabeza 167, punta de pico
 /// blanca 97, sombreado 242, cuerpo 235/236/233) y NO destruye los rasgos que un downscale
 /// ciego perderia. Sobre la silueta reducida se reconstruyen las PATAS y GARRAS (233/242)
-/// y se refuerza el pico, de modo que la pequeña es inequivocamente el MISMO CONDOR.
+/// y se refuerza el pico, de modo que la pequeï¿½a es inequivocamente el MISMO CONDOR.
 /// No hay una segunda matriz ni un dibujo nuevo: todo deriva de la fuente ANSI unica.
 /// </summary>
 public static class CondorArt
@@ -42,61 +42,61 @@ public static class CondorArt
     private static readonly string[] AveV16Raw =
     [
         "\u001b[0m                                      \u001b[0m",
-        "\u001b[0m  \u001b[38;5;232m__\u001b[0m                        \u001b[38;5;232m¦¦\u001b[0m \u001b[38;5;232m¦¦\u001b[0m     \u001b[0m",
-        "\u001b[38;5;232m¦¦¦¦\u001b[0m                      \u001b[38;5;232m¦¦¦¦¦¦¦¦\u001b[0m    \u001b[0m",
-        "\u001b[38;5;232m¯¯\u001b[38;5;242m¦¦\u001b[38;5;232m¦___\u001b[0m                \u001b[38;5;232m__¦¦¦¦¦¦¦¦__\u001b[0m  \u001b[0m",
-        "\u001b[0m  \u001b[38;5;242m¯\u001b[38;5;232m¦¦¦¦¦____\u001b[0m           \u001b[38;5;232m_¦¦¦¦¦¦\u001b[38;5;242m¦¦\u001b[38;5;232m¦¦¯¯\u001b[0m  \u001b[0m",
-        "\u001b[0m    \u001b[38;5;242m¯\u001b[38;5;232m¯\u001b[38;5;242m¦\u001b[38;5;232m¦¦¦¦¦\u001b[0m          \u001b[38;5;232m¦¦¦¦¦¦\u001b[38;5;242m¦¦¦¦\u001b[38;5;232m¦¦\u001b[0m    \u001b[0m",
-        "\u001b[0m      \u001b[38;5;232m¯¯¦¦¦¦¦¦¦\u001b[0m \u001b[38;5;232m¦¦¦¦¦¦¦¦\u001b[38;5;242m¦¦\u001b[38;5;232m¦\u001b[38;5;242m¦¦¦\u001b[38;5;232m¦\u001b[38;5;242m¦¦\u001b[0m     \u001b[0m",
-        "\u001b[0m      \u001b[38;5;167m__¦¦¦¦\u001b[38;5;232m¯¯¦¦¦¦¦¦¦¦¦¦\u001b[38;5;242m¦¦\u001b[38;5;232m¦\u001b[38;5;242m¦¦\u001b[38;5;232m¦¦\u001b[0m       \u001b[0m",
-        "\u001b[0m     \u001b[38;5;242m¦¦¦\u001b[38;5;167m¦¦¦¦\u001b[97m¦\u001b[38;5;232m_¦¦¦¦¦¦¦¦¦¦\u001b[38;5;242m¦¦\u001b[38;5;232m¯¯\u001b[38;5;242m¯\u001b[38;5;232m¯\u001b[0m        \u001b[0m",
-        "\u001b[0m     \u001b[38;5;242m¯\u001b[0m \u001b[38;5;232m___¦¦¦¦¦¦¦¦¦¦¦¦______\u001b[0m          \u001b[0m",
-        "\u001b[0m    \u001b[38;5;242m¯¯¦¦\u001b[38;5;232m¯¯\u001b[0m  \u001b[38;5;232m¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦\u001b[0m        \u001b[0m",
-        "\u001b[0m       \u001b[38;5;242m_____¯¯¯\u001b[0m \u001b[38;5;232m¯¯¦¦¦¦¦¦¯¯¯¯\u001b[0m          \u001b[0m",
-        "\u001b[0m       \u001b[38;5;242m¯\u001b[0m                              \u001b[0m",
+        "\u001b[0m  \u001b[38;5;232m__\u001b[0m                        \u001b[38;5;232mï¿½ï¿½\u001b[0m \u001b[38;5;232mï¿½ï¿½\u001b[0m     \u001b[0m",
+        "\u001b[38;5;232mï¿½ï¿½ï¿½ï¿½\u001b[0m                      \u001b[38;5;232mï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½\u001b[0m    \u001b[0m",
+        "\u001b[38;5;232mï¿½ï¿½\u001b[38;5;242mï¿½ï¿½\u001b[38;5;232mï¿½___\u001b[0m                \u001b[38;5;232m__ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½__\u001b[0m  \u001b[0m",
+        "\u001b[0m  \u001b[38;5;242mï¿½\u001b[38;5;232mï¿½ï¿½ï¿½ï¿½ï¿½____\u001b[0m           \u001b[38;5;232m_ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½\u001b[38;5;242mï¿½ï¿½\u001b[38;5;232mï¿½ï¿½ï¿½ï¿½\u001b[0m  \u001b[0m",
+        "\u001b[0m    \u001b[38;5;242mï¿½\u001b[38;5;232mï¿½\u001b[38;5;242mï¿½\u001b[38;5;232mï¿½ï¿½ï¿½ï¿½ï¿½\u001b[0m          \u001b[38;5;232mï¿½ï¿½ï¿½ï¿½ï¿½ï¿½\u001b[38;5;242mï¿½ï¿½ï¿½ï¿½\u001b[38;5;232mï¿½ï¿½\u001b[0m    \u001b[0m",
+        "\u001b[0m      \u001b[38;5;232mï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½\u001b[0m \u001b[38;5;232mï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½\u001b[38;5;242mï¿½ï¿½\u001b[38;5;232mï¿½\u001b[38;5;242mï¿½ï¿½ï¿½\u001b[38;5;232mï¿½\u001b[38;5;242mï¿½ï¿½\u001b[0m     \u001b[0m",
+        "\u001b[0m      \u001b[38;5;167m__ï¿½ï¿½ï¿½ï¿½\u001b[38;5;232mï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½\u001b[38;5;242mï¿½ï¿½\u001b[38;5;232mï¿½\u001b[38;5;242mï¿½ï¿½\u001b[38;5;232mï¿½ï¿½\u001b[0m       \u001b[0m",
+        "\u001b[0m     \u001b[38;5;242mï¿½ï¿½ï¿½\u001b[38;5;167mï¿½ï¿½ï¿½ï¿½\u001b[97mï¿½\u001b[38;5;232m_ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½\u001b[38;5;242mï¿½ï¿½\u001b[38;5;232mï¿½ï¿½\u001b[38;5;242mï¿½\u001b[38;5;232mï¿½\u001b[0m        \u001b[0m",
+        "\u001b[0m     \u001b[38;5;242mï¿½\u001b[0m \u001b[38;5;232m___ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½______\u001b[0m          \u001b[0m",
+        "\u001b[0m    \u001b[38;5;242mï¿½ï¿½ï¿½ï¿½\u001b[38;5;232mï¿½ï¿½\u001b[0m  \u001b[38;5;232mï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½\u001b[0m        \u001b[0m",
+        "\u001b[0m       \u001b[38;5;242m_____ï¿½ï¿½ï¿½\u001b[0m \u001b[38;5;232mï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½\u001b[0m          \u001b[0m",
+        "\u001b[0m       \u001b[38;5;242mï¿½\u001b[0m                              \u001b[0m",
     ];
 
     /// <summary>Mascota GRANDE (bienvenida): 100% del ANSI original con la gama de colores restituida.</summary>
     public static readonly string[] Grande = ApplyGama(AveV16Raw);
 
     /// <summary>
-    /// MASCOTA PEQUEÑA DE REFERENCIA a.03 (ANSI Unicode 24-bit). Replica literalmente la
-    /// referencia "Referencia ANSI del cóndor pixelado": cabeza #CD5362, punta de pico
+    /// MASCOTA PEQUEï¿½A DE REFERENCIA a.03 (ANSI Unicode 24-bit). Replica literalmente la
+    /// referencia "Referencia ANSI del cï¿½ndor pixelado": cabeza #CD5362, punta de pico
     /// blanca #FFFFFF, base del pico #808080, gris claro de alas/cola #6C6C6C, cuerpo
     /// #303030 y contorno/sombra #0C0C0C. Conserva patas, garras, alas, cola y silueta.
     /// No es una reduccion automatica ni una silueta inventada: es la referencia tal cual.
     /// </summary>
     public static readonly string[] Ave =
     {
-// Row 0: outline above back
+        // Row 0
         "[38;2;12;12;12m.................................[0m",
-// Row 1: back rising
+        // Row 1
         "[38;2;12;12;12m........[38;2;48;48;48m____________________[38;2;12;12;12m...[0m",
-// Row 2: back peak
+        // Row 2
         "[38;2;12;12;12m......[38;2;48;48;48m________________________[38;2;12;12;12m.[0m",
-// Row 3: back continues
+        // Row 3
         "[38;2;12;12;12m....[38;2;48;48;48m__________________________[0m",
-// Row 4: back body
+        // Row 4
         "[38;2;12;12;12m..[38;2;48;48;48m____________________________[0m",
-// Row 5: terracota head appears
+        // Row 5
         "[38;2;12;12;12m.[38;2;205;83;98m________[38;2;12;12;12m...[38;2;48;48;48m________________________[0m",
-// Row 6: head + white beak tip
+        // Row 6
         "[38;2;12;12;12m.[38;2;205;83;98m________[38;2;255;255;255m_[38;2;12;12;12m...[38;2;48;48;48m_______________________[0m",
-// Row 7: head + grey beak base
+        // Row 7
         "[38;2;12;12;12m.[38;2;205;83;98m________[38;2;128;128;128m_[38;2;12;12;12m...[38;2;48;48;48m______________________[0m",
-// Row 8: neck + body
+        // Row 8
         "[38;2;12;12;12m..[38;2;205;83;98m________[38;2;12;12;12m...[38;2;48;48;48m____________________[0m",
-// Row 9: light grey body
+        // Row 9
         "[38;2;12;12;12m..[38;2;108;108;108m________[38;2;12;12;12m..[38;2;48;48;48m________________________[0m",
-// Row 10: body + first leg stub
+        // Row 10
         "[38;2;12;12;12m...[38;2;108;108;108m________[38;2;12;12;12m.[38;2;28;28;28m_[38;2;12;12;12m....[38;2;48;48;48m____________________[0m",
-// Row 11: body + 3 legs visible
+        // Row 11
         "[38;2;12;12;12m....[38;2;48;48;48m________[38;2;12;12;12m..[38;2;28;28;28mÂ¦[38;2;12;12;12m......[38;2;28;28;28mÂ¦[38;2;12;12;12m....[38;2;28;28;28mÂ¦[0m",
-// Row 12: legs extending
+        // Row 12
         "[38;2;12;12;12m.....[38;2;12;12;12m....[38;2;28;28;28mÂ¦[38;2;12;12;12m......[38;2;28;28;28mÂ¦[38;2;12;12;12m.....[38;2;28;28;28mÂ¦[0m",
-// Row 13: claws row 1
+        // Row 13
         "[38;2;12;12;12m......[38;2;12;12;12m?[38;2;12;12;12m......[38;2;12;12;12m?[38;2;12;12;12m.......[38;2;12;12;12m?[0m",
-// Row 14: claws row 2 (shadow)
+        // Row 14
         "[38;2;12;12;12m.......[38;2;12;12;12m?[38;2;12;12;12m........[38;2;12;12;12m?[38;2;12;12;12m........[38;2;12;12;12m?[0m",
     };
 
