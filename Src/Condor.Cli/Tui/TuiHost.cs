@@ -522,15 +522,22 @@ public sealed class TuiHost : IDisposable
     {
         // Linea superior UNICA: marca + version, y a la derecha el modelo REAL actual.
         // La version aparece aqui UNA unica vez; el modelo aparece UNA unica vez.
-        sb.Append(Ansi.At(1, 2));
+        // Mismo lenguaje de separador horizontal que las otras dos filas divisorias
+        // (fila 1 y fila de entrada): el cromo `── ... ──` envuelve el titulo y el
+        // modelo para que la caja superior sea simetrica.
+        sb.Append(Ansi.At(1, 1));
         sb.Append(Ansi.ClearLine);
+        sb.Append(Ansi.FgGris + "──" + Ansi.Reset);
+        sb.Append(" ");
         sb.Append(Ansi.Bold + Ansi.FgBlanco + "CONDOR" + Ansi.Reset);
         sb.Append(Ansi.FgGris + "  " + VersionInfo.DisplayName + Ansi.Reset);
 
         var model = _model ?? "—";
-        var col = Math.Max(18, _width - model.Length - 2);
+        var col = Math.Max(18, _width - model.Length - 4);
         sb.Append(Ansi.At(1, col));
         sb.Append(Ansi.FgTerracota + model + Ansi.Reset);
+        sb.Append(" ");
+        sb.Append(Ansi.FgGris + "──" + Ansi.Reset);
     }
 
     /// <summary>
