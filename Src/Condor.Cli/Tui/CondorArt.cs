@@ -5,7 +5,7 @@ namespace Condor.Cli.Tui;
 /// <summary>
 /// RECURSO DE IDENTIDAD VISUAL de Condor.
 ///
-/// Pipeline visual (Î±.03):
+/// Pipeline visual (a.03):
 ///   ANSI ORIGINAL (AveV16Raw, geometria 232/242/167/97)
 ///      |
 ///      v
@@ -17,11 +17,11 @@ namespace Condor.Cli.Tui;
 ///      v
 ///   PEQUENA  (reduccion ~50% de la GRANDE, no ciega)  [SESION]
 ///
-/// La mascota PEQUENA es una reduccion VISUALMENTE FIEL de la misma ave (â‰ˆ50%): fusiona
+/// La mascota PEQUENA es una reduccion VISUALMENTE FIEL de la misma ave (˜50%): fusiona
 /// bloques 2x2 de la GRANDE conservando la identidad grafica (cabeza 167, punta de pico
 /// blanca 97, sombreado 242, cuerpo 235/236/233) y NO destruye los rasgos que un downscale
 /// ciego perderia. Sobre la silueta reducida se reconstruyen las PATAS y GARRAS (233/242)
-/// y se refuerza el pico, de modo que la pequeÃ±a es inequivocamente el MISMO CONDOR.
+/// y se refuerza el pico, de modo que la pequeña es inequivocamente el MISMO CONDOR.
 /// No hay una segunda matriz ni un dibujo nuevo: todo deriva de la fuente ANSI unica.
 /// </summary>
 public static class CondorArt
@@ -42,44 +42,55 @@ public static class CondorArt
     private static readonly string[] AveV16Raw =
     [
         "\u001b[0m                                      \u001b[0m",
-        "\u001b[0m  \u001b[38;5;232mâ–„â–„\u001b[0m                        \u001b[38;5;232mâ–ˆâ–ˆ\u001b[0m \u001b[38;5;232mâ–ˆâ–ˆ\u001b[0m     \u001b[0m",
-        "\u001b[38;5;232mâ–ˆâ–ˆâ–ˆâ–ˆ\u001b[0m                      \u001b[38;5;232mâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆ\u001b[0m    \u001b[0m",
-        "\u001b[38;5;232mâ–€â–€\u001b[38;5;242mâ–ˆâ–ˆ\u001b[38;5;232mâ–ˆâ–„â–„â–„\u001b[0m                \u001b[38;5;232mâ–„â–„â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–„â–„\u001b[0m  \u001b[0m",
-        "\u001b[0m  \u001b[38;5;242mâ–€\u001b[38;5;232mâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–„â–„â–„â–„\u001b[0m           \u001b[38;5;232mâ–„â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆ\u001b[38;5;242mâ–ˆâ–ˆ\u001b[38;5;232mâ–ˆâ–ˆâ–€â–€\u001b[0m  \u001b[0m",
-        "\u001b[0m    \u001b[38;5;242mâ–€\u001b[38;5;232mâ–€\u001b[38;5;242mâ–ˆ\u001b[38;5;232mâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆ\u001b[0m          \u001b[38;5;232mâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆ\u001b[38;5;242mâ–ˆâ–ˆâ–ˆâ–ˆ\u001b[38;5;232mâ–ˆâ–ˆ\u001b[0m    \u001b[0m",
-        "\u001b[0m      \u001b[38;5;232mâ–€â–€â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆ\u001b[0m \u001b[38;5;232mâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆ\u001b[38;5;242mâ–ˆâ–ˆ\u001b[38;5;232mâ–ˆ\u001b[38;5;242mâ–ˆâ–ˆâ–ˆ\u001b[38;5;232mâ–ˆ\u001b[38;5;242mâ–ˆâ–ˆ\u001b[0m     \u001b[0m",
-        "\u001b[0m      \u001b[38;5;167mâ–„â–„â–ˆâ–ˆâ–ˆâ–ˆ\u001b[38;5;232mâ–€â–€â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆ\u001b[38;5;242mâ–ˆâ–ˆ\u001b[38;5;232mâ–ˆ\u001b[38;5;242mâ–ˆâ–ˆ\u001b[38;5;232mâ–ˆâ–ˆ\u001b[0m       \u001b[0m",
-        "\u001b[0m     \u001b[38;5;242mâ–ˆâ–ˆâ–ˆ\u001b[38;5;167mâ–ˆâ–ˆâ–ˆâ–ˆ\u001b[97mâ–ˆ\u001b[38;5;232mâ–„â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆ\u001b[38;5;242mâ–ˆâ–ˆ\u001b[38;5;232mâ–€â–€\u001b[38;5;242mâ–€\u001b[38;5;232mâ–€\u001b[0m        \u001b[0m",
-        "\u001b[0m     \u001b[38;5;242mâ–€\u001b[0m \u001b[38;5;232mâ–„â–„â–„â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–„â–„â–„â–„â–„â–„\u001b[0m          \u001b[0m",
-        "\u001b[0m    \u001b[38;5;242mâ–€â–€â–ˆâ–ˆ\u001b[38;5;232mâ–€â–€\u001b[0m  \u001b[38;5;232mâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆ\u001b[0m        \u001b[0m",
-        "\u001b[0m       \u001b[38;5;242mâ–„â–„â–„â–„â–„â–€â–€â–€\u001b[0m \u001b[38;5;232mâ–€â–€â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–€â–€â–€â–€\u001b[0m          \u001b[0m",
-        "\u001b[0m       \u001b[38;5;242mâ–€\u001b[0m                              \u001b[0m",
+        "\u001b[0m  \u001b[38;5;232m__\u001b[0m                        \u001b[38;5;232m¦¦\u001b[0m \u001b[38;5;232m¦¦\u001b[0m     \u001b[0m",
+        "\u001b[38;5;232m¦¦¦¦\u001b[0m                      \u001b[38;5;232m¦¦¦¦¦¦¦¦\u001b[0m    \u001b[0m",
+        "\u001b[38;5;232m¯¯\u001b[38;5;242m¦¦\u001b[38;5;232m¦___\u001b[0m                \u001b[38;5;232m__¦¦¦¦¦¦¦¦__\u001b[0m  \u001b[0m",
+        "\u001b[0m  \u001b[38;5;242m¯\u001b[38;5;232m¦¦¦¦¦____\u001b[0m           \u001b[38;5;232m_¦¦¦¦¦¦\u001b[38;5;242m¦¦\u001b[38;5;232m¦¦¯¯\u001b[0m  \u001b[0m",
+        "\u001b[0m    \u001b[38;5;242m¯\u001b[38;5;232m¯\u001b[38;5;242m¦\u001b[38;5;232m¦¦¦¦¦\u001b[0m          \u001b[38;5;232m¦¦¦¦¦¦\u001b[38;5;242m¦¦¦¦\u001b[38;5;232m¦¦\u001b[0m    \u001b[0m",
+        "\u001b[0m      \u001b[38;5;232m¯¯¦¦¦¦¦¦¦\u001b[0m \u001b[38;5;232m¦¦¦¦¦¦¦¦\u001b[38;5;242m¦¦\u001b[38;5;232m¦\u001b[38;5;242m¦¦¦\u001b[38;5;232m¦\u001b[38;5;242m¦¦\u001b[0m     \u001b[0m",
+        "\u001b[0m      \u001b[38;5;167m__¦¦¦¦\u001b[38;5;232m¯¯¦¦¦¦¦¦¦¦¦¦\u001b[38;5;242m¦¦\u001b[38;5;232m¦\u001b[38;5;242m¦¦\u001b[38;5;232m¦¦\u001b[0m       \u001b[0m",
+        "\u001b[0m     \u001b[38;5;242m¦¦¦\u001b[38;5;167m¦¦¦¦\u001b[97m¦\u001b[38;5;232m_¦¦¦¦¦¦¦¦¦¦\u001b[38;5;242m¦¦\u001b[38;5;232m¯¯\u001b[38;5;242m¯\u001b[38;5;232m¯\u001b[0m        \u001b[0m",
+        "\u001b[0m     \u001b[38;5;242m¯\u001b[0m \u001b[38;5;232m___¦¦¦¦¦¦¦¦¦¦¦¦______\u001b[0m          \u001b[0m",
+        "\u001b[0m    \u001b[38;5;242m¯¯¦¦\u001b[38;5;232m¯¯\u001b[0m  \u001b[38;5;232m¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦\u001b[0m        \u001b[0m",
+        "\u001b[0m       \u001b[38;5;242m_____¯¯¯\u001b[0m \u001b[38;5;232m¯¯¦¦¦¦¦¦¯¯¯¯\u001b[0m          \u001b[0m",
+        "\u001b[0m       \u001b[38;5;242m¯\u001b[0m                              \u001b[0m",
     ];
 
     /// <summary>Mascota GRANDE (bienvenida): 100% del ANSI original con la gama de colores restituida.</summary>
     public static readonly string[] Grande = ApplyGama(AveV16Raw);
 
     /// <summary>
-    /// MASCOTA PEQUEÃ‘A DE REFERENCIA Î±.03 (ANSI Unicode 24-bit). Replica literalmente la
-    /// referencia "Referencia ANSI del cÃ³ndor pixelado": cabeza #CD5362, punta de pico
+    /// MASCOTA PEQUEÑA DE REFERENCIA a.03 (ANSI Unicode 24-bit). Replica literalmente la
+    /// referencia "Referencia ANSI del cóndor pixelado": cabeza #CD5362, punta de pico
     /// blanca #FFFFFF, base del pico #808080, gris claro de alas/cola #6C6C6C, cuerpo
     /// #303030 y contorno/sombra #0C0C0C. Conserva patas, garras, alas, cola y silueta.
     /// No es una reduccion automatica ni una silueta inventada: es la referencia tal cual.
     /// </summary>
     public static readonly string[] Ave =
-    [
-        "\u001b[38;2;12;12;12mÂ·Â·Â·Â·Â·\u001b[38;2;48;48;48mâ–„â–ˆ",
-        "\u001b[38;2;12;12;12mÂ·Â·Â·Â·\u001b[38;2;48;48;48mâ–ˆâ–ˆâ–Œ",
-        "\u001b[38;2;12;12;12mÂ·Â·Â·\u001b[38;2;48;48;48mâ–ˆâ–ˆâ–ˆâ–Œâ–Œ",
-        "\u001b[38;2;12;12;12mÂ·Â·\u001b[38;2;48;48;48mâ–ˆâ–ˆâ–Œ\u001b[38;2;108;108;108mâ–Œâ–Œ",
-        "\u001b[38;2;12;12;12mÂ·\u001b[38;2;205;83;98mâ–ˆâ–ˆ\u001b[38;2;255;255;255mâ–Œ\u001b[38;2;48;48;48mâ–ˆâ–ˆ",
-        "\u001b[38;2;12;12;12m \u001b[38;2;128;128;128mâ–Œ\u001b[38;2;205;83;98mâ–ˆâ–ˆ\u001b[38;2;48;48;48mâ–ˆâ–ˆâ–ˆâ–ˆ",
-        "\u001b[38;2;12;12;12mÂ·\u001b[38;2;48;48;48mâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆ",
-        "\u001b[38;2;12;12;12mÂ·Â·\u001b[38;2;108;108;108mâ–„\u001b[38;2;48;48;48mâ–ˆâ–ˆ",
-        "\u001b[38;2;12;12;12mÂ·Â·Â·\u001b[38;2;108;108;108mâ–Œ\u001b[38;2;48;48;48mâ–Œ",
-        "\u001b[38;2;12;12;12mÂ·Â·Â·Â·\u001b[38;2;108;108;108mâ–”â–”",
-        "\u001b[0m",
-    ];
+    {
+        // Row 0: Contorno superior + corona cabeza
+        "\u001b[38;2;12;12;12m····\u001b[38;2;205;83;98m________\u001b[38;2;12;12;12m··",
+        // Row 1: Pico (punta blanca) + cabeza
+        "\u001b[38;2;255;255;255m¦\u001b[38;2;205;83;98m¦¦¦¦¦¦¦¦¦¦\u001b[38;2;12;12;12m···",
+        // Row 2: Base pico gris + cabeza + contorno
+        "\u001b[38;2;128;128;128m¦\u001b[38;2;205;83;98m¦¦¦¦¦¦¦¦¦¦\u001b[38;2;12;12;12m···",
+        // Row 3: Cuello/rufo + ala superior
+        "\u001b[38;2;12;12;12m·\u001b[38;2;205;83;98m¦¦¦\u001b[38;2;108;108;108m________\u001b[38;2;12;12;12m··",
+        // Row 4: Cuerpo + ala media
+        "\u001b[38;2;12;12;12m··\u001b[38;2;48;48;48m¦¦¦¦¦¦¦¦¦¦¦\u001b[38;2;12;12;12m·",
+        // Row 5: Cuerpo + cola
+        "\u001b[38;2;12;12;12m···\u001b[38;2;48;48;48m¦¦¦¦¦¦¦¦¦\u001b[38;2;108;108;108m_\u001b[38;2;12;12;12m·",
+        // Row 6: Cuerpo inferior + inicio cola
+        "\u001b[38;2;12;12;12m···\u001b[38;2;48;48;48m¦¦¦¦¦¦¦¦\u001b[38;2;108;108;108m¦¦\u001b[38;2;12;12;12m·",
+        // Row 7: Patas
+        "\u001b[38;2;12;12;12m···\u001b[38;2;28;28;28m¦\u001b[38;2;12;12;12m······\u001b[38;2;28;28;28m¦\u001b[38;2;12;12;12m·",
+        // Row 8: Garras
+        "\u001b[38;2;12;12;12m····\u001b[38;2;12;12;12m?\u001b[38;2;12;12;12m······\u001b[38;2;12;12;12m?\u001b[0m",
+        // Row 9: Patas extendidas / sombra + cola (gris claro 108;108;108)
+        "\u001b[38;2;12;12;12m····\u001b[38;2;28;28;28m¦\u001b[38;2;12;12;12m··\u001b[38;2;108;108;108m_\u001b[38;2;28;28;28m¦\u001b[38;2;12;12;12m·",
+        // Row 10: Base garras / sombra final + cola (gris claro 108;108;108)
+        "\u001b[38;2;12;12;12m·····\u001b[38;2;12;12;12m?\u001b[38;2;108;108;108m__\u001b[38;2;12;12;12m··\u001b[38;2;12;12;12m?\u001b[0m",
+    };
 
     /// <summary>Ancho visible maximo de la mascota pequena (Ave), sin SGR.</summary>
     public static readonly int AveWidth = Ave.Max(Ansi.VisibleWidth);
