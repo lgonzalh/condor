@@ -87,9 +87,13 @@ public sealed class TuiHost : IDisposable
     private int EstadoRow => _height - BottomRows + 2;       // fila de estado minimo (ultima)
     private int ContentBottom => SepInputRow - 1;            // ultima fila utilizable de contenido
 
-    // Mascota integrada (un solo acento visual, sin panel ni titulo) y margen reservado.
-    private int ArtCol => Math.Max(1, _width - CondorArt.AveWidth - 2);   // columna 1-based
-    private int FeedWidth => Math.Max(20, ArtCol - 5);                    // ancho del contenido (no choca con la mascota)
+    // Composicion de referencia: la mascota se ancla a la IZQUIERDA del area de
+    // contenido (no vive en una columna lateral). El margen izquierdo del feed
+    // de actividad reserva su ancho para que el texto dinamico no la pise.
+    private int ArtCol => 2;                                                  // columna 1-based
+    private int ArtRow => ContentTop;                                        // fila logica 0-based
+    private int FeedLeftMargin => CondorArt.AveWidth + 2;                     // margen izq reservado para la mascota
+    private int FeedWidth => Math.Max(20, _width - FeedLeftMargin - 2);       // ancho del feed dinamico
 
     public TuiHost()
     {
@@ -548,11 +552,14 @@ public sealed class TuiHost : IDisposable
     /// </summary>
     private void PaintMascotaLocked(System.Text.StringBuilder sb)
     {
+        // Mascota PEQUENA anclada a la IZQUIERDA, integrada al area de contenido.
+        // Comparte filas con la actividad (no es panel lateral ni columna separada).
         var col = ArtCol;
+        var row = ArtRow;
         var art = CondorArt.Ave;
-        for (var i = 0; i < art.Length && ContentTop + i <= ContentBottom; i++)
+        for (var i = 0; i < art.Length && row + i <= ContentBottom; i++)
         {
-            sb.Append(Ansi.At(ContentTop + i + 1, col));
+            sb.Append(Ansi.At(row + i + 1, col));
             sb.Append(Ansi.Paint(art[i]));
             sb.Append(Ansi.Reset);
         }
@@ -631,9 +638,10 @@ public sealed class TuiHost : IDisposable
 
         var take = Math.Min(height, _wrapped.Count);
         var skip = Math.Max(0, _wrapped.Count - take);
+        var left = FeedLeftMargin + 1;
         for (var i = 0; i < height; i++)
         {
-            sb.Append(Ansi.At(ContentTop + i + 1, 1));
+            sb.Append(Ansi.At(ContentTop + i + 1, left));
             sb.Append(Ansi.ClearLine);
             if (i < take)
             {
@@ -673,10 +681,6 @@ public sealed class TuiHost : IDisposable
         sb.Append(Ansi.ClearLine);
         var frame = _busy ? SpinnerFrames[_spin % SpinnerFrames.Length] + " " : "";
         sb.Append(EstadoColor(_estadoKind) + frame + _estado + Ansi.Reset);
-
-        var ws = _workspace ?? "—";
-        sb.Append(Ansi.At(EstadoRow + 1, Math.Max(1, _width - ws.Length - 2)));
-        sb.Append(Ansi.FgGris + ws + Ansi.Reset);
     }
 
     private string EstadoColor(ActivityKind kind)
@@ -698,13 +702,9 @@ public sealed class TuiHost : IDisposable
     {
         sb.Append(Ansi.At(18, 3));
         sb.Append(Ansi.ClearLine);
-        sb.Append(Ansi.FgGris + "Workspace: " + Clip(_workspace ?? "—", _width - 16) + Ansi.Reset);
-
-        sb.Append(Ansi.At(19, 3));
-        sb.Append(Ansi.ClearLine);
         sb.Append(Ansi.FgGris + Clip(string.IsNullOrWhiteSpace(_progreso) ? "—" : _progreso, _width - 6) + Ansi.Reset);
 
-        sb.Append(Ansi.At(20, 3));
+        sb.Append(Ansi.At(19, 3));
         sb.Append(Ansi.ClearLine);
         sb.Append(EstadoColor(_estadoKind) + Clip(_estado, _width - 6) + Ansi.Reset);
     }
@@ -796,7 +796,7 @@ public sealed class TuiHost : IDisposable
 
     private void RewrapLocked()
     {
-        var width = Math.Max(20, FeedWidth - 4);
+        var width = Math.Max(30, FeedWidth - 4);
         _wrapped.Clear();
         foreach (var (text, kind) in _activity)
         {
