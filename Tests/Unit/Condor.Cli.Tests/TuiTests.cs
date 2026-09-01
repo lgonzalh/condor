@@ -48,7 +48,7 @@ public class IdentidadTuiTests
         // α.03: la pequeña es la referencia ANSI 24-bit del MISMO Condor (cabeza #CD5362,
         // punta de pico blanca #FFFFFF, base de pico #808080, cuerpo #303030, grises
         // #6C6C6C y contorno #0C0C0C). No es monocromatica ni una silueta generica.
-        Assert.Equal(11, CondorArt.Ave.Length);
+        Assert.Equal(15, CondorArt.Ave.Length);
 
         // Paleta 24-bit de la referencia.
         Assert.Contains(CondorArt.Ave, row => row.Contains("38;2;205;83;98"));   // cabeza roja
@@ -62,7 +62,7 @@ public class IdentidadTuiTests
         Assert.DoesNotContain(CondorArt.Ave, row => row.Contains("38;5;"));
 
         // Patas/garras y cuerpo/sombra en la parte inferior (referencia filas 8-11).
-        var inferiores = CondorArt.Ave[^4..];
+        var inferiores = CondorArt.Ave[^6..];
         Assert.Contains(inferiores, row => row.Contains("38;2;108;108;108"));
     }
 }
@@ -250,7 +250,7 @@ public class FotogramasTuiTests
             var idx = pintada.IndexOf(filaArte.TrimStart(), StringComparison.Ordinal);
             Assert.True(idx <= 5, $"La mascota deberia estar a la izquierda, no en columna {idx}");
             // En sus propias filas no aparece la metadata del modelo.
-            for (var r = 2; r <= 12; r++)
+            for (var r = 2; r <= 16; r++)
             {
                 Assert.DoesNotContain("qwen2.5-coder", grid[r]);
             }
@@ -264,9 +264,9 @@ public class FotogramasTuiTests
         host.AddActivity("Linea de actividad a la derecha de la mascota.", ActivityKind.System);
         var grid = Grid(host.SnapshotFullFrame());
 
-        // Filas del area de la mascota (2..12): la metadata del modelo no se filtra aqui.
+        // Filas del area de la mascota (2..16): la metadata del modelo no se filtra aqui.
         var aveWidth = CondorArt.AveWidth;
-        for (var r = 2; r <= 12; r++)
+        for (var r = 2; r <= 16; r++)
         {
             Assert.DoesNotContain("qwen2.5-coder", grid[r]);
             Assert.DoesNotContain("Modelo:", grid[r]);
