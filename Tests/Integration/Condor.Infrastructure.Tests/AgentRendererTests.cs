@@ -1,4 +1,4 @@
-﻿using Condor.Cli.Presentation;
+using Condor.Cli.Presentation;
 using Condor.Core.Models;
 using Condor.Core.Serialization;
 namespace Condor.Infrastructure.Tests;
@@ -178,17 +178,16 @@ public class AgentRendererTests
     }
 
     [Fact]
-    public void IdentidadSuperior_CondorSinCopy()
+    public void Actividad_NoIncluyeCabeceraRepetida()
     {
-        // La marca superior es "Condor" + eslogan, sin © y sin modelo (el modelo
-        // solo aparece en la barra inferior). El © pertenece exclusivamente abajo.
+        // La marca superior y el eslogan viven una sola vez en la cabecera de la TUI,
+        // no se repiten en cada entrada de la zona de actividad (UX minimalista).
         var result = new AgentResult { Success = true, Model = "qwen2.5-coder:3b", Reason = "Ok." };
 
         var text = AgentRenderer.BuildResultText(result);
 
-        Assert.StartsWith("Condor", text);
-        Assert.Contains("Observa · Comprende · Planifica · Construye · Verifica", text);
-        Assert.DoesNotContain("©", text.Substring(0, text.IndexOf('\n')));
+        Assert.DoesNotContain("Condor" + Environment.NewLine + "Observa", text);
+        Assert.DoesNotContain("Planifica · Construye · Verifica", text);
     }
 }
 

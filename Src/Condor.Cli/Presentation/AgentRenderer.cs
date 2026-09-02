@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Condor.Core.Models;
 
 namespace Condor.Cli.Presentation;
@@ -68,13 +68,7 @@ public static class AgentRenderer
     {
         var sb = new StringBuilder();
 
-        // Identidad superior de Condor (sin ©) + eslogan.
-        sb.AppendLine("Condor");
-        sb.AppendLine("Observa · Comprende · Planifica · Construye · Verifica");
-
         // Tarea que se respondio.
-        if (!string.IsNullOrWhiteSpace(result.Objective))
-            sb.AppendLine();
         if (!string.IsNullOrWhiteSpace(result.Objective))
             sb.AppendLine("Tarea: " + result.Objective);
 
