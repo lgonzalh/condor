@@ -52,6 +52,7 @@ public sealed class TuiHost : IDisposable
     internal const int MinHeight = 24;
 
     private const int BottomRows = 3;             // separador entrada + entrada + estado minimo
+    private const int HeaderRows = 11;            // cabecera compacta; la mascota ocupa sus 11 filas
 
     private static readonly string[] SpinnerFrames = { "◐", "◓", "◑", "◒" };
 
@@ -81,7 +82,8 @@ public sealed class TuiHost : IDisposable
     private bool _dirtyInput;
 
     // Filas logicas (0-based) de la sesion. La convencion de pintura usa At(fila+1): "fila" 0-based.
-    private int ContentTop => 2;                             // primera fila de contenido (tras cabecera + separador)
+    // La cabecera con la mascota Ave ocupa 15 filas (1-15), luego viene el contenido.
+    private int ContentTop => HeaderRows + 1;       // primera fila de contenido (tras cabecera de 15 lineas)
     private int SepInputRow => _height - BottomRows;         // separador antes de la entrada
     public int InputRow => _height - BottomRows + 1;         // fila de entrada
     private int EstadoRow => _height - BottomRows + 2;       // fila de estado minimo (ultima)
@@ -92,8 +94,8 @@ public sealed class TuiHost : IDisposable
     // de actividad reserva su ancho para que el texto dinamico no la pise.
     private int ArtCol => 2;                                                  // columna 1-based
     private int ArtRow => ContentTop;                                        // fila logica 0-based
-    private int FeedLeftMargin => CondorArt.AveWidth + 2;                     // margen izq reservado para la mascota
-    private int FeedWidth => Math.Max(20, _width - FeedLeftMargin - 2);       // ancho del feed dinamico
+    private int FeedLeftMargin => 0;                                           // el feed usa todo el ancho
+    private int FeedWidth => Math.Max(20, _width - 4);                        // ancho del feed dinamico
 
     public TuiHost()
     {
@@ -457,7 +459,6 @@ public sealed class TuiHost : IDisposable
                 {
                     PaintChromeLocked(sb);
                     PaintActivityLocked(sb);
-                    PaintMascotaLocked(sb);
                     PaintEstadoLocked(sb);
                     PaintInputRegionLocked(sb);
                 }
@@ -474,7 +475,6 @@ public sealed class TuiHost : IDisposable
                 if (_dirtyActivity && _mode == HostMode.Session)
                 {
                     PaintActivityLocked(sb);
-                    PaintMascotaLocked(sb); // tras la actividad: no es borrada por ClearLine
                 }
 
                 if (_dirtyStatus && _mode == HostMode.Session)
@@ -518,30 +518,104 @@ public sealed class TuiHost : IDisposable
         }
 
         PaintTitleRowLocked(sb);
-        PaintSeparatorLocked(sb, 1, null);        // separador bajo la cabecera
-        PaintSeparatorLocked(sb, SepInputRow, null); // separador sobre la entrada
+        // Separador bajo la cabecera
+        PaintSeparatorLocked(sb, HeaderRows - 1, null);
+        // Separador sobre la entrada
+        PaintSeparatorLocked(sb, SepInputRow, null);
     }
 
     private void PaintTitleRowLocked(System.Text.StringBuilder sb)
     {
-        // Linea superior UNICA: marca + version, y a la derecha el modelo REAL actual.
-        // La version aparece aqui UNA unica vez; el modelo aparece UNA unica vez.
-        // Mismo lenguaje de separador horizontal que las otras dos filas divisorias
-        // (fila 1 y fila de entrada): el cromo `── ... ──` envuelve el titulo y el
-        // modelo para que la caja superior sea simetrica.
-        sb.Append(Ansi.At(1, 1));
-        sb.Append(Ansi.ClearLine);
-        sb.Append(Ansi.FgGris + "──" + Ansi.Reset);
-        sb.Append(" ");
-        sb.Append(Ansi.Bold + Ansi.FgBlanco + "CONDOR" + Ansi.Reset);
-        sb.Append(Ansi.FgGris + "  " + VersionInfo.DisplayName + Ansi.Reset);
+        // CABECERA COMPACTA CON MASCOTA A LA IZQUIERDA
+        // Usamos Unicode box-drawing: ┌ ┐ └ ┘ ─ │ ├ ┤ (NINGUN ASCII +, -, |)
+        // La mascota Ave (15 filas) se pinta a la IZQUIERDA, 
+        // y a la derecha van: CONDOR, slogan, identidad y versión
 
-        var model = _model ?? "—";
-        var col = Math.Max(18, _width - model.Length - 4);
-        sb.Append(Ansi.At(1, col));
-        sb.Append(Ansi.FgTerracota + model + Ansi.Reset);
-        sb.Append(" ");
-        sb.Append(Ansi.FgGris + "──" + Ansi.Reset);
+        var aveWidth = AnchoVisibleMascota();
+        var textLeftCol = ArtCol + aveWidth + 2; // columna donde empieza el texto a la derecha de la mascota
+
+        // Pintar todas las filas de la cabecera
+        for (int row = 1; row <= HeaderRows; row++)
+        {
+            sb.Append(Ansi.At(row, 1));
+            sb.Append(Ansi.ClearLine);
+
+            // Borde izquierdo
+            string leftBorder = (row == 1) ? "┌" : (row == HeaderRows) ? "└" : "│";
+            string rightBorder = (row == 1) ? "┐" : (row == HeaderRows) ? "┘" : "│";
+            sb.Append(Ansi.FgGris + leftBorder + Ansi.Reset);
+
+            // Pintar la mascota en esta fila (fila actual - 1 porque row 1 = fila 0 de mascota)
+            if (row - 1 < CondorArt.Ave.Length)
+            {
+                sb.Append(Ansi.At(row, ArtCol));
+                sb.Append(Ansi.Paint(CondorArt.Ave[row - 1]));
+                sb.Append(Ansi.Reset);
+            }
+
+            // Pintar texto a la derecha de la mascota
+            sb.Append(Ansi.At(row, textLeftCol));
+
+            // Rellenar hasta el borde derecho
+            int textRightCol = _width - 2; // 2 para el borde derecho
+            int fill = textRightCol - textLeftCol + 1;
+
+            switch (row)
+            {
+                case 1:
+                    // Fila 1: espacio de cabecera
+                    sb.Append(Ansi.FgGris + new string(' ', fill) + Ansi.Reset);
+                    break;
+                case 2:
+                    var line = "CONDOR";
+                    var meta = "v" + VersionInfo.PublicVersion + " · build interno " + VersionInfo.InternalBuild;
+                    var combined = line + "  " + meta;
+                    var start = Math.Max(textLeftCol, textLeftCol + (fill - combined.Length) / 2);
+                    sb.Append(Ansi.At(row, start));
+                    sb.Append(Ansi.Bold + Ansi.FgBlanco + line + Ansi.Reset);
+                    sb.Append(Ansi.FgGris + "  " + meta + Ansi.Reset);
+                    int used2 = combined.Length + Math.Max(0, start - textLeftCol);
+                    fill = Math.Max(0, fill - used2);
+                    sb.Append(Ansi.FgGris + new string(' ', fill) + Ansi.Reset);
+                    break;
+                case 3:
+                    // Fila 3: slogan
+                    var sloganStart = Math.Max(textLeftCol, textLeftCol + (fill - Slogan.Length) / 2);
+                    sb.Append(Ansi.At(row, sloganStart));
+                    sb.Append(Ansi.FgTerracota + Slogan + Ansi.Reset);
+                    int used3 = Slogan.Length + Math.Max(0, sloganStart - textLeftCol);
+                    fill = Math.Max(0, fill - used3);
+                    sb.Append(Ansi.FgGris + new string(' ', fill) + Ansi.Reset);
+                    break;
+                case 4:
+                    // Fila 4: Hecho en Colombia · Modo Local 100%
+                    var identityStart = Math.Max(textLeftCol, textLeftCol + (fill - IdentityLine.Length) / 2);
+                    sb.Append(Ansi.At(row, identityStart));
+                    sb.Append(Ansi.FgDorado + IdentityLine + Ansi.Reset);
+                    int used4 = IdentityLine.Length + Math.Max(0, identityStart - textLeftCol);
+                    fill = Math.Max(0, fill - used4);
+                    sb.Append(Ansi.FgGris + new string(' ', fill) + Ansi.Reset);
+                    break;
+                case 5:
+                    // Fila 5: modelo
+                    var model = _model ?? "—";
+                    var modelStart = Math.Max(textLeftCol, textLeftCol + (fill - model.Length) / 2);
+                    sb.Append(Ansi.At(row, modelStart));
+                    sb.Append(Ansi.FgTerracota + model + Ansi.Reset);
+                    int used5 = model.Length + Math.Max(0, modelStart - textLeftCol);
+                    fill = Math.Max(0, fill - used5);
+                    sb.Append(Ansi.FgGris + new string(' ', fill) + Ansi.Reset);
+                    break;
+                default:
+                    // Rellenar espacios vacíos
+                    sb.Append(Ansi.FgGris + new string(' ', Math.Max(0, fill)) + Ansi.Reset);
+                    break;
+            }
+
+            // Borde derecho
+            sb.Append(Ansi.At(row, _width));
+            sb.Append(Ansi.FgGris + rightBorder + Ansi.Reset);
+        }
     }
 
     /// <summary>
@@ -611,15 +685,16 @@ public sealed class TuiHost : IDisposable
     {
         sb.Append(Ansi.At(row + 1, 1)); // At() es 1-based sobre filas logicas 0-based
         sb.Append(Ansi.ClearLine);
-        sb.Append(Ansi.FgGris + "──" + Ansi.Reset);
+        // Usar box-drawing ─ en lugar de ASCII - para los separadores horizontales
+        sb.Append(Ansi.FgGris + "─" + Ansi.Reset);
         if (label is null)
         {
-            sb.Append(Ansi.FgGris + new string('─', Math.Max(0, width - 2)) + Ansi.Reset);
+            sb.Append(Ansi.FgGris + new string('─', Math.Max(0, width - 1)) + Ansi.Reset);
             return;
         }
 
         sb.Append(" " + Ansi.FgTerracota + label + Ansi.Reset + " ");
-        var used = 4 + label.Length + 1;
+        var used = 1 + label.Length + 1;
         sb.Append(Ansi.FgGris + new string('─', Math.Max(0, width - used)) + Ansi.Reset);
     }
 
@@ -638,7 +713,7 @@ public sealed class TuiHost : IDisposable
 
         var take = Math.Min(height, _wrapped.Count);
         var skip = Math.Max(0, _wrapped.Count - take);
-        var left = FeedLeftMargin + 1;
+        var left = 2;
         for (var i = 0; i < height; i++)
         {
             sb.Append(Ansi.At(ContentTop + i + 1, left));
@@ -680,7 +755,9 @@ public sealed class TuiHost : IDisposable
         sb.Append(Ansi.At(EstadoRow + 1, 1));
         sb.Append(Ansi.ClearLine);
         var frame = _busy ? SpinnerFrames[_spin % SpinnerFrames.Length] + " " : "";
-        sb.Append(EstadoColor(_estadoKind) + frame + _estado + Ansi.Reset);
+        var workspace = string.IsNullOrWhiteSpace(_workspace) ? @"C:\GitHub\condor" : _workspace;
+        var footer = workspace + "  ·  " + frame + _estado + "  ·  RAM " + (Environment.WorkingSet / (1024 * 1024)) + " MB";
+        sb.Append(EstadoColor(_estadoKind) + Clip(footer, _width - 2) + Ansi.Reset);
     }
 
     private string EstadoColor(ActivityKind kind)
