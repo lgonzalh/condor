@@ -754,14 +754,10 @@ public sealed class TuiHost : IDisposable
         sb.Append(Ansi.At(18, 3));
         sb.Append(Ansi.ClearLine);
         var frame = _busy ? SpinnerFrames[_spin % SpinnerFrames.Length] + " " : "";
-        sb.Append(EstadoColor(_estadoKind) + Clip(frame + _estado, _width - 6) + Ansi.Reset);
+        sb.Append(EstadoColor(_estadoKind) + Clip(frame + "Iniciando ...", _width - 6) + Ansi.Reset);
 
         sb.Append(Ansi.At(19, 3));
         sb.Append(Ansi.ClearLine);
-        if (!string.IsNullOrWhiteSpace(_progreso))
-        {
-            sb.Append(Ansi.FgGris + Clip(_progreso, _width - 6) + Ansi.Reset);
-        }
     }
 
     /// <summary>Pinta la region de entrada. El contenido lo dibuja el editor.</summary>
