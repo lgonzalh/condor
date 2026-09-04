@@ -66,10 +66,10 @@ public static class CondorArt
     {
         "KKKLLLLK",
         "KKLDDDDL",
-        "KKKDDDDL",
-        "KKLDDDDW",
+        "KKKDDKDL",
+        "KKLDDDDL",
         "KGGGGDDL",
-        "KKLDDDDW",
+        "KKLDDDDL",
         "KKLDDDDW",
         "KKLDDDDW"
     };
