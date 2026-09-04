@@ -1,6 +1,6 @@
-# TRAZABILIDAD
+﻿# TRAZABILIDAD
 
-Version: 1.0.0
+Version: 1.1.0
 Estado: En desarrollo
 Nivel: 08 - Calidad
 Clasificacion: Trazabilidad de Ingenieria
@@ -107,7 +107,7 @@ Documentacion
 
 Version
 
-Esta cadena complementa la cadena utilizada por `VALIDACION.md`, que relaciona necesidad, requisito, criterio, artefacto, evidencia, resultado y decision. fileciteturn3file0
+Esta cadena complementa la cadena utilizada por VALIDACION.md, que relaciona necesidad, requisito, criterio, artefacto, evidencia, resultado y decision. fileciteturn3file0
 
 ---
 
@@ -131,7 +131,7 @@ Convierte el requisito o necesidad en una condicion objetiva de decision.
 
 Representa una decision de ingenieria que justifica una direccion concreta.
 
-Las decisiones relevantes deben conservar su identificador y contexto. El `MODELO_DECISIONES.md` establece que una decision debe incluir identificador, titulo, fecha, contexto, decision, justificacion, impacto y documentos relacionados. fileciteturn3file6
+Las decisiones relevantes deben conservar su identificador y contexto. El MODELO_DECISIONES.md establece que una decision debe incluir identificador, titulo, fecha, contexto, decision, justificacion, impacto y documentos relacionados. fileciteturn3file6
 
 ## 5. Diseno
 
@@ -188,7 +188,7 @@ Los elementos que requieran trazabilidad permanente deben utilizar identificador
 
 Ejemplos:
 
-```text
+`	ext
 REQ-001
 CA-001
 DEC-001
@@ -196,7 +196,7 @@ ART-001
 TEST-001
 VAL-001
 DEF-001
-```
+`
 
 Los identificadores concretos dependeran del sistema documental adoptado por el proyecto.
 
@@ -302,7 +302,7 @@ Cada prueba relevante debe poder relacionarse con el comportamiento o criterio q
 
 Ejemplo:
 
-```text
+`	ext
 REQ-010
    ↓
 CA-010
@@ -312,7 +312,7 @@ TEST-021
 EVID-021
    ↓
 Conforme
-```
+`
 
 Esto permite determinar que requisito esta cubierto por una prueba y que evidencia sustenta el resultado.
 
@@ -322,7 +322,7 @@ Esto permite determinar que requisito esta cubierto por una prueba y que evidenc
 
 Cada validacion relevante debe poder relacionarse con:
 
-```text
+`	ext
 Necesidad
 ↓
 Requisito
@@ -336,7 +336,7 @@ Evidencia
 Resultado
 ↓
 Decision
-```
+`
 
 Cuando exista implementacion posterior, la cadena puede continuar hasta la version correspondiente. Esta estructura esta definida en el proceso de validacion del Nivel 08. fileciteturn3file13
 
@@ -359,7 +359,7 @@ Un criterio obligatorio no debe considerarse aceptado sin evidencia suficiente.
 
 Todo defecto relevante debe poder relacionarse con:
 
-```text
+`	ext
 Artefacto
 ↓
 Prueba / Validacion
@@ -371,7 +371,7 @@ Defecto
 Correccion
 ↓
 Revalidacion
-```
+`
 
 Cuando corresponda, el defecto tambien debe relacionarse con una prueba de regresion para evitar su reaparicion.
 
@@ -459,16 +459,16 @@ La automatizacion estara condicionada por el hardware, modelo LLM, herramientas,
 
 La completitud de trazabilidad puede evaluarse mediante:
 
-```text
+`	ext
 Elementos con trazabilidad completa
 /
 Elementos que requieren trazabilidad
 * 100
-```
+`
 
-Esta medicion corresponde a la metrica `MTz-001 - Trazabilidad completa` definida en `METRICAS.md`. fileciteturn3file17
+Esta medicion corresponde a la metrica MTz-001 - Trazabilidad completa definida en METRICAS.md. fileciteturn3file17
 
-Tambien debe observarse la cantidad de elementos relevantes que carecen de relacion con su origen o resultado mediante `MTz-002 - Elementos sin trazabilidad`.
+Tambien debe observarse la cantidad de elementos relevantes que carecen de relacion con su origen o resultado mediante MTz-002 - Elementos sin trazabilidad.
 
 ---
 
@@ -539,19 +539,19 @@ Este documento implementa la trazabilidad requerida especificamente para el Nive
 
 # RELACION CON OTROS DOCUMENTOS
 
-`CALIDAD.md` establece el marco general de calidad.
+CALIDAD.md establece el marco general de calidad.
 
-`VALIDACION.md` utiliza la trazabilidad para sustentar las decisiones de conformidad.
+VALIDACION.md utiliza la trazabilidad para sustentar las decisiones de conformidad.
 
-`PRUEBAS.md` proporciona evidencia que puede incorporarse a la cadena.
+PRUEBAS.md proporciona evidencia que puede incorporarse a la cadena.
 
-`CRITERIOS_ACEPTACION.md` define las condiciones que deben relacionarse con evidencia y resultados.
+CRITERIOS_ACEPTACION.md define las condiciones que deben relacionarse con evidencia y resultados.
 
-`METRICAS.md` mide la completitud de la trazabilidad.
+METRICAS.md mide la completitud de la trazabilidad.
 
-`ASEGURAMIENTO_CALIDAD.md` establece controles para preservar la trazabilidad.
+ASEGURAMIENTO_CALIDAD.md establece controles para preservar la trazabilidad.
 
-`MODELO_DECISIONES.md` define la estructura de las decisiones de ingenieria.
+MODELO_DECISIONES.md define la estructura de las decisiones de ingenieria.
 
 ---
 
@@ -578,7 +578,7 @@ La trazabilidad debe permitir a Condor reconstruir la historia de ingenieria de 
 
 Debe ser posible recorrer:
 
-```text
+`	ext
 Por que existe
     ↓
 Que debia cumplir
@@ -598,7 +598,7 @@ Por que fue aceptado
 Donde quedo documentado
     ↓
 En que version existe
-```
+`
 
 La trazabilidad convierte el conocimiento del proceso de desarrollo en una estructura permanente, verificable y recuperable.
 
@@ -608,4 +608,5 @@ La trazabilidad convierte el conocimiento del proceso de desarrollo en una estru
 
 | Version | Cambios |
 |----------|---------|
+| 1.1.0 | Progresion estricta de modelos 0.5B → 1.5B → 3B → 7B (sin saltar niveles); Continuidad de modelo de sesion (preservacion del modelo activo entre reevaluaciones); Copyright ©Condor 2026 en TUI bienvenida y trabajo; Limpieza de prefijos a)/b)/c)/d) en salida presentada (simbolos Unicode ◦/▸/◆/？); Normalizacion del flujo de ejecucion/build (disponibilidad de modelo tras arranque). |
 | 1.0.0 | Creacion del marco general de trazabilidad del Nivel 08. |

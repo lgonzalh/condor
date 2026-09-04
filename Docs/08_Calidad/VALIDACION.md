@@ -1,6 +1,6 @@
-# VALIDACION
+﻿# VALIDACION
 
-Version: 1.0.0
+Version: 1.1.0
 Estado: En desarrollo
 Nivel: 08 - Calidad
 Clasificacion: Proceso de Ingenieria
@@ -428,15 +428,15 @@ Las pruebas constituyen una fuente de evidencia para la validacion.
 
 No toda validacion es una prueba y no toda prueba constituye por si sola una validacion completa.
 
-La estrategia detallada de pruebas pertenece a `PRUEBAS.md`.
+La estrategia detallada de pruebas pertenece a PRUEBAS.md.
 
 ---
 
 # RELACION CON CALIDAD
 
-`CALIDAD.md` establece el marco general de calidad del Nivel 08.
+CALIDAD.md establece el marco general de calidad del Nivel 08.
 
-`VALIDACION.md` define como se determina la conformidad mediante criterios y evidencia.
+VALIDACION.md define como se determina la conformidad mediante criterios y evidencia.
 
 Los documentos posteriores del nivel complementaran este proceso mediante pruebas, criterios de aceptacion, metricas, aseguramiento y trazabilidad.
 
@@ -477,4 +477,5 @@ La validacion convierte una suposicion de correccion en una decision sustentada 
 
 | Version | Cambios |
 |----------|---------|
+| 1.1.0 | Progresion estricta de modelos 0.5B → 1.5B → 3B → 7B (sin saltar niveles); Continuidad de modelo de sesion (preservacion del modelo activo entre reevaluaciones); Copyright ©Condor 2026 en TUI bienvenida y trabajo; Limpieza de prefijos a)/b)/c)/d) en salida presentada (simbolos Unicode ◦/▸/◆/？); Normalizacion del flujo de ejecucion/build (disponibilidad de modelo tras arranque). |
 | 1.0.0 | Creacion del proceso general de validacion del Nivel 08. |

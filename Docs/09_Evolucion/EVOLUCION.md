@@ -1,6 +1,6 @@
-# EVOLUCION
+﻿# EVOLUCION
 
-Version: 1.0.0
+Version: 1.1.0
 Estado: Activo
 Nivel: 09 - Evolucion
 Clasificacion: Evolucion
@@ -259,4 +259,5 @@ Este documento se relaciona principalmente con:
 
 | Version | Cambios |
 |---------|---------|
+| 1.1.0 | Progresion estricta de modelos 0.5B → 1.5B → 3B → 7B (sin saltar niveles); Continuidad de modelo de sesion (preservacion del modelo activo entre reevaluaciones); Copyright ©Condor 2026 en TUI bienvenida y trabajo; Limpieza de prefijos a)/b)/c)/d) en salida presentada (simbolos Unicode ◦/▸/◆/？); Normalizacion del flujo de ejecucion/build (disponibilidad de modelo tras arranque). |
 | 1.0.0 | Creacion del marco general para la evolucion del Proyecto Condor en el Nivel 09. |

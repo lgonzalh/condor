@@ -1,6 +1,6 @@
-# MEJORA_CONTINUA
+﻿# MEJORA_CONTINUA
 
-Version: 1.0.0
+Version: 1.1.0
 Estado: Activo
 Nivel: 09 - Evolucion
 Clasificacion: Mejora Continua
@@ -194,11 +194,11 @@ Una mejora que no pueda incorporarse inmediatamente podra registrarse como deuda
 
 La deuda arquitectonica se gestiona mediante:
 
-`REGISTRO_DEUDA_ARQUITECTONICA.md`
+REGISTRO_DEUDA_ARQUITECTONICA.md
 
 La deuda evolutiva se gestiona mediante:
 
-`DEUDA_EVOLUTIVA.md`
+DEUDA_EVOLUTIVA.md
 
 La existencia de deuda no implica automaticamente un bloqueo.
 
@@ -319,4 +319,5 @@ Este documento se relaciona principalmente con:
 
 | Version | Cambios |
 |---------|---------|
+| 1.1.0 | Progresion estricta de modelos 0.5B → 1.5B → 3B → 7B (sin saltar niveles); Continuidad de modelo de sesion (preservacion del modelo activo entre reevaluaciones); Copyright ©Condor 2026 en TUI bienvenida y trabajo; Limpieza de prefijos a)/b)/c)/d) en salida presentada (simbolos Unicode ◦/▸/◆/？); Normalizacion del flujo de ejecucion/build (disponibilidad de modelo tras arranque). |
 | 1.0.0 | Creacion del proceso de mejora continua del Proyecto Condor para el Nivel 09. |
