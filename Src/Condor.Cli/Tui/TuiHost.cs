@@ -82,8 +82,8 @@ public sealed class TuiHost : IDisposable
     private bool _dirtyInput;
 
     // Filas logicas (0-based) de la sesion. La convencion de pintura usa At(fila+1): "fila" 0-based.
-    // La cabecera con la mascota Ave ocupa 15 filas (1-15), luego viene el contenido.
-    private int ContentTop => HeaderRows + 1;       // primera fila de contenido (tras cabecera de 15 lineas)
+    // La cabecera con la mascota compacta ocupa 11 filas, luego viene el contenido.
+    private int ContentTop => HeaderRows + 1;
     private int SepInputRow => _height - BottomRows;         // separador antes de la entrada
     public int InputRow => _height - BottomRows + 1;         // fila de entrada
     private int EstadoRow => _height - BottomRows + 2;       // fila de estado minimo (ultima)
@@ -177,6 +177,13 @@ public sealed class TuiHost : IDisposable
             }
 
             _mode = HostMode.Welcome;
+            if (_activity.Count == 0)
+            {
+                _activity.Add(("Iniciando sesión", ActivityKind.System));
+                _activity.Add((@"Directorio de trabajo: C:\GitHub\condor", ActivityKind.System));
+                _activity.Add(("Analizando proyecto…", ActivityKind.System));
+                RewrapLocked();
+            }
             _dirtyAll = true;
         }
     }
@@ -450,18 +457,10 @@ public sealed class TuiHost : IDisposable
             if (_dirtyAll)
             {
                 sb.Append(Ansi.ClearScreen);
-                if (_mode == HostMode.Welcome)
-                {
-                    PaintWelcomeHeaderLocked(sb);
-                    PaintWelcomeStatusLocked(sb);
-                }
-                else
-                {
-                    PaintChromeLocked(sb);
-                    PaintActivityLocked(sb);
-                    PaintEstadoLocked(sb);
-                    PaintInputRegionLocked(sb);
-                }
+                PaintChromeLocked(sb);
+                PaintActivityLocked(sb);
+                PaintEstadoLocked(sb);
+                PaintInputRegionLocked(sb);
             }
             else
             {
@@ -511,12 +510,6 @@ public sealed class TuiHost : IDisposable
 
     private void PaintChromeLocked(System.Text.StringBuilder sb)
     {
-        if (_mode == HostMode.Welcome)
-        {
-            PaintWelcomeHeaderLocked(sb);
-            return;
-        }
-
         PaintTitleRowLocked(sb);
         // Separador bajo la cabecera
         PaintSeparatorLocked(sb, HeaderRows - 1, null);
@@ -528,7 +521,7 @@ public sealed class TuiHost : IDisposable
     {
         // CABECERA COMPACTA CON MASCOTA A LA IZQUIERDA
         // Usamos Unicode box-drawing: ┌ ┐ └ ┘ ─ │ ├ ┤ (NINGUN ASCII +, -, |)
-        // La mascota Ave (15 filas) se pinta a la IZQUIERDA, 
+        // La mascota Ave (11 filas) se pinta a la IZQUIERDA,
         // y a la derecha van: CONDOR, slogan, identidad y versión
 
         var aveWidth = AnchoVisibleMascota();
@@ -652,30 +645,6 @@ public sealed class TuiHost : IDisposable
         return maximo;
     }
 
-    private void PaintWelcomeHeaderLocked(System.Text.StringBuilder sb)
-    {
-        // Bienvenida con Condor Grande centrado (mockup "01. INICIO").
-        var title = "CONDOR";
-        sb.Append(Ansi.At(1, Math.Max(1, (_width - title.Length) / 2)));
-        sb.Append(Ansi.Bold + Ansi.FgBlanco + title + Ansi.Reset);
-
-        sb.Append(Ansi.At(2, Math.Max(1, (_width - Slogan.Length) / 2)));
-        sb.Append(Ansi.FgTerracota + Slogan + Ansi.Reset);
-
-        sb.Append(Ansi.At(3, Math.Max(1, (_width - IdentityLine.Length) / 2)));
-        sb.Append(Ansi.FgDorado + IdentityLine + Ansi.Reset);
-
-        sb.Append(Ansi.At(4, Math.Max(1, (_width - VersionInfo.DisplayName.Length) / 2)));
-        sb.Append(Ansi.FgGris + VersionInfo.DisplayName + Ansi.Reset);
-
-        var artLeft = Math.Max(1, (_width - CondorArt.GrandeWidth) / 2);
-        for (var i = 0; i < CondorArt.Grande.Length && 5 + i <= 18; i++)
-        {
-            sb.Append(Ansi.At(5 + i, artLeft));
-            sb.Append(Ansi.Paint(CondorArt.Grande[i]) + Ansi.Reset);
-        }
-    }
-
     private void PaintSeparatorLocked(System.Text.StringBuilder sb, int row, string? label)
     {
         PaintSeparatorLocked(sb, row, label, _width);
@@ -746,12 +715,6 @@ public sealed class TuiHost : IDisposable
     /// </summary>
     private void PaintEstadoLocked(System.Text.StringBuilder sb)
     {
-        if (_mode == HostMode.Welcome)
-        {
-            PaintWelcomeStatusLocked(sb);
-            return;
-        }
-
         sb.Append(Ansi.At(EstadoRow + 1, 1));
         sb.Append(Ansi.ClearLine);
         var frame = _busy ? SpinnerFrames[_spin % SpinnerFrames.Length] + " " : "";
@@ -789,11 +752,6 @@ public sealed class TuiHost : IDisposable
     /// <summary>Pinta la region de entrada. El contenido lo dibuja el editor.</summary>
     private void PaintInputRegionLocked(System.Text.StringBuilder sb)
     {
-        if (_mode == HostMode.Welcome)
-        {
-            return;
-        }
-
         sb.Append(Ansi.At(InputRow + 1, 1));
         sb.Append(Ansi.ClearLine);
         if (_busy)

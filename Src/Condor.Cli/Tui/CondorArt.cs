@@ -59,21 +59,72 @@ public static class CondorArt
     /// <summary>Mascota GRANDE (bienvenida): 100% del ANSI original con la gama de colores restituida.</summary>
     public static readonly string[] Grande = ApplyGama(AveV16Raw);
 
-    /// <summary>Mascota compacta oficial: solo bloques Unicode y color ANSI truecolor.</summary>
-    public static readonly string[] Ave =
+    /// <summary>Mascota nueva de referencia: silueta 37x23 convertida a bloques Unicode.</summary>
+    public static string[] Ave => BuildPixelArt();
+
+    private static readonly string[] PixelRows =
     {
-        "\x1b[38;2;12;12;12m······██········██····\x1b[0m",
-        "\x1b[38;2;12;12;12m·\x1b[38;2;28;28;28m▀·····▀······▀·····▀\x1b[0m",
-        "\x1b[38;2;28;28;28m▀··············▀··············▀\x1b[0m",
-        "\x1b[38;2;28;28;28m·▀··············▀·\x1b[38;2;108;108;108m▀▀\x1b[38;2;28;28;28m·\x1b[0m",
-        "\x1b[38;2;28;28;28m··▀············▀\x1b[38;2;108;108;108m▌▌▀\x1b[38;2;28;28;28m·\x1b[0m",
-        "\x1b[38;2;205;83;98m▀▀▀\x1b[38;2;255;255;255m█\x1b[38;2;48;48;48m·······\x1b[38;2;108;108;108m▌▌▀\x1b[38;2;28;28;28m·\x1b[0m",
-        "\x1b[38;2;128;128;128m▌\x1b[38;2;205;83;98m▀▀▀\x1b[38;2;255;255;255m█\x1b[38;2;48;48;48m·······\x1b[38;2;108;108;108m▄\x1b[0m",
-        "\x1b[38;2;48;48;48m██████████\x1b[38;2;108;108;108m▌\x1b[0m",
-        "\x1b[38;2;48;48;48m█████████\x1b[38;2;108;108;108m▌\x1b[0m",
-        "\x1b[38;2;28;28;28m····\x1b[38;2;108;108;108m▄▄\x1b[0m",
-        "\x1b[38;2;28;28;28m················\x1b[0m",
+        "...........................##.##.....",
+        "##........................##.##.....",
+        "###......................########...",
+        "###......................########...",
+        "#GG#.....................########...",
+        ".GG####................############..",
+        ".G#####................######GG####..",
+        "..#########...........#######GG##...",
+        "....G#G#####..........######GGGG##...",
+        "......G#####..........######GGGG##...",
+        "......######### ########GG#GGG#GG...",
+        "........####### ########GG#GGG#GG...",
+        "........RRRR############GG#GG##....",
+        "......RRRRRR ###########GG#GG##....",
+        ".....GGGRRRR ###########GG##G#.....",
+        ".....GGGRRRR ###########GG.........",
+        ".....G    ############............",
+        ".......#####################.......",
+        "....GGGG##  ##################.....",
+        "......GG    ##################.....",
+        "............GGG ############.......",
+        ".......GGGGG      ######..........",
+        ".......G..........................."
     };
+
+    private static string[] BuildPixelArt()
+    {
+        var result = new string[(PixelRows.Length + 1) / 2];
+        for (var y = 0; y < result.Length; y++)
+        {
+            var row = new System.Text.StringBuilder();
+            var previous = '\0';
+            var width = PixelRows.Max(static row => row.Length);
+            for (var x = 0; x < width; x++)
+            {
+                var top = x < PixelRows[y * 2].Length ? PixelRows[y * 2][x] : '.';
+                var bottom = y * 2 + 1 < PixelRows.Length && x < PixelRows[y * 2 + 1].Length
+                    ? PixelRows[y * 2 + 1][x]
+                    : '.';
+                var filled = top != '.' || bottom != '.';
+                var color = top != '.' ? top : bottom;
+                if (color != previous)
+                {
+                    row.Append(color == '.' ? Ansi.Reset : color switch
+                    {
+                        'R' => "\x1b[38;2;205;83;98m",
+                        'G' => "\x1b[38;2;108;108;108m",
+                        _ => "\x1b[38;2;48;48;48m"
+                    });
+                    previous = color;
+                }
+
+                row.Append(!filled ? '·' : top != '.' && bottom != '.' ? '█' : top != '.' ? '▀' : '▄');
+            }
+
+            row.Append(Ansi.Reset);
+            result[y] = row.ToString();
+        }
+
+        return result;
+    }
 
     /// <summary>Ancho visible maximo de la mascota pequena (Ave), sin SGR.</summary>
     public static readonly int AveWidth = Ave.Max(Ansi.VisibleWidth);

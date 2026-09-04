@@ -2,7 +2,7 @@ namespace Condor.Cli;
 
 /// <summary>
 /// UNICO ORIGEN DE VERDAD de la version de Condor.
-/// La version publica permanece 1.0; el build interno es experimental (alpha)
+/// La version publica permanece 1.0; el build interno es experimental (beta)
 /// y NO altera la version publica. Este archivo es la unica fuente para ambos.
 /// </summary>
 public static class VersionInfo
@@ -10,10 +10,10 @@ public static class VersionInfo
     /// <summary>Version publica de Condor.</summary>
     public const string PublicVersion = "1.0";
 
-    /// <summary>Build interno experimental (alpha).</summary>
-    public const string InternalBuild = "alpha";
+    /// <summary>Build interno experimental (beta).</summary>
+    public const string InternalBuild = "beta";
 
-    /// <summary>Forma visible: "v1.0 · build interno alpha".</summary>
+    /// <summary>Forma visible: "v1.0 · build interno beta".</summary>
     public const string DisplayName = "v" + PublicVersion + " · build interno " + InternalBuild;
 
     /// <summary>Version larga (retrocompatible con usos previos).</summary>
