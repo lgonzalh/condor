@@ -81,10 +81,15 @@ public static class CondorArt
         {
             var row = new System.Text.StringBuilder();
             var previous = '\0';
-            for (var x = 0; x < HeadRows[y].Length; x++)
+            // Dos celdas lógicas contiguas se consolidan en una celda terminal.
+            for (var x = 0; x < HeadRows[y].Length; x += 2)
             {
-                var color = HeadRows[y][x];
-                var filled = color != ' ';
+                var left = HeadRows[y][x];
+                var right = x + 1 < HeadRows[y].Length ? HeadRows[y][x + 1] : ' ';
+                var filledLeft = left != ' ';
+                var filledRight = right != ' ';
+                var filled = filledLeft || filledRight;
+                var color = left != ' ' ? left : right;
                 if (color != previous)
                 {
                     row.Append(color == ' ' ? Ansi.Reset : color switch
@@ -96,8 +101,9 @@ public static class CondorArt
                     previous = color;
                 }
 
-                // Cuadrado Unicode compacto: conserva la celda 8x8 sin llenar toda la columna.
-                row.Append(filled ? '▪' : ' ');
+                // Dos píxeles unidos forman un bloque grande; los bordes aislados
+                // conservan el cuadrado pequeño y las dos celdas vacías siguen vacías.
+                row.Append(!filled ? ' ' : filledLeft && filledRight ? '█' : '▪');
             }
 
             row.Append(Ansi.Reset);
