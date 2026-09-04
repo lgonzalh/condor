@@ -105,7 +105,7 @@ public static class CondorArt
                     row.Append(color == ' ' ? Ansi.Reset : color switch
                     {
                         'L' => "\x1b[38;2;255;91;91m",
-                        'G' => "\x1b[38;2;107;107;122m",
+                        'G' => "\x1b[38;2;100;100;115m",
                         _ => "\x1b[38;2;205;83;98m"
                     });
                     previous = color;
