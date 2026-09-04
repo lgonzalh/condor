@@ -59,68 +59,39 @@ public static class CondorArt
     /// <summary>Mascota GRANDE (bienvenida): 100% del ANSI original con la gama de colores restituida.</summary>
     public static readonly string[] Grande = ApplyGama(AveV16Raw);
 
-    /// <summary>Mascota compacta de Trabajo: la referencia reducida a bloques Unicode.</summary>
-    public static string[] Ave => BuildPixelArt();
+    /// <summary>Cabeza de la mascota pequeña: matriz exacta de 8x8 en bloques Unicode.</summary>
+    public static string[] Ave => BuildHeadArt();
 
-    private static readonly string[] PixelRows =
+    private static readonly string[] HeadRows =
     {
-        "...........................##.##.....",
-        "##........................##.##.....",
-        "###......................########...",
-        "###......................########...",
-        "#GG#.....................########...",
-        ".GG####................############..",
-        ".G#####................######GG####..",
-        "..#########...........#######GG##...",
-        "....G#G#####..........######GGGG##...",
-        "......G#####..........######GGGG##...",
-        "......######### ########GG#GGG#GG...",
-        "........####### ########GG#GGG#GG...",
-        "........RRRR############GG#GG##....",
-        "......RRRRRR ###########GG#GG##....",
-        ".....GGGRRRR ###########GG##G#.....",
-        ".....GGGRRRR ###########GG.........",
-        ".....G    ############............",
-        ".......#####################.......",
-        "....GGGG##  ##################.....",
-        "......GG    ##################.....",
-        "............GGG ############.......",
-        ".......GGGGG      ######..........",
-        ".......G..........................."
+        "   BBBBB",
+        " BRRRRRB",
+        "   RR RB",
+        "  BRRRRRB",
+        " GGGGGRB",
+        "  BRRRRRB",
+        "  BRRRRRB",
+        "  BRRRRRB"
     };
 
-    private static string[] BuildPixelArt()
+    private static string[] BuildHeadArt()
     {
-        const int scale = 3;
-        var result = new string[(PixelRows.Length + scale - 1) / scale];
+        var result = new string[HeadRows.Length];
         for (var y = 0; y < result.Length; y++)
         {
             var row = new System.Text.StringBuilder();
             var previous = '\0';
-            var width = (PixelRows.Max(static row => row.Length) + scale - 1) / scale;
-            for (var x = 0; x < width; x++)
+            for (var x = 0; x < HeadRows[y].Length; x++)
             {
-                var color = '.';
-                for (var sy = y * scale; sy < Math.Min(PixelRows.Length, (y + 1) * scale); sy++)
-                {
-                    for (var sx = x * scale; sx < Math.Min(PixelRows[sy].Length, (x + 1) * scale); sx++)
-                    {
-                        var candidate = PixelRows[sy][sx];
-                        if (candidate == 'R' || (candidate == 'G' && color == '.'))
-                            color = candidate;
-                        else if (candidate == '#' && color == '.')
-                            color = candidate;
-                    }
-                }
-
-                var filled = color != '.';
+                var color = HeadRows[y][x];
+                var filled = color != ' ';
                 if (color != previous)
                 {
-                    row.Append(color == '.' ? Ansi.Reset : color switch
+                    row.Append(color == ' ' ? Ansi.Reset : color switch
                     {
-                        'R' => "\x1b[38;2;205;83;98m",
-                        'G' => "\x1b[38;2;108;108;108m",
-                        _ => "\x1b[38;2;48;48;48m"
+                        'B' => "\x1b[38;2;255;90;96m",
+                        'G' => "\x1b[38;2;107;107;122m",
+                        _ => "\x1b[38;2;203;82;98m"
                     });
                     previous = color;
                 }
