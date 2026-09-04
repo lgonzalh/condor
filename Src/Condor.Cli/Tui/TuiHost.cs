@@ -58,6 +58,7 @@ public enum ActivityKind
 public sealed class TuiHost : IDisposable
 {
     private const string IdentityLine = "Hecho en Colombia · Modo Local 100%";
+    private const string CopyrightLine = "©Condor 2026";
     private const string Slogan = "Observa · Comprende · Planifica · Construye · Verifica";
     private const string Placeholder = "¿Qué deseas construir? ...";
     internal const int MinWidth = 80;
@@ -569,6 +570,9 @@ public sealed class TuiHost : IDisposable
                 case 3:
                     PaintHeaderTextLocked(sb, row, textLeftCol, IdentityLine + "  " + (_model ?? "—"), Ansi.FgDorado);
                     break;
+                case 4:
+                    PaintHeaderTextLocked(sb, row, textLeftCol, CopyrightLine, Ansi.FgGris);
+                    break;
             }
         }
     }
@@ -632,7 +636,7 @@ public sealed class TuiHost : IDisposable
         sb.Append(Ansi.FgDorado + IdentityLine + Ansi.Reset);
 
         sb.Append(Ansi.At(4, Math.Max(1, (_width - VersionInfo.DisplayName.Length) / 2)));
-        sb.Append(Ansi.FgGris + VersionInfo.DisplayName + Ansi.Reset);
+        sb.Append(Ansi.FgGris + VersionInfo.DisplayName + " · " + CopyrightLine + Ansi.Reset);
 
         var artLeft = Math.Max(1, (_width - CondorArt.GrandeWidth) / 2);
         for (var i = 0; i < CondorArt.Grande.Length && 5 + i <= 18; i++)
@@ -698,10 +702,10 @@ public sealed class TuiHost : IDisposable
         {
             ActivityKind.User => "  " + Ansi.FgBlanco + "› ",
             ActivityKind.Condor => "  " + Ansi.FgCrema + "◆ ",
-            ActivityKind.Analysis => "  " + Ansi.FgCian + "a) ",
-            ActivityKind.CodeEdit => "  " + Ansi.FgDorado + "b) ",
-            ActivityKind.Response => "  " + Ansi.FgCrema + "c) ",
-            ActivityKind.Question => "  " + Ansi.FgAmarillo + "d) ",
+            ActivityKind.Analysis => "  " + Ansi.FgCian + "◦ ",
+            ActivityKind.CodeEdit => "  " + Ansi.FgDorado + "▸ ",
+            ActivityKind.Response => "  " + Ansi.FgCrema + "◆ ",
+            ActivityKind.Question => "  " + Ansi.FgAmarillo + "？ ",
             ActivityKind.Success => "  " + Ansi.FgVerde + "● ",
             ActivityKind.Warning => "  " + Ansi.FgAmarillo + "▲ ",
             ActivityKind.Error => "  " + Ansi.FgRojo + "✗ ",

@@ -220,10 +220,17 @@ public static class Program
         IStartupProgressObserver? progress = null,
         AssessmentResult? cachedAssessment = null)
     {
-        return await new StartupPreparer(
+        var result = await new StartupPreparer(
             assessmentService,
             stateStore,
             modelAutoSetup: new ModelAutoSetupService(stateStore, assessmentService, httpClient: session.SharedHttpClient)).RunAsync(progress, cachedAssessment: cachedAssessment);
+
+        if (result.Ready && !string.IsNullOrWhiteSpace(result.Model))
+        {
+            await session.EnsureAvailableAsync(result.Model);
+        }
+
+        return result;
     }
 
     /// <summary>

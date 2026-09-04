@@ -145,6 +145,14 @@ public static class CondorTui
 
         startup.Stop(true);
 
+        // Conservar en la sesion el modelo elegido durante el arranque. Las
+        // tareas posteriores pueden promocionarlo solo al siguiente nivel,
+        // nunca saltar directamente desde 0.5B a 3B/7B.
+        if (!string.IsNullOrWhiteSpace(prep.Model))
+        {
+            await session.EnsureAvailableAsync(prep.Model, shutdownToken).ConfigureAwait(true);
+        }
+
         // ---- Sesion de trabajo: Condor Grande -> Condor Ave --------------------
         host.ShowSession(prep.Model);
         host.SetModel(prep.Model);

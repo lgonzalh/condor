@@ -199,7 +199,7 @@ public class FotogramasTuiTests
         // Cabecera UNICA: marca + version a la izquierda (una vez) y modelo a la derecha (una vez).
         var titulo = grid[0];
         Assert.Contains("CONDOR", titulo);
-        Assert.Contains("v1.0 · build interno α.03", titulo);
+        Assert.Contains("v1.0 · build interno alpha", titulo);
         Assert.Contains("qwen2.5-coder:3b", titulo);
         Assert.Single(Regex.Matches(titulo, "build interno"));
 
