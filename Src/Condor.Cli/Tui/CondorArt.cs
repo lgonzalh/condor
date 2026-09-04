@@ -96,7 +96,8 @@ public static class CondorArt
                     previous = color;
                 }
 
-                row.Append(filled ? '█' : ' ');
+                // Cuadrado Unicode compacto: conserva la celda 8x8 sin llenar toda la columna.
+                row.Append(filled ? '▪' : ' ');
             }
 
             row.Append(Ansi.Reset);
