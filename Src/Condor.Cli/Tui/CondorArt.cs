@@ -66,7 +66,7 @@ public static class CondorArt
     {
         "   BBBBB",
         " BRRRRRB",
-        "   RR RB",
+        "   R  RB",
         "  BRRRRRB",
         " GGGGGRB",
         "  BRRRRRB",
@@ -76,7 +76,10 @@ public static class CondorArt
 
     private static string[] BuildHeadArt()
     {
-        var result = new string[HeadRows.Length];
+        // La referencia se concentra en cinco líneas terminales. La matriz lógica
+        // sigue siendo 8x8; se consolidan únicamente píxeles contiguos.
+        int[][] rowGroups = { [0, 1], [2], [3, 4], [5], [6, 7] };
+        var result = new string[rowGroups.Length];
         for (var y = 0; y < result.Length; y++)
         {
             var row = new System.Text.StringBuilder();
@@ -84,12 +87,23 @@ public static class CondorArt
             // Dos celdas lógicas contiguas se consolidan en una celda terminal.
             for (var x = 0; x < HeadRows[y].Length; x += 2)
             {
-                var left = HeadRows[y][x];
-                var right = x + 1 < HeadRows[y].Length ? HeadRows[y][x + 1] : ' ';
-                var filledLeft = left != ' ';
-                var filledRight = right != ' ';
-                var filled = filledLeft || filledRight;
-                var color = left != ' ' ? left : right;
+                var filledCount = 0;
+                var color = ' ';
+                foreach (var sourceRow in rowGroups[y])
+                {
+                    for (var sourceColumn = x; sourceColumn < Math.Min(HeadRows[sourceRow].Length, x + 2); sourceColumn++)
+                    {
+                        var candidate = HeadRows[sourceRow][sourceColumn];
+                        if (candidate == ' ')
+                            continue;
+
+                        filledCount++;
+                        if (color == ' ' || candidate == 'G' || (candidate == 'R' && color == 'B'))
+                            color = candidate;
+                    }
+                }
+
+                var filled = filledCount > 0;
                 if (color != previous)
                 {
                     row.Append(color == ' ' ? Ansi.Reset : color switch
@@ -103,7 +117,7 @@ public static class CondorArt
 
                 // Dos píxeles unidos forman un bloque grande; los bordes aislados
                 // conservan el cuadrado pequeño y las dos celdas vacías siguen vacías.
-                row.Append(!filled ? ' ' : filledLeft && filledRight ? '█' : '▪');
+                row.Append(!filled ? ' ' : filledCount >= 2 ? '█' : '▪');
             }
 
             row.Append(Ansi.Reset);
