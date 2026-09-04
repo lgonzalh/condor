@@ -1,6 +1,7 @@
 namespace Condor.Core.Evaluation;
 
 using System;
+using Condor.Core.Catalog;
 using Condor.Core.Models;
 
 /// <summary>
@@ -109,22 +110,23 @@ public sealed class BudgetReevaluator
 
         // RAM aumenta: si el modelo actual no es el suficiente mas eficiente y el 1+
         // ahora cabe con margen y es significativamente mejor, sugerir subir.
-        if (next is not null && next.Name != current.Name)
+        var upgrade = ImmediateUpgrade(current, next);
+        if (upgrade is not null && upgrade.Name != current.Name)
         {
-            var nextPeak = ModelEfficiencyEvaluator.PeakGb(next);
-            var meaningfullyBetter = next.CodingLevel > current.CodingLevel || next.MultiFileLevel > current.MultiFileLevel;
+            var nextPeak = ModelEfficiencyEvaluator.PeakGb(upgrade);
+            var meaningfullyBetter = upgrade.CodingLevel > current.CodingLevel || upgrade.MultiFileLevel > current.MultiFileLevel;
             if (meaningfullyBetter &&
                 budget.Admits(nextPeak) &&
-                ModelEfficiencyEvaluator.LeavesMargin(next, budget) &&
+                ModelEfficiencyEvaluator.LeavesMargin(upgrade, budget) &&
                 nextPeak > currentPeak + 0.3) // solo cuando haya margen real para dar el salto
             {
                 return new BudgetReevaluation
                 {
                     Transition = BudgetTransition.UpgradeToNext,
                     Budget = budget,
-                    SuggestedModel = next.PullName,
+                    SuggestedModel = upgrade.PullName,
                     Reason = "El presupuesto aumento (" + budget.BudgetGb.ToString("0.0") +
-                             " GB) y el candidato 1+ (" + next.PullName +
+                             " GB) y el siguiente nivel (" + upgrade.PullName +
                              ") ahora cabe con margen; cambio en punto seguro."
                 };
             }
@@ -163,5 +165,20 @@ public sealed class BudgetReevaluator
             Budget = budget,
             Reason = "Presupuesto estable y el modelo actual sigue siendo suficiente y eficiente (1-)."
         };
+    }
+
+    private static ModelCandidate? ImmediateUpgrade(ModelCandidate current, ModelCandidate? proposed)
+    {
+        if (proposed is null ||
+            !current.PullName.Equals("qwen2.5-coder:0.5b", StringComparison.OrdinalIgnoreCase) ||
+            proposed.PullName.Equals("qwen2.5-coder:1.5b", StringComparison.OrdinalIgnoreCase))
+        {
+            return proposed;
+        }
+
+        // Si el llamador calculo un candidato que salta niveles desde 0.5B,
+        // corregir la promocion al minimo siguiente del catalogo: 1.5B.
+        return ModelCatalog.Default.FirstOrDefault(c =>
+            c.PullName.Equals("qwen2.5-coder:1.5b", StringComparison.OrdinalIgnoreCase));
     }
 }

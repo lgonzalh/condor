@@ -193,6 +193,20 @@ public class HarnessBudgetTests
     }
 
     [Fact]
+    public void Reevaluador_Desde05B_NoSaltaA3B_Sugiere15B()
+    {
+        var reval = new BudgetReevaluator(BudgetPolicy.Default, maxReevaluations: 6);
+        var current = ModelCatalog.Default.Get("qwen2.5-coder:0.5b");
+        var proposed = ModelCatalog.Default.Get("qwen2.5-coder:3b");
+        var req = AgentRequirement();
+
+        var d = reval.Decide(Mem(16, 15), current, proposed, req, alreadyChanged: 0);
+
+        Assert.Equal(BudgetTransition.UpgradeToNext, d.Transition);
+        Assert.Equal("qwen2.5-coder:1.5b", d.SuggestedModel);
+    }
+
+    [Fact]
     public void Reevaluador_RamaDisminuye_SugiereDegradar()
     {
         var policy = BudgetPolicy.Default;

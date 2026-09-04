@@ -152,12 +152,18 @@ public sealed class ModelAutoSetupService : IModelAutoSetupService
     public async Task<ModelSelectionResult> EnsureModelForRequirementAsync(
         TaskModelRequirement requirement,
         CancellationToken cancellationToken = default,
-        IStartupProgressObserver? progress = null)
+        IStartupProgressObserver? progress = null,
+        string? currentModelName = null)
     {
         var assessment = await LoadAuthoritativeAssessmentAsync(
             await _stateStore.LoadAssessmentAsync(cancellationToken), cancellationToken);
 
-        var selection = ModelSelector.SelectForTask(assessment, ModelCatalog.Default, requirement, BudgetPolicy.Default);
+        var selection = ModelSelector.SelectForTask(
+            assessment,
+            ModelCatalog.Default,
+            requirement,
+            BudgetPolicy.Default,
+            currentModelName);
 
         if (selection.Desired is null)
         {

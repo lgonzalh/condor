@@ -272,7 +272,8 @@ public static class ModelSelector
         AssessmentResult? assessment,
         IReadOnlyList<ModelCandidate> catalog,
         TaskModelRequirement requirement,
-        BudgetPolicy policy)
+        BudgetPolicy policy,
+        string? currentModelName = null)
     {
         var result = new ModelSelectionResult { Requirement = requirement };
 
@@ -290,6 +291,12 @@ public static class ModelSelector
         var installed = (assessment.Tools?.Ollama?.Models ?? new List<ModelInfo>())
             .Select(m => m.Name)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // La sesion no salta niveles cuando mejora la memoria: la promocion
+        // siempre avanza al siguiente modelo de la misma familia. Por ejemplo,
+        // qwen2.5-coder:0.5b solo puede promocionar primero a 1.5b, nunca a 3b.
+        var current = FindCatalogModel(catalog, currentModelName);
+        var immediateUpgrade = FindImmediateUpgrade(catalog, current);
 
         // Candidatos del catalogo suficientes para la tarea y dentro del presupuesto.
         var candidates = new List<(ModelCandidate c, double peak, bool installed)>();
@@ -362,9 +369,38 @@ public static class ModelSelector
             }
         }
 
+        // Continuidad de sesion: si el modelo activo es menor y ya hay memoria
+        // suficiente para el siguiente nivel, se usa ese nivel exacto. Esto
+        // evita que una reevaluacion salte de 0.5B directamente a 3B/7B. Para
+        // tareas de ingenieria se conserva la progresion de modelo del usuario;
+        // la memoria sigue siendo la condicion de seguridad.
+        if (current is not null && immediateUpgrade is not null)
+        {
+            var transitionBudget = budget;
+            if (!CanUse(immediateUpgrade, transitionBudget))
+            {
+                transitionBudget = policy.AssessForSmallModel(memory);
+            }
+
+            if (CanUse(immediateUpgrade, transitionBudget) &&
+                (node.c is null ||
+                 node.c.Name.Equals(current.Name, StringComparison.OrdinalIgnoreCase) ||
+                 ModelEfficiencyEvaluator.PeakGb(node.c) > ModelEfficiencyEvaluator.PeakGb(immediateUpgrade) + 0.01))
+            {
+                result.Budget = transitionBudget;
+                budget = transitionBudget;
+                result.NodeInCurrent = immediateUpgrade;
+                result.Desired = immediateUpgrade;
+                result.AlreadyInstalled = installed.Contains(immediateUpgrade.Name) || installed.Contains(immediateUpgrade.PullName);
+                result.InstalledName = immediateUpgrade.PullName;
+                result.NextCandidate = FindImmediateUpgrade(catalog, immediateUpgrade);
+                result.Reason = "Continuidad de sesion: la memoria permite el siguiente nivel " + immediateUpgrade.PullName + " sin saltar modelos.";
+            }
+        }
+
         // Modelo instalado del usuario NO en catalogo: considerarlo candidato si es
         // suficiente y cabe; lo usamos como 1−/desired cuando el catalogo no aporta.
-        if (node.c is null)
+        if (node.c is null && result.Desired is null)
         {
             var userInstalled = ConsiderUserInstalledModel(assessment, requirement, budget);
             if (userInstalled is not null)
@@ -399,6 +435,50 @@ public static class ModelSelector
         }
 
         return result;
+    }
+
+    private static bool CanUse(ModelCandidate candidate, BudgetAssessment? budget)
+        => budget is not null && budget.Admits(ModelEfficiencyEvaluator.PeakGb(candidate)) &&
+           ModelEfficiencyEvaluator.LeavesMargin(candidate, budget);
+
+    private static ModelCandidate? FindCatalogModel(
+        IReadOnlyList<ModelCandidate> catalog,
+        string? modelName)
+    {
+        if (string.IsNullOrWhiteSpace(modelName))
+        {
+            return null;
+        }
+
+        return catalog.FirstOrDefault(c =>
+            c.Name.Equals(modelName, StringComparison.OrdinalIgnoreCase) ||
+            c.PullName.Equals(modelName, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static ModelCandidate? FindImmediateUpgrade(
+        IReadOnlyList<ModelCandidate> catalog,
+        ModelCandidate? current)
+    {
+        if (current is null || current.WeightGb <= 0)
+        {
+            return null;
+        }
+
+        var currentFamily = FamilyKey(current.PullName);
+        var currentPeak = ModelEfficiencyEvaluator.PeakGb(current);
+        return catalog
+            .Where(c => c.WeightGb > 0 &&
+                        FamilyKey(c.PullName).Equals(currentFamily, StringComparison.OrdinalIgnoreCase) &&
+                        ModelEfficiencyEvaluator.PeakGb(c) > currentPeak + 0.01)
+            .OrderBy(c => ModelEfficiencyEvaluator.PeakGb(c))
+            .ThenBy(c => c.WeightGb)
+            .FirstOrDefault();
+    }
+
+    private static string FamilyKey(string modelName)
+    {
+        var separator = modelName.IndexOf(':');
+        return (separator < 0 ? modelName : modelName[..separator]).Trim();
     }
 
     private static string ResultReason(TaskModelRequirement req, ModelCandidate c, BudgetAssessment? budget, string tag)

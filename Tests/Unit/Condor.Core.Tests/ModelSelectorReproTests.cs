@@ -135,6 +135,25 @@ public class ModelSelectorReproTests
         Assert.False(r.BlockedByResources);
     }
 
+    [Fact]
+    public void SesionEn05BConMemoriaLibre_PromocionaSoloAlSiguienteNivel()
+    {
+        var assessment = Assessment("qwen2.5-coder:0.5b", ramTotalGb: 16, ramFreeGb: 8);
+        var requirement = TaskIntentClassifier.Classify("analiza el proyecto");
+
+        var r = ModelSelector.SelectForTask(
+            assessment,
+            ModelCatalog.Default,
+            requirement,
+            BudgetPolicy.Default,
+            currentModelName: "qwen2.5-coder:0.5b");
+
+        Assert.NotNull(r.Desired);
+        Assert.Equal("qwen2.5-coder:1.5b", r.Desired.PullName);
+        Assert.DoesNotContain("3b", r.Desired.PullName, System.StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("siguiente nivel", r.Reason, System.StringComparison.OrdinalIgnoreCase);
+    }
+
     private static void AssertElected(double ramFreeGb, string expected)
     {
         var r = ModelSelector.RecommendFromCatalog(

@@ -82,7 +82,10 @@ public sealed class AgentService : IAgentService
 
         // Seleccion automatica del modelo (harness dinamico por tarea + presupuesto).
         var modelSetup = CreateModelSetup();
-        var selection = await modelSetup.EnsureModelForRequirementAsync(requirement, cancellationToken: cancellationToken);
+        var selection = await modelSetup.EnsureModelForRequirementAsync(
+            requirement,
+            cancellationToken: cancellationToken,
+            currentModelName: _session?.ActiveModel);
 
         // SelectForTask siempre marca BlockedByResources=true cuando Desired es null
         // (viable vacio o presupuesto insuficiente); este caso cubre todos los
@@ -504,7 +507,8 @@ public sealed class AgentService : IAgentService
         var modelSetup = CreateModelSetup();
         var selection = await modelSetup.EnsureModelForRequirementAsync(
             requirement,
-            cancellationToken: cancellationToken);
+            cancellationToken: cancellationToken,
+            currentModelName: _session?.ActiveModel);
 
         if (selection.Desired is null)
         {
