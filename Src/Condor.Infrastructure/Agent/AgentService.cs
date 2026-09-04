@@ -1048,7 +1048,8 @@ public sealed class AgentService : IAgentService
             {
                 RamTotalGb = resources?.TotalGb ?? (budget?.RamTotalGb ?? 0),
                 RamFreeGb = resources?.FreeGb ?? (budget?.RamFreeGb ?? 0),
-                SafeBudgetGb = resources?.SafeBudgetGb ?? (budget?.BudgetGb ?? 0),
+                SafeBudgetGb = budget?.BudgetGb ?? (resources?.SafeBudgetGb ?? 0),
+                EstimatedModelRamGb = desired is null ? 0 : System.Math.Round(ModelEfficiencyEvaluator.PeakGb(desired), 1),
                 PressureLabel = resources?.PressureLabel,
                 ReserveGb = budget?.ReserveGb ?? 0,
                 OperationalReserveGb = budget?.OperationalReserveGb ?? 0,

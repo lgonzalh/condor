@@ -149,6 +149,7 @@ public class AgentRendererTests
                 RamTotalGb = 15.4,
                 RamFreeGb = 7.0,
                 SafeBudgetGb = 2.5,
+                EstimatedModelRamGb = 0.4,
                 PressureLabel = "Normal",
                 Cpu = "Intel Core i5 4 nucleos 8 hebras",
                 FreeDiskGb = 100.0,
@@ -164,6 +165,7 @@ public class AgentRendererTests
         Assert.Contains("qwen2.5-coder:3b", text);
         Assert.Contains("structured-output", text);
         Assert.Contains("presupuesto", text);
+        Assert.Contains("RAM requerida estimada", text);
     }
 
     [Fact]

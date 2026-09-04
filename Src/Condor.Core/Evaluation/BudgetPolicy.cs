@@ -111,4 +111,40 @@ public sealed class BudgetPolicy
             IsBudgeted = budget > 0
         };
     }
+
+    /// <summary>
+    /// Presupuesto mínimo para una consulta directa que solo necesita una
+    /// respuesta de texto. Mantiene una reserva básica para Windows, Condor y
+    /// estabilidad, pero no aplica la reserva completa de una tarea de
+    /// ingeniería con herramientas y build/test.
+    /// </summary>
+    public BudgetAssessment AssessForSmallModel(MemoryInfo? memory)
+    {
+        if (memory is null || memory.Status != DetectionStatus.Detected || memory.TotalBytes <= 0)
+        {
+            return BudgetAssessment.NoData();
+        }
+
+        const double minimalSystemReserveGb = 1.0;
+        const double minimalCondorReserveGb = 0.5;
+        const double minimalOperationalReserveGb = 0.5;
+
+        var totalGb = memory.TotalBytes / (double)ModelMemoryBudget.BytesPerGb;
+        var freeGb = memory.FreeBytes / (double)ModelMemoryBudget.BytesPerGb;
+        var reserveGb = minimalSystemReserveGb + minimalCondorReserveGb + minimalOperationalReserveGb;
+        var budget = System.Math.Max(0, freeGb - reserveGb);
+
+        return new BudgetAssessment
+        {
+            RamTotalGb = System.Math.Round(totalGb, 1),
+            RamFreeGb = System.Math.Round(freeGb, 1),
+            SystemReserveGb = minimalSystemReserveGb,
+            CondorReserveGb = minimalCondorReserveGb,
+            OperationalReserveGb = minimalOperationalReserveGb,
+            StabilityMarginGb = minimalOperationalReserveGb,
+            ReserveGb = System.Math.Round(reserveGb, 1),
+            BudgetGb = System.Math.Round(budget, 1),
+            IsBudgeted = budget > 0
+        };
+    }
 }

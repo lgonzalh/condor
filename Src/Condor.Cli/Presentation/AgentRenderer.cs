@@ -136,6 +136,8 @@ public static class AgentRenderer
         var parts = new List<string>();
         if (inv.RamTotalGb > 0)
             parts.Add("RAM " + inv.RamFreeGb.ToString("0.0") + "/" + inv.RamTotalGb.ToString("0.0") + " GB libres (presupuesto " + inv.SafeBudgetGb.ToString("0.0") + " GB" + (string.IsNullOrWhiteSpace(inv.PressureLabel) ? ")" : ", " + inv.PressureLabel + ")"));
+        if (inv.EstimatedModelRamGb > 0)
+            parts.Add("RAM requerida estimada " + inv.EstimatedModelRamGb.ToString("0.0") + " GB");
         if (!string.IsNullOrWhiteSpace(inv.Cpu))
             parts.Add(inv.Cpu);
         if (inv.FreeDiskGb > 0)
@@ -162,6 +164,8 @@ public static class AgentRenderer
         var parts = new List<string>();
         if (inv.RamTotalGb > 0)
             parts.Add("RAM " + inv.RamFreeGb.ToString("0.0") + "/" + inv.RamTotalGb.ToString("0.0") + " GB libres (presupuesto " + inv.SafeBudgetGb.ToString("0.0") + " GB" + (string.IsNullOrWhiteSpace(inv.PressureLabel) ? ")" : ", " + inv.PressureLabel + ")"));
+        if (inv.EstimatedModelRamGb > 0)
+            parts.Add("RAM requerida estimada " + inv.EstimatedModelRamGb.ToString("0.0") + " GB");
         if (!string.IsNullOrWhiteSpace(inv.Cpu))
             parts.Add(inv.Cpu);
         if (inv.FreeDiskGb > 0)

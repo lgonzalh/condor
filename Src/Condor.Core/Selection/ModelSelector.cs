@@ -315,6 +315,26 @@ public static class ModelSelector
             .ThenBy(x => x.c.WeightGb)
             .ToList();
 
+        // Una consulta de texto no requiere el protocolo de herramientas. Si
+        // la politica completa no deja presupuesto positivo (por ejemplo, por
+        // una caida momentanea de RAM libre), habilitar la reserva minima y
+        // volver a evaluar el candidato mas pequeno. Las tareas de ingenieria
+        // conservan la politica completa y nunca usan esta via degradada.
+        if (viable.Count == 0 && requirement.IntentKind == TaskIntentKinds.Consult)
+        {
+            var smallBudget = policy.AssessForSmallModel(memory);
+            if (smallBudget.IsBudgeted)
+            {
+                budget = smallBudget;
+                result.Budget = smallBudget;
+                viable = candidates
+                    .Where(x => budget.Admits(x.peak) && ModelEfficiencyEvaluator.LeavesMargin(x.c, budget))
+                    .OrderBy(x => x.peak)
+                    .ThenBy(x => x.c.WeightGb)
+                    .ToList();
+            }
+        }
+
         // 1− : menor suficiente viable dentro del presupuesto con margen.
         var node = viable.FirstOrDefault();
         if (node.c is not null)

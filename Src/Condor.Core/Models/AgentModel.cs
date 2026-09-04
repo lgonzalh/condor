@@ -64,6 +64,7 @@ public sealed class AgentInventory
     public double RamTotalGb { get; set; }
     public double RamFreeGb { get; set; }
     public double SafeBudgetGb { get; set; }
+    public double EstimatedModelRamGb { get; set; }
     public string? PressureLabel { get; set; }
     public string? Cpu { get; set; }
     public double FreeDiskGb { get; set; }
