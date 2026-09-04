@@ -66,7 +66,7 @@ public sealed class TuiHost : IDisposable
     private const int BottomRows = 3;             // separador entrada + entrada + estado minimo
     private const int HeaderRows = 5;             // cuatro líneas de mascota + separador inferior
 
-    private static readonly string[] SpinnerFrames = { "◐", "◓", "◑", "◒" };
+    private static readonly string[] SpinnerFrames = { "◐", "◑", "◒", "◕", "◔" };
 
     private readonly object _gate = new();
     private readonly List<(string Text, ActivityKind Kind)> _activity = new();
@@ -493,6 +493,10 @@ public sealed class TuiHost : IDisposable
                 {
                     PaintEstadoLocked(sb);
                 }
+                else if (_dirtyStatus && _mode == HostMode.Welcome)
+                {
+                    PaintWelcomeStatusLocked(sb);
+                }
 
                 if (_dirtyInput && _mode == HostMode.Session)
                 {
@@ -749,11 +753,15 @@ public sealed class TuiHost : IDisposable
     {
         sb.Append(Ansi.At(18, 3));
         sb.Append(Ansi.ClearLine);
-        sb.Append(Ansi.FgGris + Clip(string.IsNullOrWhiteSpace(_progreso) ? "—" : _progreso, _width - 6) + Ansi.Reset);
+        var frame = _busy ? SpinnerFrames[_spin % SpinnerFrames.Length] + " " : "";
+        sb.Append(EstadoColor(_estadoKind) + Clip(frame + _estado, _width - 6) + Ansi.Reset);
 
         sb.Append(Ansi.At(19, 3));
         sb.Append(Ansi.ClearLine);
-        sb.Append(EstadoColor(_estadoKind) + Clip(_estado, _width - 6) + Ansi.Reset);
+        if (!string.IsNullOrWhiteSpace(_progreso))
+        {
+            sb.Append(Ansi.FgGris + Clip(_progreso, _width - 6) + Ansi.Reset);
+        }
     }
 
     /// <summary>Pinta la region de entrada. El contenido lo dibuja el editor.</summary>
