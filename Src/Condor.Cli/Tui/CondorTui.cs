@@ -230,7 +230,7 @@ public static class CondorTui
                 {
                     foreach (var line in SplitLines(AgentRenderer.BuildResultText(result, runningWatch.Elapsed)))
                     {
-                        host.AddActivity(line, result.Success ? ActivityKind.Condor : ActivityKind.Error);
+                        host.AddActivity(line, result.Success ? ResultActivityKind(line) : ActivityKind.Error);
                     }
 
                     host.SetEstado(result.Success ? "Tarea completada" : "No se pudo completar la tarea",
@@ -441,6 +441,16 @@ public static class CondorTui
     internal static IEnumerable<string> SplitLines(string text)
     {
         return text.Replace("\r\n", "\n").Split('\n');
+    }
+
+    private static ActivityKind ResultActivityKind(string line)
+    {
+        var text = line.Trim();
+        if (text.StartsWith("He modificado", StringComparison.OrdinalIgnoreCase))
+            return ActivityKind.CodeEdit;
+        if (text.EndsWith("?", StringComparison.Ordinal))
+            return ActivityKind.Question;
+        return ActivityKind.Response;
     }
 
     /// <summary>Motivo corto y legible de una excepcion: nunca stack traces.</summary>

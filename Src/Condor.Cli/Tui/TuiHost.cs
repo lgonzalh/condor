@@ -19,7 +19,19 @@ public enum ActivityKind
     User,
 
     /// <summary>Respuesta de Condor (crema).</summary>
-    Condor
+    Condor,
+
+    /// <summary>Analisis y observaciones del agente.</summary>
+    Analysis,
+
+    /// <summary>Edicion o construccion de codigo.</summary>
+    CodeEdit,
+
+    /// <summary>Respuesta final del agente.</summary>
+    Response,
+
+    /// <summary>Pregunta que requiere respuesta del usuario.</summary>
+    Question
 }
 
 /// <summary>
@@ -52,7 +64,7 @@ public sealed class TuiHost : IDisposable
     internal const int MinHeight = 24;
 
     private const int BottomRows = 3;             // separador entrada + entrada + estado minimo
-    private const int HeaderRows = 8;             // cabecera compacta; la mascota ocupa sus 8 filas
+    private const int HeaderRows = 5;             // cuatro líneas de mascota + separador inferior
 
     private static readonly string[] SpinnerFrames = { "◐", "◓", "◑", "◒" };
 
@@ -82,7 +94,7 @@ public sealed class TuiHost : IDisposable
     private bool _dirtyInput;
 
     // Filas logicas (0-based) de la sesion. La convencion de pintura usa At(fila+1): "fila" 0-based.
-    // La cabecera con la mascota compacta ocupa 11 filas, luego viene el contenido.
+    // La cabecera de Trabajo ocupa cuatro filas de mascota y una línea divisoria.
     private int ContentTop => HeaderRows + 1;
     private int SepInputRow => _height - BottomRows;         // separador antes de la entrada
     public int InputRow => _height - BottomRows + 1;         // fila de entrada
@@ -468,6 +480,7 @@ public sealed class TuiHost : IDisposable
                 if (_dirtyHeader && _mode == HostMode.Session)
                 {
                     PaintTitleRowLocked(sb);
+                    PaintSeparatorLocked(sb, HeaderRows - 1, null);
                     PaintSeparatorLocked(sb, SepInputRow, null);
                 }
 
@@ -517,7 +530,9 @@ public sealed class TuiHost : IDisposable
         }
 
         PaintTitleRowLocked(sb);
-        // Unicamente se separa la zona de entrada inferior.
+        // Línea completa inmediatamente debajo de la última línea de la mascota.
+        PaintSeparatorLocked(sb, HeaderRows - 1, null);
+        // Separador de la zona de entrada inferior.
         PaintSeparatorLocked(sb, SepInputRow, null);
     }
 
@@ -679,6 +694,10 @@ public sealed class TuiHost : IDisposable
         {
             ActivityKind.User => "  " + Ansi.FgBlanco + "› ",
             ActivityKind.Condor => "  " + Ansi.FgCrema + "◆ ",
+            ActivityKind.Analysis => "  " + Ansi.FgCian + "a) ",
+            ActivityKind.CodeEdit => "  " + Ansi.FgDorado + "b) ",
+            ActivityKind.Response => "  " + Ansi.FgCrema + "c) ",
+            ActivityKind.Question => "  " + Ansi.FgAmarillo + "d) ",
             ActivityKind.Success => "  " + Ansi.FgVerde + "● ",
             ActivityKind.Warning => "  " + Ansi.FgAmarillo + "▲ ",
             ActivityKind.Error => "  " + Ansi.FgRojo + "✗ ",

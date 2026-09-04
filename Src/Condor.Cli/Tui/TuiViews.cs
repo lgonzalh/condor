@@ -121,6 +121,12 @@ public sealed class TuiAgentProgressView : IAgentProgressView
 
         _host.SetEstado(estado, kind);
         _host.SetProgreso(BuildProgreso(progress));
+        var detalle = estado;
+        if (!string.IsNullOrWhiteSpace(progress.Message))
+            detalle += " — " + progress.Message.Trim();
+        _host.AddActivity(detalle, progress.Phase == AgentPhase.Building
+            ? ActivityKind.CodeEdit
+            : ActivityKind.Analysis);
     }
 
     public void Stop(bool success, string? finalLine = null)
