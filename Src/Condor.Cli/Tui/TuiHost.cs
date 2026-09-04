@@ -52,7 +52,7 @@ public sealed class TuiHost : IDisposable
     internal const int MinHeight = 24;
 
     private const int BottomRows = 3;             // separador entrada + entrada + estado minimo
-    private const int HeaderRows = 11;            // cabecera compacta; la mascota ocupa sus 11 filas
+    private const int HeaderRows = 12;            // cabecera compacta; la mascota ocupa sus 12 filas
 
     private static readonly string[] SpinnerFrames = { "◐", "◓", "◑", "◒" };
 
@@ -468,7 +468,6 @@ public sealed class TuiHost : IDisposable
                 if (_dirtyHeader && _mode == HostMode.Session)
                 {
                     PaintTitleRowLocked(sb);
-                    PaintSeparatorLocked(sb, 1, null);
                     PaintSeparatorLocked(sb, SepInputRow, null);
                 }
 
@@ -518,34 +517,21 @@ public sealed class TuiHost : IDisposable
         }
 
         PaintTitleRowLocked(sb);
-        // Separador bajo la cabecera
-        PaintSeparatorLocked(sb, HeaderRows - 1, null);
-        // Separador sobre la entrada
+        // Unicamente se separa la zona de entrada inferior.
         PaintSeparatorLocked(sb, SepInputRow, null);
     }
 
     private void PaintTitleRowLocked(System.Text.StringBuilder sb)
     {
-        // CABECERA COMPACTA CON MASCOTA A LA IZQUIERDA
-        // Usamos Unicode box-drawing: ┌ ┐ └ ┘ ─ │ ├ ┤ (NINGUN ASCII +, -, |)
-        // La mascota Ave (11 filas) se pinta a la IZQUIERDA,
-        // y a la derecha van: CONDOR, slogan, identidad y versión
-
+        // Cabecera limpia de Trabajo: sin marco superior ni columnas laterales.
         var aveWidth = AnchoVisibleMascota();
-        var textLeftCol = ArtCol + aveWidth + 2; // columna donde empieza el texto a la derecha de la mascota
+        var textLeftCol = ArtCol + aveWidth + 3;
 
-        // Pintar todas las filas de la cabecera
         for (int row = 1; row <= HeaderRows; row++)
         {
             sb.Append(Ansi.At(row, 1));
             sb.Append(Ansi.ClearLine);
 
-            // Borde izquierdo
-            string leftBorder = (row == 1) ? "┌" : (row == HeaderRows) ? "└" : "│";
-            string rightBorder = (row == 1) ? "┐" : (row == HeaderRows) ? "┘" : "│";
-            sb.Append(Ansi.FgGris + leftBorder + Ansi.Reset);
-
-            // Pintar la mascota en esta fila (fila actual - 1 porque row 1 = fila 0 de mascota)
             if (row - 1 < CondorArt.Ave.Length)
             {
                 sb.Append(Ansi.At(row, ArtCol));
@@ -553,69 +539,33 @@ public sealed class TuiHost : IDisposable
                 sb.Append(Ansi.Reset);
             }
 
-            // Pintar texto a la derecha de la mascota
-            sb.Append(Ansi.At(row, textLeftCol));
-
-            // Rellenar hasta el borde derecho
-            int textRightCol = _width - 2; // 2 para el borde derecho
-            int fill = textRightCol - textLeftCol + 1;
-
             switch (row)
             {
-                case 1:
-                    // Fila 1: espacio de cabecera
-                    sb.Append(Ansi.FgGris + new string(' ', fill) + Ansi.Reset);
-                    break;
                 case 2:
-                    var line = "CONDOR";
-                    var meta = "v" + VersionInfo.PublicVersion + " · build interno " + VersionInfo.InternalBuild;
-                    var combined = line + "  " + meta;
-                    var start = Math.Max(textLeftCol, textLeftCol + (fill - combined.Length) / 2);
-                    sb.Append(Ansi.At(row, start));
-                    sb.Append(Ansi.Bold + Ansi.FgBlanco + line + Ansi.Reset);
-                    sb.Append(Ansi.FgGris + "  " + meta + Ansi.Reset);
-                    int used2 = combined.Length + Math.Max(0, start - textLeftCol);
-                    fill = Math.Max(0, fill - used2);
-                    sb.Append(Ansi.FgGris + new string(' ', fill) + Ansi.Reset);
+                    PaintHeaderTextLocked(sb, row, textLeftCol, "CONDOR  v" + VersionInfo.PublicVersion + " · build interno " + VersionInfo.InternalBuild, Ansi.FgBlanco);
                     break;
                 case 3:
-                    // Fila 3: slogan
-                    var sloganStart = Math.Max(textLeftCol, textLeftCol + (fill - Slogan.Length) / 2);
-                    sb.Append(Ansi.At(row, sloganStart));
-                    sb.Append(Ansi.FgTerracota + Slogan + Ansi.Reset);
-                    int used3 = Slogan.Length + Math.Max(0, sloganStart - textLeftCol);
-                    fill = Math.Max(0, fill - used3);
-                    sb.Append(Ansi.FgGris + new string(' ', fill) + Ansi.Reset);
+                    PaintHeaderTextLocked(sb, row, textLeftCol, Slogan, Ansi.FgTerracota);
                     break;
                 case 4:
-                    // Fila 4: Hecho en Colombia · Modo Local 100%
-                    var identityStart = Math.Max(textLeftCol, textLeftCol + (fill - IdentityLine.Length) / 2);
-                    sb.Append(Ansi.At(row, identityStart));
-                    sb.Append(Ansi.FgDorado + IdentityLine + Ansi.Reset);
-                    int used4 = IdentityLine.Length + Math.Max(0, identityStart - textLeftCol);
-                    fill = Math.Max(0, fill - used4);
-                    sb.Append(Ansi.FgGris + new string(' ', fill) + Ansi.Reset);
+                    PaintHeaderTextLocked(sb, row, textLeftCol, IdentityLine, Ansi.FgDorado);
                     break;
                 case 5:
-                    // Fila 5: modelo
-                    var model = _model ?? "—";
-                    var modelStart = Math.Max(textLeftCol, textLeftCol + (fill - model.Length) / 2);
-                    sb.Append(Ansi.At(row, modelStart));
-                    sb.Append(Ansi.FgTerracota + model + Ansi.Reset);
-                    int used5 = model.Length + Math.Max(0, modelStart - textLeftCol);
-                    fill = Math.Max(0, fill - used5);
-                    sb.Append(Ansi.FgGris + new string(' ', fill) + Ansi.Reset);
-                    break;
-                default:
-                    // Rellenar espacios vacíos
-                    sb.Append(Ansi.FgGris + new string(' ', Math.Max(0, fill)) + Ansi.Reset);
+                    PaintHeaderTextLocked(sb, row, textLeftCol, _model ?? "—", Ansi.FgTerracota);
                     break;
             }
-
-            // Borde derecho
-            sb.Append(Ansi.At(row, _width));
-            sb.Append(Ansi.FgGris + rightBorder + Ansi.Reset);
         }
+    }
+
+    private void PaintHeaderTextLocked(System.Text.StringBuilder sb, int row, int textLeftCol, string text, string color)
+    {
+        if (textLeftCol > _width)
+        {
+            return;
+        }
+
+        sb.Append(Ansi.At(row, textLeftCol));
+        sb.Append(color + Clip(text, _width - textLeftCol + 1) + Ansi.Reset);
     }
 
     /// <summary>
