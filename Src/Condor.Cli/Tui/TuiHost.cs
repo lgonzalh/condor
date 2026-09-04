@@ -52,7 +52,7 @@ public sealed class TuiHost : IDisposable
     internal const int MinHeight = 24;
 
     private const int BottomRows = 3;             // separador entrada + entrada + estado minimo
-    private const int HeaderRows = 12;            // cabecera compacta; la mascota ocupa sus 12 filas
+    private const int HeaderRows = 8;             // cabecera compacta; la mascota ocupa sus 8 filas
 
     private static readonly string[] SpinnerFrames = { "◐", "◓", "◑", "◒" };
 
