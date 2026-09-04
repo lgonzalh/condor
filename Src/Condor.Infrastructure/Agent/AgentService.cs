@@ -70,6 +70,16 @@ public sealed class AgentService : IAgentService
         // Clasificar la tarea -> requisito de modelo (que capacidades y eficiencia).
         var requirement = TaskIntentClassifier.Classify(intention);
 
+        // Una consulta conversacional no es una tarea de ingenieria: no debe
+        // forzar al modelo minimo a producir una accion JSON que no necesita.
+        // Esto permite que una entrada simple como \"hola\" use el modelo local
+        // mas pequeno y adecuado, y evita confundir una respuesta de texto
+        // valida con un fallo del protocolo de herramientas.
+        if (requirement.IntentKind == TaskIntentKinds.Consult)
+        {
+            return await RunDirectConsultAsync(intention, requirement, progress, cancellationToken);
+        }
+
         // Seleccion automatica del modelo (harness dinamico por tarea + presupuesto).
         var modelSetup = CreateModelSetup();
         var selection = await modelSetup.EnsureModelForRequirementAsync(requirement, cancellationToken: cancellationToken);
@@ -474,6 +484,120 @@ public sealed class AgentService : IAgentService
         // cambio verificado no hay respuesta que entregar.
         return TryDeliverInformational(checkpoint, steps, workingDir, model, intention, progress, lastDoneReason, inventory)
             ?? Fail("El agente no pudo completar la tarea dentro de los limites.", model, intention, steps, checkpoint);
+    }
+
+    private async Task<AgentResult> RunDirectConsultAsync(
+        string intention,
+        TaskModelRequirement requirement,
+        IAgentProgressObserver? progress,
+        CancellationToken cancellationToken)
+    {
+        var checkpoint = new AgentCheckpoint
+        {
+            Task = intention,
+            GeneratedAtUtc = DateTime.UtcNow,
+            Strategy = "direct-consult",
+            LastDecision = "comprender"
+        };
+        var steps = new List<AgentStep>();
+
+        var modelSetup = CreateModelSetup();
+        var selection = await modelSetup.EnsureModelForRequirementAsync(
+            requirement,
+            cancellationToken: cancellationToken);
+
+        if (selection.Desired is null)
+        {
+            progress?.Report(AgentProgress.Of(
+                AgentPhase.Verifying,
+                message: "Modelo no ejecutable por presupuesto de memoria.",
+                resourceState: selection.Resources?.PressureLabel,
+                availableGb: selection.Resources?.FreeGb,
+                safeBudgetGb: selection.Budget?.BudgetGb,
+                flag: ProgressFlag.ProviderError));
+
+            return Fail(
+                BuildModelNotExecutableReason(selection),
+                "",
+                intention,
+                steps,
+                checkpoint);
+        }
+
+        var model = selection.InstalledName ?? selection.Desired.PullName;
+        checkpoint.Model = model;
+
+        if (_session is not null)
+        {
+            var available = await _session.EnsureAvailableAsync(model, cancellationToken);
+            if (!available)
+            {
+                checkpoint.LastDecision = "detener";
+                checkpoint.LastError = "El proveedor local no esta disponible.";
+                progress?.Report(AgentProgress.Of(
+                    AgentPhase.Verifying,
+                    message: checkpoint.LastError,
+                    flag: ProgressFlag.ProviderError));
+                return Fail(checkpoint.LastError, model, intention, steps, checkpoint);
+            }
+        }
+
+        var inventory = await BuildInventoryAsync(selection, cancellationToken);
+        progress?.Report(AgentProgress.Of(
+            AgentPhase.Understanding,
+            message: "Consultando el modelo local",
+            resourceState: selection.Resources?.PressureLabel,
+            availableGb: selection.Resources?.FreeGb,
+            safeBudgetGb: selection.Budget?.BudgetGb));
+
+        LlmResponse response;
+        try
+        {
+            response = await _llm.CompleteAsync(
+                new LlmRequest
+                {
+                    Model = model,
+                    Prompt = "Responde en español, de forma breve y natural, a esta consulta del usuario: " + intention,
+                    Temperature = 0.2,
+                    MaxTokens = 256
+                },
+                cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            return Fail("Tiempo total de la consulta agotado.", model, intention, steps, checkpoint);
+        }
+
+        if (!response.Success || string.IsNullOrWhiteSpace(response.Content))
+        {
+            checkpoint.LastDecision = "detener";
+            checkpoint.LastError = BuildProviderFailureReason(
+                response.Outcome,
+                response.Error ?? "El modelo no devolvio una respuesta util.");
+            progress?.Report(AgentProgress.Of(
+                AgentPhase.Verifying,
+                message: "Modelo local · " + checkpoint.LastError,
+                flag: ProgressFlag.ProviderError));
+            return Fail(checkpoint.LastError, model, intention, steps, checkpoint);
+        }
+
+        checkpoint.Iteration = 1;
+        checkpoint.LastDecision = "entregar";
+        checkpoint.NextAction = "entregar";
+        progress?.Report(AgentProgress.Of(
+            AgentPhase.Finalizing,
+            message: "Preparando respuesta"));
+
+        return new AgentResult
+        {
+            Success = true,
+            Reason = response.Content.Trim(),
+            Model = model,
+            Objective = intention,
+            Steps = steps,
+            Checkpoint = checkpoint,
+            Inventory = inventory
+        };
     }
 
     private static AgentResult? TryDeliverInformational(

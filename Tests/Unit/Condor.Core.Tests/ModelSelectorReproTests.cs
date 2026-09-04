@@ -19,9 +19,10 @@ namespace Condor.Core.Tests;
 /// variable que decide es la instantanea de memoria (FreePhysicalMemory via CIM)
 /// en CADA invocacion.
 ///
-/// - "hola funciona": la RAM libre en ese momento supera el umbral.
-/// - "la tarea falla": la RAM libre bajo del umbral -> incluso el 3B no cumple el
-///   presupuesto seguro -> Desired==null -> AgentService devuelve el mensaje exacto.
+/// - una tarea de ingenieria conserva el protocolo estructurado y sus requisitos
+///   de capacidades;
+/// - una consulta conversacional simple como "hola" puede usar el modelo mas
+///   pequeno, sin forzarle el protocolo de acciones del agente.
 ///
 /// Umbral del modelo menor viable (qwen2.5-coder:3b, pico ~2.16 GB) sobre 16 GB
 /// totales: headroom = libre - 1.5(SO) - 1.5(Condor) - 1.5(margen) >= 2.16, es
@@ -61,8 +62,8 @@ public class ModelSelectorReproTests
         Assert.False(r.BlockedByResources);
     }
 
-    // La intencion (hola vs analisis) NO participa en la seleccion: se comprueba
-    // que con identica RAM ambos textos producen el mismo resultado.
+    // La recomendacion clasica de arranque no depende del texto de la tarea:
+    // ambos inventarios identicos producen el mismo resultado.
     [Fact]
     public void LaIntencionNoInfluyeEnLaSeleccion_RamIdemMismoResultado()
     {
@@ -85,6 +86,33 @@ public class ModelSelectorReproTests
     {
         AssertElected(ramFreeGb: 7.0, "qwen2.5-coder:3b");  // headroom 2.5 >= pico 2.16 -> 3B cabe
         AssertElected(ramFreeGb: 6.5, "qwen2.5-coder:1.5b"); // headroom 2.0 < pico 2.16 -> alternativa 1.5B
+    }
+
+    [Fact]
+    public void HolaConRamLimitada_SeleccionaElModeloInstaladoMasPequenoSuficiente()
+    {
+        var assessment = Assessment("qwen2.5-coder:0.5b", ramTotalGb: 16, ramFreeGb: 5.6);
+        var requirement = new TaskModelRequirement
+        {
+            IntentKind = TaskIntentKinds.Agent,
+            RequiredCodingLevel = 0,
+            RequiredMultiFileLevel = 0,
+            RequiresToolUse = true,
+            RequiresStructuredOutput = true,
+            PreferSmallestSufficient = true,
+            Label = "agente de comprension/analisis"
+        };
+
+        var r = ModelSelector.SelectForTask(
+            assessment,
+            ModelCatalog.Default,
+            requirement,
+            BudgetPolicy.Default);
+
+        Assert.NotNull(r.Desired);
+        Assert.Equal("qwen2.5-coder:0.5b", r.Desired.PullName);
+        Assert.True(r.AlreadyInstalled);
+        Assert.False(r.BlockedByResources);
     }
 
     private static void AssertElected(double ramFreeGb, string expected)

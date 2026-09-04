@@ -76,7 +76,9 @@ public static class ModelCatalog
         new()
         {
             // Ultimo recurso: modelo muy pequeno, ultima salida viable si ni
-            // siquiera el 1.5B cabe en RAM.
+            // siquiera el 1.5B cabe en RAM. Ollama lo declara con capacidad
+            // "tools", por lo que tambien puede ejecutar acciones estructuradas
+            // sencillas cuando la tarea no exige un nivel alto de coding.
             Name = "qwen2.5-coder:0.5b",
             PullName = "qwen2.5-coder:0.5b",
             SizeBytes = 397L * 1024 * 1024,
@@ -88,10 +90,10 @@ public static class ModelCatalog
             CodingLevel = 1,
             MultiFileLevel = 1,
             StructuredOutput = true,
-            ToolUse = false,
+            ToolUse = true,
             Stability = true,
             Purpose = "agente",
-            Capabilities = new List<string> { "completion", "structured-output", "coding" }
+            Capabilities = new List<string> { "completion", "tool-use", "structured-output", "coding" }
         },
         new()
         {

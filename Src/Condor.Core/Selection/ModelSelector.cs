@@ -404,6 +404,8 @@ public static class ModelSelector
             return null;
         }
 
+        var candidates = new List<(ModelCandidate Candidate, double Peak)>();
+
         foreach (var m in installedModels)
         {
             if (!SufficientFromCapabilities(m, req))
@@ -433,17 +435,28 @@ public static class ModelSelector
             var peak = ModelEfficiencyEvaluator.PeakGb(candidate);
             if (budget.Admits(peak) && ModelEfficiencyEvaluator.LeavesMargin(candidate, budget))
             {
-                return candidate;
+                candidates.Add((candidate, peak));
             }
         }
 
-        return null;
+        // El inventario puede venir en un orden arbitrario (por ejemplo, el
+        // orden de descarga). Elegir por coste real garantiza que Condor use el
+        // modelo instalado mas pequeno que sigue siendo suficiente, en lugar
+        // de conservar accidentalmente uno mas grande por aparecer primero.
+        return candidates
+            .OrderBy(x => x.Peak)
+            .ThenBy(x => x.Candidate.WeightGb)
+            .ThenBy(x => x.Candidate.Name, StringComparer.Ordinal)
+            .Select(x => x.Candidate)
+            .FirstOrDefault();
     }
 
     private static bool SufficientFromCapabilities(ModelInfo m, TaskModelRequirement req)
     {
         var caps = m.Capabilities ?? new List<string>();
-        if (req.RequiresToolUse && !caps.Contains("tool-use")) return false;
+        if (req.RequiresToolUse && !caps.Any(c =>
+                c.Equals("tool-use", StringComparison.OrdinalIgnoreCase) ||
+                c.Equals("tools", StringComparison.OrdinalIgnoreCase))) return false;
         return true;
     }
 

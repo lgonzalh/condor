@@ -47,6 +47,24 @@ public static class TaskIntentClassifier
             };
         }
 
+        if (ContainsAny(text, DirectConsultSignals) &&
+            !requiresCoding &&
+            !readsMultipleFiles &&
+            !ContainsAny(text, InformationalSignals) &&
+            !ContainsAny(text, ModificationSignals))
+        {
+            return new TaskModelRequirement
+            {
+                IntentKind = TaskIntentKinds.Consult,
+                RequiredCodingLevel = 0,
+                RequiredMultiFileLevel = 0,
+                RequiresToolUse = false,
+                RequiresStructuredOutput = false,
+                PreferSmallestSufficient = true,
+                Label = "consulta directa al modelo"
+            };
+        }
+
         return new TaskModelRequirement
         {
             IntentKind = TaskIntentKinds.Agent,
@@ -85,6 +103,9 @@ public static class TaskIntentClassifier
 
     private static readonly string[] VisionSignals =
         { "imagen", "vision", "foto", "captura", "image", "screenshot", "ver esta imagen" };
+
+    private static readonly string[] DirectConsultSignals =
+        { "hola", "buenas", "buenos dias", "buenas tardes", "buenas noches", "gracias", "quien eres", "como estas" };
 
     private static readonly string[] InformationalSignals =
         { "que hay", "que es", "describe", "cuent", "analiza", "explica", "resumen", "que contiene", "que hace", "revisa", "revisa y" };
