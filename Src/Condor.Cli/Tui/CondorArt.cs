@@ -59,7 +59,7 @@ public static class CondorArt
     /// <summary>Mascota GRANDE (bienvenida): 100% del ANSI original con la gama de colores restituida.</summary>
     public static readonly string[] Grande = ApplyGama(AveV16Raw);
 
-    /// <summary>Mascota nueva de referencia: silueta 37x23 convertida a bloques Unicode.</summary>
+    /// <summary>Mascota compacta de Trabajo: la referencia reducida a bloques Unicode.</summary>
     public static string[] Ave => BuildPixelArt();
 
     private static readonly string[] PixelRows =
@@ -91,20 +91,29 @@ public static class CondorArt
 
     private static string[] BuildPixelArt()
     {
-        var result = new string[(PixelRows.Length + 1) / 2];
+        const int scale = 3;
+        var result = new string[(PixelRows.Length + scale - 1) / scale];
         for (var y = 0; y < result.Length; y++)
         {
             var row = new System.Text.StringBuilder();
             var previous = '\0';
-            var width = PixelRows.Max(static row => row.Length);
+            var width = (PixelRows.Max(static row => row.Length) + scale - 1) / scale;
             for (var x = 0; x < width; x++)
             {
-                var top = x < PixelRows[y * 2].Length ? PixelRows[y * 2][x] : '.';
-                var bottom = y * 2 + 1 < PixelRows.Length && x < PixelRows[y * 2 + 1].Length
-                    ? PixelRows[y * 2 + 1][x]
-                    : '.';
-                var filled = top != '.' || bottom != '.';
-                var color = top != '.' ? top : bottom;
+                var color = '.';
+                for (var sy = y * scale; sy < Math.Min(PixelRows.Length, (y + 1) * scale); sy++)
+                {
+                    for (var sx = x * scale; sx < Math.Min(PixelRows[sy].Length, (x + 1) * scale); sx++)
+                    {
+                        var candidate = PixelRows[sy][sx];
+                        if (candidate == 'R' || (candidate == 'G' && color == '.'))
+                            color = candidate;
+                        else if (candidate == '#' && color == '.')
+                            color = candidate;
+                    }
+                }
+
+                var filled = color != '.';
                 if (color != previous)
                 {
                     row.Append(color == '.' ? Ansi.Reset : color switch
@@ -116,7 +125,7 @@ public static class CondorArt
                     previous = color;
                 }
 
-                row.Append(!filled ? ' ' : top != '.' && bottom != '.' ? '█' : top != '.' ? '▀' : '▄');
+                row.Append(filled ? '█' : ' ');
             }
 
             row.Append(Ansi.Reset);

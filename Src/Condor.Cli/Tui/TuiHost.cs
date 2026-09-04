@@ -541,17 +541,14 @@ public sealed class TuiHost : IDisposable
 
             switch (row)
             {
-                case 2:
-                    PaintHeaderTextLocked(sb, row, textLeftCol, "CONDOR  v" + VersionInfo.PublicVersion + " · build interno " + VersionInfo.InternalBuild, Ansi.FgBlanco);
+                case 1:
+                    PaintHeaderTextLocked(sb, row, textLeftCol, "CONDOR    v" + VersionInfo.PublicVersion + " · build interno " + VersionInfo.InternalBuild, Ansi.FgBlanco);
                     break;
-                case 3:
+                case 2:
                     PaintHeaderTextLocked(sb, row, textLeftCol, Slogan, Ansi.FgTerracota);
                     break;
-                case 4:
-                    PaintHeaderTextLocked(sb, row, textLeftCol, IdentityLine, Ansi.FgDorado);
-                    break;
-                case 5:
-                    PaintHeaderTextLocked(sb, row, textLeftCol, _model ?? "—", Ansi.FgTerracota);
+                case 3:
+                    PaintHeaderTextLocked(sb, row, textLeftCol, IdentityLine + "  " + (_model ?? "—"), Ansi.FgDorado);
                     break;
             }
         }
@@ -707,7 +704,11 @@ public sealed class TuiHost : IDisposable
         var frame = _busy ? SpinnerFrames[_spin % SpinnerFrames.Length] + " " : "";
         var workspace = string.IsNullOrWhiteSpace(_workspace) ? @"C:\GitHub\condor" : _workspace;
         var footer = workspace + "  ·  " + frame + _estado + "  ·  RAM " + (Environment.WorkingSet / (1024 * 1024)) + " MB";
-        sb.Append(EstadoColor(_estadoKind) + Clip(footer, _width - 2) + Ansi.Reset);
+        var shortcuts = "tab agentes  ctrl+p comandos";
+        sb.Append(EstadoColor(_estadoKind) + Clip(footer, Math.Max(1, _width - shortcuts.Length - 3)) + Ansi.Reset);
+        var shortcutsCol = Math.Max(1, _width - shortcuts.Length + 1);
+        sb.Append(Ansi.At(EstadoRow + 1, shortcutsCol));
+        sb.Append(Ansi.FgGris + shortcuts + Ansi.Reset);
     }
 
     private string EstadoColor(ActivityKind kind)

@@ -158,12 +158,9 @@ public static class CondorTui
             host.AddActivity("Modelo local listo: " + prep.Model, ActivityKind.System);
         }
 
-        if (prep.NeedsIntervention && !string.IsNullOrWhiteSpace(prep.Reason))
-        {
-            host.AddActivity(prep.Reason!.Trim(), ActivityKind.Warning);
-        }
-
-        host.AddActivity("Escribe lo que necesitas; Condor comprende, actua con herramientas reales y verifica.", ActivityKind.System);
+        host.AddActivity(
+            "Existen modelos locales, pero no se pueden cargar, libera RAM para cargar modelos más grandes cerrando aplicaciones/procesos de alto consumo; no es obligatorio para continuar.",
+            ActivityKind.Warning);
 
         // ---- Bucle principal: teclado + repintado por regiones ------------------
         Console.TreatControlCAsInput = true;
