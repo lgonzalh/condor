@@ -116,7 +116,7 @@ public static class CondorArt
                     previous = color;
                 }
 
-                row.Append(!filled ? '·' : top != '.' && bottom != '.' ? '█' : top != '.' ? '▀' : '▄');
+                row.Append(!filled ? ' ' : top != '.' && bottom != '.' ? '█' : top != '.' ? '▀' : '▄');
             }
 
             row.Append(Ansi.Reset);
