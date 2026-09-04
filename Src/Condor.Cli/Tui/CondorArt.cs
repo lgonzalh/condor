@@ -64,56 +64,32 @@ public static class CondorArt
 
     private static readonly string[] HeadRows =
     {
-        "   LLLLL",
-        "  LDDDDD",
-        "   DDD D",
-        "  LDDDDD",
-        " GGGGGDD",
-        " GGGGGDD",
-        "  LDDDDD",
-        "  LDDDDD"
+        "KKKLLLLK",
+        "KKLDDDDL",
+        "KKKDDDDL",
+        "KKLDDDDW",
+        "KGGGGDDL",
+        "KKLDDDDW",
+        "KKLDDDDW",
+        "KKLDDDDW"
     };
 
     private static string[] BuildHeadArt()
     {
-        // La referencia se concentra en cinco líneas terminales. La matriz lógica
-        // sigue siendo 8x8; dos píxeles verticales contiguos se consolidan en uno.
-        int[][] rowGroups = { [0, 1], [2], [3, 4], [5], [6, 7] };
-        var result = new string[rowGroups.Length];
+        // Cada pareja vertical de píxeles se convierte en una celda "▀":
+        // foreground para el píxel superior y background para el inferior.
+        // Así no se emiten espacios y la matriz 8x8 queda en cuatro líneas.
+        var result = new string[HeadRows.Length / 2];
         for (var y = 0; y < result.Length; y++)
         {
             var row = new System.Text.StringBuilder();
-            var previous = '\0';
-            for (var x = 0; x < HeadRows[0].Length; x++)
+            for (var x = 0; x < HeadRows[y * 2].Length; x++)
             {
-                var filledCount = 0;
-                var color = ' ';
-                foreach (var sourceRow in rowGroups[y])
-                {
-                    var candidate = HeadRows[sourceRow][x];
-                    if (candidate == ' ')
-                        continue;
-
-                    filledCount++;
-                    if (color == ' ' || candidate == 'G' || (candidate == 'D' && color == 'L'))
-                        color = candidate;
-                }
-
-                var filled = filledCount > 0;
-                if (color != previous)
-                {
-                    row.Append(color == ' ' ? Ansi.Reset : color switch
-                    {
-                        'L' => "\x1b[38;2;255;91;91m",
-                        'G' => "\x1b[38;2;100;100;115m",
-                        _ => "\x1b[38;2;205;83;98m"
-                    });
-                    previous = color;
-                }
-
-                // Dos píxeles verticales unidos forman un bloque grande; los bordes
-                // aislados conservan el cuadrado pequeño y las celdas vacías siguen vacías.
-                row.Append(!filled ? ' ' : filledCount >= 2 ? '█' : '▪');
+                var top = HeadRows[y * 2][x];
+                var bottom = HeadRows[y * 2 + 1][x];
+                row.Append(Color(top, background: false));
+                row.Append(Color(bottom, background: true));
+                row.Append('▀');
             }
 
             row.Append(Ansi.Reset);
@@ -121,6 +97,20 @@ public static class CondorArt
         }
 
         return result;
+    }
+
+    private static string Color(char color, bool background)
+    {
+        var (r, g, b) = color switch
+        {
+            'L' => (255, 91, 91),
+            'D' => (205, 83, 98),
+            'G' => (100, 100, 115),
+            'W' => (255, 255, 255),
+            _ => (0, 0, 0)
+        };
+
+        return $"\x1b[{(background ? 48 : 38)};2;{r};{g};{b}m";
     }
 
     /// <summary>Ancho visible maximo de la mascota pequena (Ave), sin SGR.</summary>
