@@ -92,10 +92,39 @@ public sealed class AgentService : IAgentService
         // caminos de fallo de seleccion y expone el motivo detallado.
         if (selection.Desired is null)
         {
-            // Sin modelo utilizable: fallo RAPIDO y controlado. NO se pregunta al
-            // usuario que libere memoria como mecanismo normal ni se entra en un
-            // loop de recuperacion oculto detras de "Verificando". Se expone el
-            // motivo real con detalle (modelo, RAM requerida, RAM disponible).
+            // CASO NUEVO: hay modelo activo en sesión, pero la tarea requiere
+            // un upgrade (modelo superior) que no cabe en el presupuesto actual.
+            // No bloqueamos Condor: informamos al usuario y mantenemos la sesión viva.
+            var currentActiveModel = _session?.ActiveModel;
+            var needsUpgradeButNoMemory = currentActiveModel is not null &&
+                selection.BlockedByResources;
+
+            if (needsUpgradeButNoMemory)
+            {
+                progress?.Report(AgentProgress.Of(
+                    AgentPhase.Verifying,
+                    message: "Memoria insuficiente para continuar con esta tarea.",
+                    resourceState: selection.Resources?.PressureLabel,
+                    availableGb: selection.Resources?.FreeGb,
+                    safeBudgetGb: selection.Budget?.BudgetGb,
+                    flag: ProgressFlag.Normal));
+
+                checkpoint.LastDecision = "memoria_insuficiente";
+                checkpoint.LastError = "Memoria insuficiente para el upgrade requerido.";
+
+                return new AgentResult
+                {
+                    Success = false,
+                    Reason = "Memoria insuficiente para continuar con esta tarea. Libera memoria y vuelve a intentarlo.",
+                    Model = currentActiveModel,
+                    Objective = intention,
+                    Steps = steps,
+                    Checkpoint = checkpoint,
+                    Inventory = await BuildInventoryAsync(selection, cancellationToken)
+                };
+            }
+
+            // Sin modelo utilizable en absoluto: fallo controlado honesto.
             progress?.Report(AgentProgress.Of(
                 AgentPhase.Verifying,
                 message: "Modelo no ejecutable por presupuesto de memoria.",
@@ -187,7 +216,7 @@ public sealed class AgentService : IAgentService
                     checkpoint.NextAction = "revisar";
                     progress?.Report(AgentProgress.Of(
                         AgentPhase.Verifying,
-                        message: "Modelo local · " + LlmOutcomeLabel(call.ProviderFailure.Value) + " · " + call.Error,
+                        message: "Modelo local Â· " + LlmOutcomeLabel(call.ProviderFailure.Value) + " Â· " + call.Error,
                         flag: ProgressFlag.ProviderError));
 
                     var recovered = await TryRecoverProviderAsync(model, messages, progress, timeoutCts.Token);
@@ -204,7 +233,7 @@ public sealed class AgentService : IAgentService
                             checkpoint.LastError = BuildProviderFailureReason(call.ProviderFailure.Value, call.Error);
                             progress?.Report(AgentProgress.Of(
                                 AgentPhase.Finalizing,
-                                message: "Modelo local no disponible tras reintentos · Condor detuvo la tarea",
+                                message: "Modelo local no disponible tras reintentos Â· Condor detuvo la tarea",
                                 flag: ProgressFlag.ProviderError));
                             return Fail(checkpoint.LastError, model, intention, steps, checkpoint);
                         }
@@ -223,7 +252,7 @@ public sealed class AgentService : IAgentService
                         checkpoint.LastError = BuildProviderFailureReason(call.ProviderFailure.Value, call.Error);
                         progress?.Report(AgentProgress.Of(
                             AgentPhase.Finalizing,
-                            message: "Modelo local no disponible · Condor detuvo la tarea",
+                            message: "Modelo local no disponible Â· Condor detuvo la tarea",
                             flag: ProgressFlag.ProviderError));
                         return Fail(checkpoint.LastError, model, intention, steps, checkpoint);
                     }
@@ -510,8 +539,41 @@ public sealed class AgentService : IAgentService
             cancellationToken: cancellationToken,
             currentModelName: _session?.ActiveModel);
 
-        if (selection.Desired is null)
+                if (selection.Desired is null)
         {
+            // CASO NUEVO: hay modelo activo en sesión, pero la tarea requiere
+            // un upgrade (modelo superior) que no cabe en el presupuesto actual.
+            // No bloqueamos Condor: informamos al usuario y mantenemos la sesión viva.
+            var currentActiveModel = _session?.ActiveModel;
+            var needsUpgradeButNoMemory = currentActiveModel is not null &&
+                selection.BlockedByResources;
+
+            if (needsUpgradeButNoMemory)
+            {
+                progress?.Report(AgentProgress.Of(
+                    AgentPhase.Verifying,
+                    message: "Memoria insuficiente para continuar con esta tarea.",
+                    resourceState: selection.Resources?.PressureLabel,
+                    availableGb: selection.Resources?.FreeGb,
+                    safeBudgetGb: selection.Budget?.BudgetGb,
+                    flag: ProgressFlag.Normal));
+
+                checkpoint.LastDecision = "memoria_insuficiente";
+                checkpoint.LastError = "Memoria insuficiente para el upgrade requerido.";
+
+                return new AgentResult
+                {
+                    Success = false,
+                    Reason = "Memoria insuficiente para continuar con esta tarea. Libera memoria y vuelve a intentarlo.",
+                    Model = currentActiveModel,
+                    Objective = intention,
+                    Steps = steps,
+                    Checkpoint = checkpoint,
+                    Inventory = await BuildInventoryAsync(selection, cancellationToken)
+                };
+            }
+
+            // Sin modelo utilizable en absoluto: fallo controlado honesto.
             progress?.Report(AgentProgress.Of(
                 AgentPhase.Verifying,
                 message: "Modelo no ejecutable por presupuesto de memoria.",
@@ -561,7 +623,7 @@ public sealed class AgentService : IAgentService
                 new LlmRequest
                 {
                     Model = model,
-                    Prompt = "Responde en español, de forma breve y natural, a esta consulta del usuario: " + intention,
+                    Prompt = "Responde en espaÃ±ol, de forma breve y natural, a esta consulta del usuario: " + intention,
                     Temperature = 0.2,
                     MaxTokens = 256
                 },
@@ -580,7 +642,7 @@ public sealed class AgentService : IAgentService
                 response.Error ?? "El modelo no devolvio una respuesta util.");
             progress?.Report(AgentProgress.Of(
                 AgentPhase.Verifying,
-                message: "Modelo local · " + checkpoint.LastError,
+                message: "Modelo local Â· " + checkpoint.LastError,
                 flag: ProgressFlag.ProviderError));
             return Fail(checkpoint.LastError, model, intention, steps, checkpoint);
         }
@@ -990,7 +1052,7 @@ public sealed class AgentService : IAgentService
         sb.AppendLine("Motivo: presupuesto de memoria insuficiente.");
         if (budget is not null && budget.IsBudgeted)
         {
-            sb.AppendLine("Presupuesto permitido: " + budget.BudgetGb.ToString("0.0") + " GB · reserva operativa: " + budget.ReserveGb.ToString("0.0") + " GB.");
+            sb.AppendLine("Presupuesto permitido: " + budget.BudgetGb.ToString("0.0") + " GB Â· reserva operativa: " + budget.ReserveGb.ToString("0.0") + " GB.");
         }
         else if (resources is not null)
         {
@@ -1071,7 +1133,7 @@ public sealed class AgentService : IAgentService
                     if (!string.IsNullOrWhiteSpace(cpu.Name)) parts.Add(cpu.Name);
                     if (cpu.Cores > 0) parts.Add(cpu.Cores + " nucleos");
                     if (cpu.LogicalProcessors > 0) parts.Add(cpu.LogicalProcessors + " hebras");
-                    inventory.Cpu = parts.Count > 0 ? string.Join(" · ", parts) : null;
+                    inventory.Cpu = parts.Count > 0 ? string.Join(" Â· ", parts) : null;
                 }
             }
             catch { /* CPU opcional */ }
@@ -1119,7 +1181,7 @@ public sealed class AgentService : IAgentService
             return;
         }
 
-        var builder = new System.Text.StringBuilder("Presion de memoria: " + snapshot.FreeGb + " GB libres · estado " + snapshot.PressureLabel + ".");
+        var builder = new System.Text.StringBuilder("Presion de memoria: " + snapshot.FreeGb + " GB libres Â· estado " + snapshot.PressureLabel + ".");
         builder.Append(" Condor reducira temporalmente su carga.");
 
         if (snapshot.TopConsumers.Count > 0)
@@ -1160,5 +1222,6 @@ public sealed class AgentService : IAgentService
     private static AgentResult Fail(string reason, string model, string objective, List<AgentStep> steps, AgentCheckpoint checkpoint)
         => new() { Success = false, Reason = reason, Model = model, Objective = objective, Steps = steps, Checkpoint = checkpoint };
 
-    private static string Truncate(string s) => s is { Length: > 2000 } ? s.Substring(0, 2000) + " …" : (s ?? "");
+    private static string Truncate(string s) => s is { Length: > 2000 } ? s.Substring(0, 2000) + " â€¦" : (s ?? "");
 }
+
