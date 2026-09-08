@@ -136,7 +136,7 @@ public class ModelSelectorReproTests
     }
 
     [Fact]
-    public void SesionEn05BConMemoriaLibre_PromocionaSoloAlSiguienteNivel()
+    public void SesionEn05BConMemoriaLibre_PromocionaAlModeloSuficienteParaMultiFile()
     {
         var assessment = Assessment("qwen2.5-coder:0.5b", ramTotalGb: 16, ramFreeGb: 8);
         var requirement = TaskIntentClassifier.Classify("analiza el proyecto");
@@ -149,9 +149,8 @@ public class ModelSelectorReproTests
             currentModelName: "qwen2.5-coder:0.5b");
 
         Assert.NotNull(r.Desired);
-        Assert.Equal("qwen2.5-coder:1.5b", r.Desired.PullName);
-        Assert.DoesNotContain("3b", r.Desired.PullName, System.StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("siguiente nivel", r.Reason, System.StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("qwen2.5-coder:3b", r.Desired.PullName);
+        Assert.Contains("3b", r.Desired.PullName, System.StringComparison.OrdinalIgnoreCase);
     }
 
     private static void AssertElected(double ramFreeGb, string expected)
@@ -192,6 +191,240 @@ public class ModelSelectorReproTests
                     }
                 }
             }
+        };
+    }
+
+    /// <summary>
+    /// Escenario obligatorio del usuario:
+    /// Estado A: ActiveModel = 0.5b, 1.5b no cabe, presupuesto = Y, RAM = X
+    ///   → permanecer en 0.5b (conditionsImproved = false, lastSelectionBudgetGb = Y)
+    /// Nueva tarea con las mismas condiciones:
+    ///   → permanecer en 0.5b, NO intentar 1.5b
+    /// Luego el usuario libera RAM:
+    ///   → detectar que las condiciones cambiaron (RAM aumentó)
+    ///   → reevaluar
+    ///   → si 1.5b cabe, promocionar a 1.5b
+    /// </summary>
+    [Fact]
+    public void EscenarioObligatorio_EstabilidadYSuperaConMejoraDeRAM()
+    {
+        // Estado A: 0.5b activo, RAM insuficiente para 1.5b
+        // 1.5b pico ~1.1 GB, headroom = 4 - 1.5 - 1.5 - 1.5 = -0.5 → no cabe
+        var requirement = TaskIntentClassifier.Classify("hola");
+        var assessmentA = FullAssessment(
+            installedModels: new[] { "qwen2.5-coder:0.5b", "qwen2.5-coder:1.5b" },
+            ramTotalGb: 16, ramFreeGb: 4.0);
+
+        var rA = ModelSelector.SelectForTask(
+            assessmentA,
+            ModelCatalog.Default,
+            requirement,
+            BudgetPolicy.Default,
+            currentModelName: "qwen2.5-coder:0.5b",
+            lastSelectionBudgetGb: 0); // Sin historial previo = primera seleccion
+
+        // Primera seleccion: 0.5b es suficiente (Consult, no requiere coding), y está instalado
+        Assert.NotNull(rA.Desired);
+        Assert.Equal("qwen2.5-coder:0.5b", rA.Desired.PullName);
+
+        var initialBudgetGb = rA.Budget?.BudgetGb ?? 0;
+        var initialFreeRamGb = rA.Resources?.FreeGb ?? 0;
+
+        // Nueva tarea con las mismas condiciones (misma RAM, mismo presupuesto)
+        var rB = ModelSelector.SelectForTask(
+            assessmentA,
+            ModelCatalog.Default,
+            requirement,
+            BudgetPolicy.Default,
+            currentModelName: "qwen2.5-coder:0.5b",
+            lastSelectionBudgetGb: initialBudgetGb,
+            lastSelectionFreeRamGb: initialFreeRamGb);
+
+        // MISMA condición: no hay mejora → permanecer en 0.5b, NO promocionar a 1.5b
+        Assert.NotNull(rB.Desired);
+        Assert.Equal("qwen2.5-coder:0.5b", rB.Desired.PullName);
+        Assert.Contains("presupuesto y RAM sin mejora", rB.Reason, System.StringComparison.OrdinalIgnoreCase);
+
+        // Ahora el usuario libera RAM. El presupuesto y la RAM disponible aumentan.
+        var assessmentC = FullAssessment(
+            installedModels: new[] { "qwen2.5-coder:0.5b", "qwen2.5-coder:1.5b" },
+            ramTotalGb: 16, ramFreeGb: 8.0); // RAM libre aumentó de 4.0 a 8.0
+
+        var rC = ModelSelector.SelectForTask(
+            assessmentC,
+            ModelCatalog.Default,
+            requirement,
+            BudgetPolicy.Default,
+            currentModelName: "qwen2.5-coder:0.5b",
+            lastSelectionBudgetGb: initialBudgetGb,
+            lastSelectionFreeRamGb: initialFreeRamGb);
+
+        // Condiciones mejoraron (RAM aumentó de 4.0 a 8.0 GB) → promocionar a 1.5b (siguiente nivel)
+        Assert.NotNull(rC.Desired);
+        Assert.Equal("qwen2.5-coder:1.5b", rC.Desired.PullName);
+        Assert.Contains("mejora", rC.Reason, System.StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Escenario: promoción debe ser solo al siguiente nivel (0.5b → 1.5b, no 0.5b → 3b)
+    /// aunque 3b también quepa con la nueva RAM.
+    /// </summary>
+    [Fact]
+    public void PromocionSiempreAlSiguienteNivel_NoSaltaNiveles()
+    {
+        var requirement = new TaskModelRequirement
+        {
+            IntentKind = TaskIntentKinds.Agent,
+            RequiredCodingLevel = 0,
+            RequiredMultiFileLevel = 0,
+            RequiresToolUse = true,
+            RequiresStructuredOutput = true,
+            PreferSmallestSufficient = true,
+            Label = "consulta simple"
+        };
+
+        // Estado A: 0.5b activo, RAM baja
+        var assessmentA = FullAssessment(
+            installedModels: new[] { "qwen2.5-coder:0.5b", "qwen2.5-coder:1.5b", "qwen2.5-coder:3b" },
+            ramTotalGb: 16, ramFreeGb: 4.0);
+
+        var rA = ModelSelector.SelectForTask(
+            assessmentA, ModelCatalog.Default, requirement, BudgetPolicy.Default,
+            currentModelName: "qwen2.5-coder:0.5b");
+
+        Assert.Equal("qwen2.5-coder:0.5b", rA.Desired?.PullName);
+
+        var initialBudget = rA.Budget?.BudgetGb ?? 0;
+        var initialFreeRam = rA.Resources?.FreeGb ?? 0;
+
+        // Estado B: RAM liberada, ahora 3b también cabría, pero solo debe promocionar a 1.5b
+        var assessmentB = FullAssessment(
+            installedModels: new[] { "qwen2.5-coder:0.5b", "qwen2.5-coder:1.5b", "qwen2.5-coder:3b" },
+            ramTotalGb: 16, ramFreeGb: 8.0);
+
+        var rB = ModelSelector.SelectForTask(
+            assessmentB, ModelCatalog.Default, requirement, BudgetPolicy.Default,
+            currentModelName: "qwen2.5-coder:0.5b",
+            lastSelectionBudgetGb: initialBudget,
+            lastSelectionFreeRamGb: initialFreeRam);
+
+        // Debe promocionar solo a 1.5b (el siguiente nivel), NUNCA directamente a 3b
+        Assert.Equal("qwen2.5-coder:1.5b", rB.Desired?.PullName);
+    }
+
+    /// <summary>
+    /// Escenario: cuando el presupuesto NO cambia pero la RAM libre aumenta
+    /// (caso edge con OperatingMargin variable), se detecta la mejora por la
+    /// RAM disponible y se permite la promoción.
+    /// </summary>
+    [Fact]
+    public void MejoraDeRAMDetectadaInclusoCuandoPresupuestoIgual()
+    {
+        var requirement = TaskIntentClassifier.Classify("hola");
+
+        // Estado A: 16GB total, 4GB libre
+        // OperatingMargin = max(1.5, min(3.0, 16*0.08=1.28)) = 1.5
+        // budget = 4 - 1.5 - 1.5 - 1.5 = -0.5 → no budgeted
+        // Pero para Consult se usa AssessForSmallModel:
+        // budget = 4 - 1.0 - 0.5 - 0.5 = 2.0 GB
+        var assessmentA = FullAssessment(
+            installedModels: new[] { "qwen2.5-coder:0.5b", "qwen2.5-coder:1.5b" },
+            ramTotalGb: 16, ramFreeGb: 4.0);
+
+        var rA = ModelSelector.SelectForTask(
+            assessmentA, ModelCatalog.Default, requirement, BudgetPolicy.Default,
+            currentModelName: "qwen2.5-coder:0.5b");
+
+        Assert.Equal("qwen2.5-coder:0.5b", rA.Desired?.PullName);
+        var initialBudget = rA.Budget?.BudgetGb ?? 0;
+        var initialFreeRam = rA.Resources?.FreeGb ?? 0;
+
+        // Estado B: RAM libre aumenta a 8GB (budget también aumenta de 2.0 a 6.0)
+        var assessmentB = FullAssessment(
+            installedModels: new[] { "qwen2.5-coder:0.5b", "qwen2.5-coder:1.5b" },
+            ramTotalGb: 16, ramFreeGb: 8.0);
+
+        var rB = ModelSelector.SelectForTask(
+            assessmentB, ModelCatalog.Default, requirement, BudgetPolicy.Default,
+            currentModelName: "qwen2.5-coder:0.5b",
+            lastSelectionBudgetGb: initialBudget,
+            lastSelectionFreeRamGb: initialFreeRam);
+
+        // Tanto budget como RAM libre aumentaron → promocionar a 1.5b
+        Assert.Equal("qwen2.5-coder:1.5b", rB.Desired?.PullName);
+    }
+
+    /// <summary>
+    /// Escenario: ActiveModel insuficiente para la tarea. El modelo activo no
+    /// es suficiente, por lo que no se hace early return; se procede a la selección
+    /// normal. MinimumViable nunca debe convertirse automáticamente en ActiveModel.
+    /// </summary>
+    [Fact]
+    public void ActiveModelInsuficiente_NoEarlyReturn_SeleccionNormal()
+    {
+        // 0.5b instado (ActiveModel) pero tarea requiere CodingLevel=3
+        // 0.5b tiene CodingLevel=1 → NO suficiente → no hay early return
+        var requirement = TaskIntentClassifier.Classify("analiza el proyecto");
+        Assert.Equal(TaskIntentKinds.Agent, requirement.IntentKind);
+
+        var assessment = FullAssessment(
+            installedModels: new[] { "qwen2.5-coder:0.5b", "qwen2.5-coder:1.5b", "qwen2.5-coder:3b" },
+            ramTotalGb: 16, ramFreeGb: 8.0);
+
+        var r = ModelSelector.SelectForTask(
+            assessment, ModelCatalog.Default, requirement, BudgetPolicy.Default,
+            currentModelName: "qwen2.5-coder:0.5b");
+
+        // El 0.5b no es suficiente para task agente (CodingLevel 1 < 3)
+        // Normal selection should pick 3b (smallest sufficient that fits)
+        Assert.NotNull(r.Desired);
+        Assert.Equal("qwen2.5-coder:3b", r.Desired.PullName);
+    }
+
+    private static AssessmentResult FullAssessment(string[] installedModels, double ramTotalGb, double ramFreeGb)
+    {
+        var TotalBytes = (long)(ramTotalGb * 1024d * 1024 * 1024);
+        var FreeBytes = (long)(ramFreeGb * 1024d * 1024 * 1024);
+        return new AssessmentResult
+        {
+            Environment = new EnvironmentProfile
+            {
+                Memory = new MemoryInfo
+                {
+                    Status = DetectionStatus.Detected,
+                    TotalBytes = TotalBytes,
+                    FreeBytes = FreeBytes,
+                    AvailableBytes = FreeBytes
+                }
+            },
+            Tools = new ToolsProfile
+            {
+                Ollama = new OllamaStatus
+                {
+                    Installed = true,
+                    ServerRunning = true,
+                    Models = new List<ModelInfo>(
+                        installedModels.Select(name => new ModelInfo
+                        {
+                            Name = name,
+                            SizeBytes = GetModelSizeBytes(name),
+                            Capabilities = new List<string> { "completion", "tool-use", "structured-output", "coding" }
+                        }))
+                }
+            },
+            Capabilities = new CapabilitiesSummary { ModelsCount = installedModels.Length, OllamaReady = true }
+        };
+    }
+
+    private static long GetModelSizeBytes(string name)
+    {
+        return name switch
+        {
+            "qwen2.5-coder:0.5b" => 397L * 1024 * 1024,
+            "qwen2.5-coder:1.5b" => 986L * 1024 * 1024,
+            "qwen2.5-coder:3b" => 1848L * 1024 * 1024,
+            "qwen2.5-coder:7b" => 4706L * 1024 * 1024,
+            _ => 1848L * 1024 * 1024
         };
     }
 }

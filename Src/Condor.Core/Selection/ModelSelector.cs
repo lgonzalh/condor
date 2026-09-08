@@ -260,20 +260,22 @@ public static class ModelSelector
     ///   1. Evalua el presupuesto real (stock - reservas - margen) con la politica.
     ///   2. Filtra el catalogo por SUFICIENCIA funcional para el requisito de la tarea.
     ///   3. Entre los suficientes dentro del presupuesto, elige el MENOR suficiente
-    ///      (eficiencia) que deje margen operativo (1−).
+    ///      (eficiencia) que deje margen operativo (1ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¹ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢).
     ///   4. Determina el siguiente candidato razonable para cuando aumente el presupuesto (1+).
     ///   5. Considera los modelos INSTALADOS del usuario como candidatos validos,
     ///      aunque no sean la primera opcion del catalogo.
     ///
     /// Conserva la compatibilidad con la seleccion clasica; esta entrada enriquece
-    /// con 1−, 1+, presupuesto, reserva e insuficientes. Es una funcion pura (sin IO).
+    /// con 1ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¹ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢, 1+, presupuesto, reserva e insuficientes. Es una funcion pura (sin IO).
     /// </summary>
     public static ModelSelectionResult SelectForTask(
         AssessmentResult? assessment,
         IReadOnlyList<ModelCandidate> catalog,
         TaskModelRequirement requirement,
         BudgetPolicy policy,
-        string? currentModelName = null)
+        string? currentModelName = null,
+        double lastSelectionBudgetGb = 0,
+        double lastSelectionFreeRamGb = 0)
     {
         var result = new ModelSelectionResult { Requirement = requirement };
 
@@ -298,6 +300,61 @@ public static class ModelSelector
         var current = FindCatalogModel(catalog, currentModelName);
         var immediateUpgrade = FindImmediateUpgrade(catalog, current);
 
+        // Check if active model is sufficient and installed
+        // Rule: ActiveModel stays stable while sufficient AND conditions haven't improved
+        // Rule: Promotion only happens if there's a REAL improvement in budget/RAM
+        // Rule: New task start alone does NOT constitute a condition change
+        // Rule: Promotion is always only to the next tier (immediate upgrade)
+        // Rule: If next tier doesn't fit, stay on ActiveModel
+        // Rule: Detect improvement by comparing BOTH budget AND free RAM
+        //   - Budget increase: headroom grew
+        //   - Free RAM increase: memory was freed (may not affect budget in edge cases)
+        var currentBudgetGb = budget?.BudgetGb ?? 0;
+        // Use the rounded FreeGb from Resources (same as what gets stored/persisted)
+        var currentFreeRamGb = result.Resources?.FreeGb ?? 0;
+        var budgetImproved = lastSelectionBudgetGb > 0 && currentBudgetGb > lastSelectionBudgetGb + 0.01;
+        var freeRamImproved = lastSelectionFreeRamGb > 0 && currentFreeRamGb > lastSelectionFreeRamGb + 0.01;
+        var conditionsImproved = budgetImproved || freeRamImproved;
+
+        if (current is not null &&
+            ModelEfficiencyEvaluator.IsSufficient(current, requirement) &&
+            (installed.Contains(current.Name) || installed.Contains(current.PullName)))
+        {
+            if (!conditionsImproved)
+            {
+                // Conditions haven't improved - stay on current model
+                result.Desired = current;
+                result.NodeInCurrent = current;
+                result.AlreadyInstalled = true;
+                result.InstalledName = current.PullName;
+                result.Reason = "Modelo activo actual suficiente para la tarea; presupuesto y RAM sin mejora.";
+                return result;
+            }
+
+            // Conditions improved (budget and/or RAM) - check if immediate upgrade (next tier) fits and is sufficient
+            if (immediateUpgrade is not null &&
+                ModelEfficiencyEvaluator.IsSufficient(immediateUpgrade, requirement) &&
+                CanUse(immediateUpgrade, budget))
+            {
+                // Promote to immediate upgrade (next tier only)
+                result.NodeInCurrent = immediateUpgrade;
+                result.Desired = immediateUpgrade;
+                result.AlreadyInstalled = installed.Contains(immediateUpgrade.Name) || installed.Contains(immediateUpgrade.PullName);
+                result.InstalledName = immediateUpgrade.PullName;
+                result.NextCandidate = FindImmediateUpgrade(catalog, immediateUpgrade);
+                result.Reason = "Promocion por mejora de recursos: la memoria permite el siguiente nivel " + immediateUpgrade.PullName + " sin saltar modelos.";
+                return result;
+            }
+
+            // Conditions improved but immediate upgrade doesn't fit - stay on current model
+            result.Desired = current;
+            result.NodeInCurrent = current;
+            result.AlreadyInstalled = true;
+            result.InstalledName = current.PullName;
+            result.Reason = "Modelo activo actual suficiente; el siguiente nivel no cabe pese a mejora de recursos.";
+            return result;
+        }
+
         // Candidatos del catalogo suficientes para la tarea y dentro del presupuesto.
         var candidates = new List<(ModelCandidate c, double peak, bool installed)>();
         foreach (var c in catalog)
@@ -315,7 +372,7 @@ public static class ModelSelector
         }
 
         // Ordenar por eficiencia: menor coste primero; desempate por menor peso.
-        // El menor suficiente y viable es el 1− por defecto (eficiencia > tamaño).
+        // El menor suficiente y viable es el 1ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¹ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ por defecto (eficiencia > tamaÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â±o).
         var viable = candidates
             .Where(x => budget.IsBudgeted && budget.Admits(x.peak) && ModelEfficiencyEvaluator.LeavesMargin(x.c, budget))
             .OrderBy(x => x.peak)
@@ -342,7 +399,7 @@ public static class ModelSelector
             }
         }
 
-        // 1− : menor suficiente viable dentro del presupuesto con margen.
+        // 1ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¹ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ : menor suficiente viable dentro del presupuesto con margen.
         var node = viable.FirstOrDefault();
         if (node.c is not null)
         {
@@ -369,37 +426,8 @@ public static class ModelSelector
             }
         }
 
-        // Continuidad de sesion: si el modelo activo es menor y ya hay memoria
-        // suficiente para el siguiente nivel, se usa ese nivel exacto. Esto
-        // evita que una reevaluacion salte de 0.5B directamente a 3B/7B. Para
-        // tareas de ingenieria se conserva la progresion de modelo del usuario;
-        // la memoria sigue siendo la condicion de seguridad.
-        if (current is not null && immediateUpgrade is not null)
-        {
-            var transitionBudget = budget;
-            if (!CanUse(immediateUpgrade, transitionBudget))
-            {
-                transitionBudget = policy.AssessForSmallModel(memory);
-            }
-
-            if (CanUse(immediateUpgrade, transitionBudget) &&
-                (node.c is null ||
-                 node.c.Name.Equals(current.Name, StringComparison.OrdinalIgnoreCase) ||
-                 ModelEfficiencyEvaluator.PeakGb(node.c) > ModelEfficiencyEvaluator.PeakGb(immediateUpgrade) + 0.01))
-            {
-                result.Budget = transitionBudget;
-                budget = transitionBudget;
-                result.NodeInCurrent = immediateUpgrade;
-                result.Desired = immediateUpgrade;
-                result.AlreadyInstalled = installed.Contains(immediateUpgrade.Name) || installed.Contains(immediateUpgrade.PullName);
-                result.InstalledName = immediateUpgrade.PullName;
-                result.NextCandidate = FindImmediateUpgrade(catalog, immediateUpgrade);
-                result.Reason = "Continuidad de sesion: la memoria permite el siguiente nivel " + immediateUpgrade.PullName + " sin saltar modelos.";
-            }
-        }
-
         // Modelo instalado del usuario NO en catalogo: considerarlo candidato si es
-        // suficiente y cabe; lo usamos como 1−/desired cuando el catalogo no aporta.
+        // suficiente y cabe; lo usamos como 1ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¹ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢/desired cuando el catalogo no aporta.
         if (node.c is null && result.Desired is null)
         {
             var userInstalled = ConsiderUserInstalledModel(assessment, requirement, budget);

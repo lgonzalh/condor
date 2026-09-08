@@ -145,7 +145,7 @@ public sealed class ModelAutoSetupService : IModelAutoSetupService
         return selection;
     }
 
-    /// <summary>
+/// <summary>
     /// Seleccion inteligente por TAREA + presupuesto (harness dinamico). Usa la
     /// politico de reserva, el requisito de la tarea y la eficiencia (1- y 1+).
     /// </summary>
@@ -153,7 +153,9 @@ public sealed class ModelAutoSetupService : IModelAutoSetupService
         TaskModelRequirement requirement,
         CancellationToken cancellationToken = default,
         IStartupProgressObserver? progress = null,
-        string? currentModelName = null)
+        string? currentModelName = null,
+        double lastSelectionBudgetGb = 0,
+        double lastSelectionFreeRamGb = 0)
     {
         var assessment = await LoadAuthoritativeAssessmentAsync(
             await _stateStore.LoadAssessmentAsync(cancellationToken), cancellationToken);
@@ -163,7 +165,9 @@ public sealed class ModelAutoSetupService : IModelAutoSetupService
             ModelCatalog.Default,
             requirement,
             BudgetPolicy.Default,
-            currentModelName);
+            currentModelName,
+            lastSelectionBudgetGb,
+            lastSelectionFreeRamGb);
 
         if (selection.Desired is null)
         {

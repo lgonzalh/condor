@@ -80,12 +80,23 @@ public sealed class AgentService : IAgentService
             return await RunDirectConsultAsync(intention, requirement, progress, cancellationToken);
         }
 
-        // Seleccion automatica del modelo (harness dinamico por tarea + presupuesto).
+// Seleccion automatica del modelo (harness dinamico por tarea + presupuesto).
         var modelSetup = CreateModelSetup();
+        var lastBudgetGb = _session?.LastSelectionBudgetGb ?? 0;
+        var lastFreeRamGb = _session?.LastSelectionFreeRamGb ?? 0;
         var selection = await modelSetup.EnsureModelForRequirementAsync(
             requirement,
             cancellationToken: cancellationToken,
-            currentModelName: _session?.ActiveModel);
+            currentModelName: _session?.ActiveModel,
+            lastSelectionBudgetGb: lastBudgetGb,
+            lastSelectionFreeRamGb: lastFreeRamGb);
+
+        // Actualizar el presupuesto y RAM de la ultima seleccion en la sesion
+        if (_session is not null && selection.Budget is not null)
+        {
+            _session.LastSelectionBudgetGb = selection.Budget.BudgetGb;
+            _session.LastSelectionFreeRamGb = selection.Resources?.FreeGb ?? 0;
+        }
 
         // SelectForTask siempre marca BlockedByResources=true cuando Desired es null
         // (viable vacio o presupuesto insuficiente); este caso cubre todos los
@@ -533,13 +544,24 @@ public sealed class AgentService : IAgentService
         };
         var steps = new List<AgentStep>();
 
-        var modelSetup = CreateModelSetup();
+var modelSetup = CreateModelSetup();
+        var lastBudgetGb = _session?.LastSelectionBudgetGb ?? 0;
+        var lastFreeRamGb = _session?.LastSelectionFreeRamGb ?? 0;
         var selection = await modelSetup.EnsureModelForRequirementAsync(
             requirement,
             cancellationToken: cancellationToken,
-            currentModelName: _session?.ActiveModel);
+            currentModelName: _session?.ActiveModel,
+            lastSelectionBudgetGb: lastBudgetGb,
+            lastSelectionFreeRamGb: lastFreeRamGb);
 
-                if (selection.Desired is null)
+        // Actualizar el presupuesto y RAM de la ultima seleccion en la sesion
+        if (_session is not null && selection.Budget is not null)
+        {
+            _session.LastSelectionBudgetGb = selection.Budget.BudgetGb;
+            _session.LastSelectionFreeRamGb = selection.Resources?.FreeGb ?? 0;
+        }
+
+        if (selection.Desired is null)
         {
             // CASO NUEVO: hay modelo activo en sesión, pero la tarea requiere
             // un upgrade (modelo superior) que no cabe en el presupuesto actual.

@@ -27,6 +27,8 @@ public sealed class LocalModelSession : ILlmProviderLifecycle, IDisposable
     private readonly HttpClient _http;
     private readonly OllamaClient _llm;
     private string? _activeModel;
+    private double _lastSelectionBudgetGb;
+    private double _lastSelectionFreeRamGb;
     private bool _released;
     private bool _disposed;
 
@@ -55,6 +57,20 @@ public sealed class LocalModelSession : ILlmProviderLifecycle, IDisposable
     public string? ActiveModel
     {
         get { lock (_gate) return _activeModel; }
+    }
+
+    /// <summary>Presupuesto de la ultima seleccion de modelo (GB). Se usa para detectar mejora real de condiciones.</summary>
+    public double LastSelectionBudgetGb
+    {
+        get { lock (_gate) return _lastSelectionBudgetGb; }
+        set { lock (_gate) _lastSelectionBudgetGb = value; }
+    }
+
+    /// <summary>RAM disponible al momento de la ultima seleccion de modelo (GB). Se usa para detectar mejora real de recursos.</summary>
+    public double LastSelectionFreeRamGb
+    {
+        get { lock (_gate) return _lastSelectionFreeRamGb; }
+        set { lock (_gate) _lastSelectionFreeRamGb = value; }
     }
 
     public async Task<bool> EnsureAvailableAsync(string model, CancellationToken cancellationToken = default)
