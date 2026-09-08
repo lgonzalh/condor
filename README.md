@@ -1,6 +1,6 @@
 # Cóndor
 
-<img width="1095" height="547" alt="condor" src="https://github.com/user-attachments/assets/64de2b9c-a3ac-4bbd-ba0d-cd67a8c404e7" />
+<img width="1480" height="759" alt="condor" src="https://github.com/user-attachments/assets/c84bff94-5a19-404f-b881-e60f43b45233" />
 
 > **Observa · Comprende · Planifica · Construye · Verifica**
 
