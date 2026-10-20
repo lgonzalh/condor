@@ -43,17 +43,18 @@ public enum ActivityKind
 ///
 /// Estructura (sesion):
 ///
-///   CONDOR  v1.0 · build interno X        Hecho en Colombia · Modo Local 100% [· modelo]
-///   [ Condor Ave V16 a la derecha ]
+///   [ Condor Ave compacta ]  CONDOR  v1.0 · build interno X
+///                            Observa · Comprende · Planifica · Construye · Verifica
+///                            Hecho en Colombia · Modo Local 100%  [· modelo real]
+///                            ©Condor 2026
 ///   ── Actividad del agente ────────────────────────────────
 ///   (historial vivo de la conversacion y la actividad)
-///   ── Observa · Comprende · Planifica · Construye · Verifica ──
 ///   &gt; ¿que deseas construir...?
-///   (barra de estado: workspace | modelo | estado | version)
+///   (barra de estado: workspace | estado | RAM)
 ///
-/// La identidad institucional y el modelo REAL seleccionado comparten UNA sola
-/// linea superior, fuera del area de la mascota; "Modo Local 100%" aparece una
-/// unica vez en la cabecera. Si el modelo cambia, la linea se actualiza sola.
+/// La identidad institucional y el modelo REAL seleccionado comparten la linea
+/// de identidad de la cabecera, fuera del area del arte; "Modo Local 100%"
+/// aparece una unica vez. Si el modelo cambia, la linea se actualiza sola.
 /// </summary>
 public sealed class TuiHost : IDisposable
 {

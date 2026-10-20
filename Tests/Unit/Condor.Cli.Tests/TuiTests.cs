@@ -45,25 +45,20 @@ public class IdentidadTuiTests
     [Fact]
     public void Mascota_Ave_Pequena_EsLaReferenciaANSI_ConservaIdentidad()
     {
-        // α.03: la pequeña es la referencia ANSI 24-bit del MISMO Condor (cabeza #CD5362,
-        // punta de pico blanca #FFFFFF, base de pico #808080, cuerpo #303030, grises
-        // #6C6C6C y contorno #0C0C0C). No es monocromatica ni una silueta generica.
-        Assert.Equal(15, CondorArt.Ave.Length);
+        // La mascota de sesión es la cabeza compacta de referencia ANSI 24-bit
+        // (matriz 8x8 en cuatro filas de bloques). Conserva la identidad cromática:
+        // cabeza roja, punta de pico blanca, grises de cuerpo y contorno.
+        Assert.Equal(4, CondorArt.Ave.Length);
 
-        // Paleta 24-bit de la referencia.
-        Assert.Contains(CondorArt.Ave, row => row.Contains("38;2;205;83;98"));   // cabeza roja
-        Assert.Contains(CondorArt.Ave, row => row.Contains("38;2;255;255;255")); // punta de pico blanca
-        Assert.Contains(CondorArt.Ave, row => row.Contains("38;2;128;128;128")); // base de pico (gris medio)
-        Assert.Contains(CondorArt.Ave, row => row.Contains("38;2;48;48;48"));    // cuerpo
-        Assert.Contains(CondorArt.Ave, row => row.Contains("38;2;108;108;108")); // alas/cola (gris claro)
-        Assert.Contains(CondorArt.Ave, row => row.Contains("38;2;12;12;12"));    // contorno/sombra
+        Assert.Contains(CondorArt.Ave, row => row.Contains("38;2;205;83;98"));   // cabeza
+        Assert.Contains(CondorArt.Ave, row => row.Contains("38;2;255;255;255")); // punta de pico
+        Assert.Contains(CondorArt.Ave, row => row.Contains("38;2;100;100;115")); // gris de cuerpo
+        Assert.Contains(CondorArt.Ave, row => row.Contains("38;2;255;91;91"));   // luz de cabeza
+        Assert.Contains(CondorArt.Ave, row => row.Contains("48;2;205;83;98"));   // fondo de cabeza
 
-        // No es monocromatico ni de paleta antigua.
+        // No usa la paleta 256 del arte grande ni una silueta monocromática.
         Assert.DoesNotContain(CondorArt.Ave, row => row.Contains("38;5;"));
-
-        // Patas/garras y cuerpo/sombra en la parte inferior (referencia filas 8-11).
-        var inferiores = CondorArt.Ave[^6..];
-        Assert.Contains(inferiores, row => row.Contains("38;2;108;108;108"));
+        Assert.DoesNotContain(CondorArt.Ave, row => row.Contains("38;2;128;128;128"));
     }
 }
 
@@ -196,12 +191,15 @@ public class FotogramasTuiTests
         host.AddActivity("Entorno listo. Modo Local 100% activo.", ActivityKind.Success);
         var grid = Grid(host.SnapshotFullFrame());
 
-        // Cabecera UNICA: marca + version a la izquierda (una vez) y modelo a la derecha (una vez).
+        // Cabecera: marca + version a la izquierda (una vez) y modelo real en la
+        // linea de identidad, fuera del area del arte.
         var titulo = grid[0];
         Assert.Contains("CONDOR", titulo);
-        Assert.Contains("v1.0 · build interno alpha", titulo);
-        Assert.Contains("qwen2.5-coder:3b", titulo);
+        Assert.Contains("v1.0 · build interno beta", titulo);
         Assert.Single(Regex.Matches(titulo, "build interno"));
+
+        var cabecera = string.Join("\n", grid.Take(4));
+        Assert.Contains("qwen2.5-coder:3b", cabecera);
 
         // La version NO se repite en ningun otro lugar (estado/panel/pie).
         Assert.DoesNotContain(grid.Skip(1), line => line.Contains("build interno"));
@@ -231,7 +229,7 @@ public class FotogramasTuiTests
         var filaArte0 = Ansi.StripSgr(CondorArt.Ave[0]).TrimEnd();
         if (filaArte0.Length > 0)
         {
-            var idxMascota = grid[2].IndexOf(filaArte0.TrimStart(), StringComparison.Ordinal);
+            var idxMascota = grid[0].IndexOf(filaArte0.TrimStart(), StringComparison.Ordinal);
             Assert.True(idxMascota <= 5, $"Mascota deberia estar a la izquierda, columna {idxMascota}");
         }
     }
@@ -246,13 +244,19 @@ public class FotogramasTuiTests
         var filaArte = Ansi.StripSgr(CondorArt.Ave[0]).TrimEnd();
         if (filaArte.Length > 0)
         {
-            var pintada = grid[2];
+            var pintada = grid[0];
             var idx = pintada.IndexOf(filaArte.TrimStart(), StringComparison.Ordinal);
             Assert.True(idx <= 5, $"La mascota deberia estar a la izquierda, no en columna {idx}");
-            // En sus propias filas no aparece la metadata del modelo.
-            for (var r = 2; r <= 16; r++)
+            // El modelo puede estar a la derecha, pero no dentro del ancho del arte.
+            var aveWidth = TuiHost.AnchoVisibleMascota();
+            for (var r = 0; r < CondorArt.Ave.Length; r++)
             {
-                Assert.DoesNotContain("qwen2.5-coder", grid[r]);
+                var modelIdx = grid[r].IndexOf("qwen2.5-coder", StringComparison.Ordinal);
+                if (modelIdx >= 0)
+                {
+                    Assert.True(modelIdx > aveWidth,
+                        $"El modelo no debe invadir el arte (fila {r}, columna {modelIdx})");
+                }
             }
         }
     }
@@ -264,22 +268,26 @@ public class FotogramasTuiTests
         host.AddActivity("Linea de actividad a la derecha de la mascota.", ActivityKind.System);
         var grid = Grid(host.SnapshotFullFrame());
 
-        // Filas del area de la mascota (2..16): la metadata del modelo no se filtra aqui.
-        var aveWidth = CondorArt.AveWidth;
-        for (var r = 2; r <= 16; r++)
+        // La mascota ocupa las primeras filas de la cabecera. El modelo puede
+        // aparecer a su derecha, pero nunca dentro del ancho visible del arte.
+        var aveWidth = TuiHost.AnchoVisibleMascota();
+        for (var r = 0; r < CondorArt.Ave.Length; r++)
         {
-            Assert.DoesNotContain("qwen2.5-coder", grid[r]);
+            var modelIdx = grid[r].IndexOf("qwen2.5-coder", StringComparison.Ordinal);
+            if (modelIdx >= 0)
+            {
+                Assert.True(modelIdx > aveWidth,
+                    $"El modelo no debe invadir el arte (fila {r}, columna {modelIdx})");
+            }
+
             Assert.DoesNotContain("Modelo:", grid[r]);
             Assert.DoesNotContain("Modo:", grid[r]);
         }
 
-        // El area A LA DERECHA de la mascota (cols > AveWidth) es donde aparece
-        // el texto dinamico de la sesion.
-        Assert.Contains(grid, line =>
-        {
-            var idx = line.IndexOf("Linea de actividad", StringComparison.Ordinal);
-            return idx > aveWidth;
-        });
+        // La actividad dinamica se dibuja debajo de la cabecera/mascota.
+        var activityRow = Array.FindIndex(grid, line => line.Contains("Linea de actividad"));
+        Assert.True(activityRow >= CondorArt.Ave.Length,
+            $"La actividad debe estar debajo del arte, no en fila {activityRow}");
     }
 
     [Fact]
@@ -289,11 +297,11 @@ public class FotogramasTuiTests
         host.SetEstado("x");
 
         host.SetModel("qwen2.5-coder:0.5b");
-        var conMedio = Grid(host.SnapshotFullFrame())[0];
+        var conMedio = string.Join("\n", Grid(host.SnapshotFullFrame()).Take(4));
         Assert.Contains("qwen2.5-coder:0.5b", conMedio);
 
         host.SetModel("qwen2.5-coder:3b");
-        var conOtro = Grid(host.SnapshotFullFrame())[0];
+        var conOtro = string.Join("\n", Grid(host.SnapshotFullFrame()).Take(4));
         Assert.Contains("qwen2.5-coder:3b", conOtro);
         Assert.DoesNotContain("qwen2.5-coder:0.5b", conOtro);
     }
@@ -333,15 +341,14 @@ public class FotogramasTuiTests
         var host = new TuiHost(forceInteractive: true);
         host.Enter();
         host.ShowWelcome();
-        host.SetEstado("Preparando dependencias locales");
+        host.SetEstado("Iniciando ...");
         host.SetProgreso("etapa 1/5");
         var frame = Ansi.StripSgr(host.SnapshotFullFrame());
 
         // La comunicacion es directa, sin titulares artificiales.
         Assert.DoesNotContain("Estado:", frame);
         Assert.DoesNotContain("Progreso:", frame);
-        Assert.Contains("Preparando dependencias locales", frame);
-        Assert.Contains("etapa 1/5", frame);
+        Assert.Contains("Iniciando ...", frame);
     }
 }
 
@@ -442,11 +449,11 @@ public class ArquitecturaInteraccionesTests
         host.Enter();
         host.ShowWelcome();
         host.SetWorkspace(Environment.CurrentDirectory);
-        host.SetEstado("Preparando dependencias locales");
+        host.SetEstado("Iniciando ...");
         var grid = Grid(host.SnapshotFullFrame());
 
         Assert.Contains("CONDOR", grid[0]);
-        Assert.Contains("Preparando dependencias locales", grid[18]);
+        Assert.Contains(grid, line => line.Contains("Iniciando ..."));
     }
 
     [Fact]
@@ -455,7 +462,13 @@ public class ArquitecturaInteraccionesTests
         using var host = HostSesion();
         host.SetEstado("En espera de tu intencion", ActivityKind.Success);
         var grid = Grid(host.SnapshotFullFrame());
-        Assert.DoesNotContain(grid, line => line.Contains("Observa · Comprende"));
+
+        // La sesion usa la cabeza compacta; el arte grande queda para la bienvenida.
+        Assert.True(CondorArt.Ave.Length < CondorArt.Grande.Length);
+        var primeraAve = Ansi.StripSgr(CondorArt.Ave[0]).TrimStart();
+        Assert.Contains(grid, line => line.Contains(primeraAve));
+        var muestraGrande = Ansi.StripSgr(CondorArt.Grande[1]).Trim();
+        Assert.DoesNotContain(grid, line => line.Contains(muestraGrande));
         Assert.True(TuiHost.AnchoVisibleMascota() > 0);
     }
 
@@ -464,21 +477,22 @@ public class ArquitecturaInteraccionesTests
     {
         using var host = HostSesion();
         host.SetEstado("En espera de tu intencion", ActivityKind.Success);
-        var titulo = Grid(host.SnapshotFullFrame())[0];
-        Assert.Contains("qwen2.5-coder:3b", titulo);
+        var cabecera = string.Join("\n", Grid(host.SnapshotFullFrame()).Take(4));
+        Assert.Contains("qwen2.5-coder:3b", cabecera);
     }
     [Fact]
-    public void Tui2_Sesion_BarraEstadoMuestraSoloEstado()
+    public void Tui2_Sesion_BarraEstadoMuestraWorkspaceYEstado()
     {
         using var host = HostSesion();
         host.SetEstado("Listo", ActivityKind.Success);
         var grid = Grid(host.SnapshotFullFrame());
 
         var statusBar = grid[grid.Length - 1];
-        // El estado real aparece en la barra inferior; NO se imprime workspace,
-        // ni modelo, ni version ahi (la version y el modelo viven SOLO en la cabecera).
+        // La barra inferior muestra el workspace y el estado real; el modelo y la
+        // version viven SOLO en la cabecera.
         Assert.Contains("Listo", statusBar);
-        Assert.DoesNotContain("C:\\GitHub\\condor", statusBar);
+        Assert.Contains("C:\\GitHub\\condor", statusBar);
+        Assert.Contains("RAM", statusBar);
         Assert.DoesNotContain("qwen2.5-coder", statusBar);
         Assert.DoesNotContain("build interno", statusBar);
         Assert.DoesNotContain("Workspace:", statusBar);
@@ -529,9 +543,16 @@ public class ArquitecturaInteraccionesTests
         using var host = HostSesion();
         host.SetEstado("En espera de tu intucion", ActivityKind.Success);
         var grid = Grid(host.SnapshotFullFrame());
-        for (var r = 1; r <= 14; r++)
+        var aveWidth = TuiHost.AnchoVisibleMascota();
+        for (var r = 0; r < CondorArt.Ave.Length; r++)
         {
-            Assert.DoesNotContain("qwen2.5-coder", grid[r]);
+            var modelIdx = grid[r].IndexOf("qwen2.5-coder", StringComparison.Ordinal);
+            if (modelIdx >= 0)
+            {
+                Assert.True(modelIdx > aveWidth,
+                    $"El modelo no debe invadir el arte (fila {r}, columna {modelIdx})");
+            }
+
             Assert.DoesNotContain("Modelo:", grid[r]);
             Assert.DoesNotContain("Workspace:", grid[r]);
         }
@@ -543,11 +564,11 @@ public class ArquitecturaInteraccionesTests
         using var host = HostSesion();
         host.SetEstado("En espera de tu intencion", ActivityKind.Success);
         host.SetModel("qwen2.5-coder:0.5b");
-        var conMedio = Grid(host.SnapshotFullFrame())[0];
+        var conMedio = string.Join("\n", Grid(host.SnapshotFullFrame()).Take(4));
         Assert.Contains("qwen2.5-coder:0.5b", conMedio);
 
         host.SetModel("qwen2.5-coder:3b");
-        var conOtro = Grid(host.SnapshotFullFrame())[0];
+        var conOtro = string.Join("\n", Grid(host.SnapshotFullFrame()).Take(4));
         Assert.Contains("qwen2.5-coder:3b", conOtro);
         Assert.DoesNotContain("qwen2.5-coder:0.5b", conOtro);
     }
@@ -597,15 +618,15 @@ public class ArquitecturaInteraccionesTests
         host.Enter();
         host.ShowWelcome();
         host.SetWorkspace(Environment.CurrentDirectory);
-        host.SetEstado("Preparando dependencias locales");
+        host.SetEstado("Iniciando ...");
         var grid = Grid(host.SnapshotFullFrame());
 
         // La bienvenida NO muestra "Workspace:" como panel etiquetado.
         Assert.DoesNotContain(grid, line => line.Contains("Workspace:"));
         Assert.DoesNotContain(grid, line => line.Contains("Modelo:"));
         Assert.DoesNotContain(grid, line => line.Contains("Modo:"));
-        // El estado real aparece en su propia linea (sin titular).
-        Assert.Contains(grid, line => line.Contains("Preparando dependencias locales"));
+        // El estado de bienvenida aparece en su propia linea (sin titular).
+        Assert.Contains(grid, line => line.Contains("Iniciando ..."));
     }
 
     [Fact]

@@ -15,14 +15,12 @@ namespace Condor.Cli.Tui;
 ///   GRANDE 100%  (aplica esa gama; misma geometria ANSI original)  [BIENVENIDA]
 ///      |
 ///      v
-///   PEQUENA  (reduccion ~50% de la GRANDE, no ciega)  [SESION]
+///   PEQUENA  (cabeza compacta 8x8 en 4 filas de bloques)  [SESION]
 ///
-/// La mascota PEQUENA es una reduccion VISUALMENTE FIEL de la misma ave (�50%): fusiona
-/// bloques 2x2 de la GRANDE conservando la identidad grafica (cabeza 167, punta de pico
-/// blanca 97, sombreado 242, cuerpo 235/236/233) y NO destruye los rasgos que un downscale
-/// ciego perderia. Sobre la silueta reducida se reconstruyen las PATAS y GARRAS (233/242)
-/// y se refuerza el pico, de modo que la peque�a es inequivocamente el MISMO CONDOR.
-/// No hay una segunda matriz ni un dibujo nuevo: todo deriva de la fuente ANSI unica.
+/// La mascota PEQUENA es la cabeza compacta de referencia ANSI 24-bit: conserva la
+/// identidad grafica (cabeza roja, punta de pico blanca, grises de cuerpo y contorno)
+/// y se muestra junto a la cabecera para no competir con el contenido. No es una
+/// segunda mascota ni un dibujo independiente: deriva de la misma identidad visual.
 /// </summary>
 public static class CondorArt
 {
