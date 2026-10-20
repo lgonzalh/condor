@@ -5,6 +5,15 @@ Estado: En desarrollo
 Nivel: 07 - Interfaz
 Clasificacion: Especificacion de interfaz y recurso terminal
 
+> **Nota de vigencia 2026-10-19.** La mascota de sesion vigente es la cabeza
+> compacta de referencia ANSI 24-bit (`CondorArt.Ave`, matriz 8x8 en cuatro filas
+> de bloques), ubicada en la cabecera. El arte de cuerpo completo V16 se conserva
+> como fuente y se usa en la bienvenida (`CondorArt.Grande`). Las referencias
+> historicas a "Ave pequena = referencia completa con patas y garras" y al
+> rechazo de la cabeza aislada describen iteraciones anteriores; no el contrato
+> actual. La fuente de verdad del layout es `Src/Condor.Cli/Tui/TuiHost.cs` y las
+> pruebas `Tests/Unit/Condor.Cli.Tests/TuiTests.cs`.
+
 ---
 
 ## Proposito
@@ -102,9 +111,9 @@ Modelo conceptual:
 
 ```text
 Celda
- â”œâ”€â”€ glyph
- â”œâ”€â”€ foreground
- â””â”€â”€ visible
+ ├── glyph
+ ├── foreground
+ └── visible
 ```
 
 La salida de cada fila se escribe directamente al terminal.
@@ -294,7 +303,7 @@ con la informacion principal de la CLI.
 
 Las iteraciones no fueron desperdicio.
 
-Constituyen evidencia de diseÃ±o.
+Constituyen evidencia de diseño.
 
 ### V1-V3
 
@@ -372,7 +381,7 @@ La mascota se considera lista para integracion cuando:
 
 ## Trazabilidad
 
-Fuentes de diseÃ±o:
+Fuentes de diseño:
 
 - Mockups del flujo CLI de Condor.
 - Prototipos ejecutables de mascota V1-V16.

@@ -4,6 +4,14 @@
 > (auditoría de implementación TUI/CLI). Estado: **P1–P4 finalizados y verificados**;
 > **P5 (mascota) bloqueado** pendiente de decisión (ver apartado al final).
 
+> **Nota de vigencia 2026-10-19.** Este documento describe el diseno de T-020 en su
+> momento. La TUI vigente usa cabecera compacta de 5 filas, cabeza 8x8 en cuatro
+> filas (`CondorArt.Ave`) y barra de estado `workspace | estado | RAM`; la version
+> visible es `beta`. Las referencias a `α.01`, a la barra con modelo/version y a la
+> mascota 2:1 son historicas. La fuente de verdad del layout es
+> `Src/Condor.Cli/Tui/TuiHost.cs` y las pruebas `TuiTests.cs`; la verificacion
+> actual es 664/664 pruebas verdes y build 0w/0e.
+
 ## 1. Problema
 - La **TUI** (`TuiStartupView`, `TuiAgentProgressView`) y la **CLI clásica**
   (`StartupProgressPresenter`, `AgentProgressPresenter`) mantenían **dos

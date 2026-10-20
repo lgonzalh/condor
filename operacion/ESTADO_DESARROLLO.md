@@ -6,6 +6,27 @@ Modo: Evolucion Continua
 MVP: Condor 1.0
 Fecha: 2026-08-19
 
+## ACTUALIZACION 2026-10-19
+
+Estado vigente tras el cierre de correcciones:
+
+- Build Release: 0 errores, 0 advertencias.
+- Suite completa: 664/664 correctas (Cli 56, Architecture 22, Core 272,
+  Infrastructure 314).
+- UTF-8 valido y sin mojibake en fuentes `.cs` y documentos `.md`.
+- Pruebas TUI alineadas con la TUI compacta vigente (cabecera de 4 lineas,
+  cabeza 8x8, barra workspace/estado/RAM, build interno `beta`).
+- Prueba de `AgentService` con `qwen2.5-coder:0.5b` desacoplada de Ollama
+  mediante stubs.
+- Lanzador global unico: `condor` desde cualquier directorio usa
+  `C:\GitHub\condor` y republica solo cuando cambian las fuentes.
+- La TUI muestra el directorio real desde donde se invoca; se elimino el
+  fallback fijo a `C:\GitHub\condor` y el assessment del bootstrap conserva
+  `Environment.CurrentDirectory`.
+
+La seccion T-018 siguiente se conserva como registro historico; sus cifras
+625/625 corresponden a ese cierre.
+
 ## CAPACIDADES VERIFICADAS
 
 - Ejecucion local en Windows.

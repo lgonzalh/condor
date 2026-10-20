@@ -6,6 +6,11 @@ Modo: Evolucion Continua
 MVP: Condor 1.0
 Fecha: 2026-08-19
 
+> **Nota de vigencia 2026-10-19.** Este documento conserva el backlog historico.
+> El estado vigente es: build 0w/0e, suite 664/664, UTF-8 sin mojibake, TUI
+> `beta` y lanzador global unico en `C:\GitHub\condor`. Ver
+> `ESTADO_DESARROLLO.md` e `INVENTARIO_TECNICO_REPO.md`.
+
 ## Regla
 
 No crear tareas por inercia. Una tarea nueva requiere necesidad concreta, alcance delimitado, beneficio verificable y criterio de cierre.

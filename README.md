@@ -12,6 +12,32 @@ En Condor la conversacion es temporal. La documentacion constituye la fuente ofi
 
 ---
 
+# Ejecucion global en Windows
+
+Repositorio canonico de Condor:
+
+```text
+C:\GitHub\condor
+```
+
+El comando global `condor` se resuelve por `C:\Users\lgonz\.condor\bin\condor.cmd`,
+que delega en `C:\GitHub\condor\condor.cmd`. Ese lanzador publica la CLI en
+`C:\GitHub\condor\.artifacts\condor\condor.exe` cuando detecta fuentes nuevas y
+luego ejecuta el binario en el directorio actual.
+
+- No uses las copias de `test-publish\` ni de
+  `C:\Users\lgonz\.condor\.artifacts\condor\`: no forman parte de la version
+  canonica. El binario de `.artifacts\condor\` solo debe lanzarse a traves de
+  `condor.cmd`.
+- El repositorio que Condor analiza y la ruta que muestra la TUI son el
+  directorio actual de la terminal. Si quieres trabajar sobre Condor, abre la
+  terminal en `C:\GitHub\condor`; si quieres analizar otro proyecto, abre la
+  terminal en ese proyecto y ejecuta `condor`.
+- Verificacion: `condor --version` debe responder
+  `Condor v1.0 · build interno beta`.
+
+---
+
 # Principios
 
 - Arquitectura primero.

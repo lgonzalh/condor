@@ -613,17 +613,17 @@ automático, ownership, reutilización sin segundo server y liberación keep_ali
 permanecen intactos (ningún archivo de DependencyBootstrap modificado).
 
 ### Pruebas
-- `AgentServiceResourceBlockTests` reescrito al nuevo contrato: fallo r�?pido con
+- `AgentServiceResourceBlockTests` reescrito al nuevo contrato: fallo rápido con
   pantalla MODELO NO EJECUTABLE (datos concretos, sin "liberar memoria"), acotado
   (<=4 evaluaciones) y compatible-no-disponible sin descargas fuera de presupuesto.
 - Suites completas: Architecture 22/22, Core 259/259, Integration 307/307
   (3 pruebas nuevas sustituyen a las del confirmador eliminado).
-- Build Cli/Core/Infrastructure: 0 warnings, 0 errores. �?rbol del commit
+- Build Cli/Core/Infrastructure: 0 warnings, 0 errores. árbol del commit
   verificado compilable en aislamiento (stash --keep-index + build).
 
 ---
 
-## T-018 �?" CORRECCIONES FINALES TUI · PRODUCCION
+## T-018 — CORRECCIONES FINALES TUI · PRODUCCION
 
 ### Problema
 La TUI (Terminal User Interface) requeria ajustes finales de identidad visual, comunicacion honesta y rendimiento de arranque antes de declarar la version 1.0 completa.
@@ -672,3 +672,39 @@ La TUI (Terminal User Interface) requeria ajustes finales de identidad visual, c
 
 ### Observacion de entorno (no bloqueante)
 En lanzamientos automatizados via `Start-Process` se observa una carrera del traspaso conhost->Windows Terminal donde la consola reporta metricas inconsistentes durante el arranque (consola reporta 120x30, pero frames tempranos se pintan con geometria previa mayor). El codigo ya se re-sincroniza continuamente (`HandleResizeIfNeeded` cada 40 ms) y ningun codigo de la app redimensiona la consola (verificado por grep). En sesion estable la geometria consola/app es consistente (120x30 verificado en vivo via `AttachConsole`+`GetConsoleScreenBufferInfo`).
+
+---
+
+## CIERRE 2026-10-19 - CORRECCIONES DE CALIDAD Y LANZADOR GLOBAL
+
+### Alcance
+- Recodificacion UTF-8 de `IdentityHeader.cs` y eliminacion de mojibake en
+  `AgentService.cs`, `ModelSelector.cs`, `CondorArt.cs` y documentos.
+- Correccion de las 5 advertencias nullable (3 CS8602, 2 CS8601) sin cambiar
+  logica.
+- Alineacion de `TuiTests.cs` con la TUI vigente: build interno `beta`, cabecera
+  compacta, cabeza 8x8 en cuatro filas, bienvenida `Iniciando ...` y barra
+  workspace/estado/RAM.
+- Desacople de la prueba de `qwen2.5-coder:0.5b` respecto de un Ollama real
+  mediante stubs de `ILlmClient`, `ILlmProviderDiagnostics` y HTTP.
+- Correccion del lanzador `condor.cmd`: antes comparaba solo timestamps de
+  `.csproj`; ahora detecta cualquier `.cs`/`.csproj` de `Src` mas reciente que
+  `condor.exe`, excluyendo `obj/` y `bin/`, y republica una sola vez.
+- Correccion de la ruta mostrada en la TUI: se elimino el fallback fijo
+  `C:\GitHub\condor`; la barra de estado usa el workspace real y el assessment
+  del bootstrap conserva `Environment.CurrentDirectory`.
+
+### Verificacion
+- `dotnet build Condor.slnx -c Release`: 0 errores, 0 advertencias.
+- `dotnet test Condor.slnx -c Release --no-build`: 664/664 correctas,
+  0 fallidas, 0 omitidas.
+- `condor --version` desde `%TEMP%` y desde `C:\GitHub`:
+  `Condor v1.0 · build interno beta`, exit 0.
+- El comando global `condor` se resuelve por
+  `C:\Users\lgonz\.condor\bin\condor.cmd`, que delega en
+  `C:\GitHub\condor\condor.cmd`.
+
+### Artefactos
+- `test-publish/` y `C:\Users\lgonz\.condor\.artifacts\condor` se eliminaron
+  tras autorizacion explicita; sus copias ya no compiten con la version canonica.
+- La unica version canonica es la publicada por `C:\GitHub\condor\condor.cmd`.

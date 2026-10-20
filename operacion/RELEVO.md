@@ -4,6 +4,11 @@ Fecha: 2026-08-19
 Tipo: Continuidad de chat
 Estado: Investigacion activa
 
+> **Nota de vigencia 2026-10-19.** Documento historico de continuidad. El estado
+> vigente es: build 0w/0e, suite 664/664, UTF-8 sin mojibake, TUI `beta` y
+> lanzador global unico en `C:\GitHub\condor`. Ver `ESTADO_DESARROLLO.md` e
+> `INVENTARIO_TECNICO_REPO.md`.
+
 ## CONTEXTO
 
 El chat anterior se volvio demasiado extenso. Se cerro la operacion con varios agentes y se decidio continuar con un unico agente integrador.

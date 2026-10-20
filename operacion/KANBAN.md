@@ -38,7 +38,10 @@ Sin incidencias activas de seleccion de modelo.
   espera de entrada y permanece visible todo el ciclo (inicio, tarea, respuesta, error,
   finalizacion y nueva espera); muestra el modelo local REAL activo.
 - Build sin errores/advertencias en el ultimo cierre informado.
-- Suites automatizadas verdes en el ultimo cierre informado (534 pruebas).
+- Suites automatizadas verdes en el ultimo cierre informado (664 pruebas).
+- **Cierre 2026-10-19**: build 0w/0e, suite 664/664, UTF-8 sin mojibake,
+  lanzador global unico (`C:\GitHub\condor`) y TUI con la ruta real de
+  invocacion.
 - Descarga de qwen2.5-coder:3b observada.
 - Presupuesto seguro observado.
 - Progreso visual observado (arranque y agente; nunca pantalla en negro).
