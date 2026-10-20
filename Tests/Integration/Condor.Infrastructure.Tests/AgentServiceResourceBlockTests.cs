@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Condor.Core.Contracts;
@@ -174,10 +175,18 @@ public class AgentServiceResourceBlockTests
         var store = new LocalStateStore(Path.Combine(TempDir(), "state-" + Guid.NewGuid().ToString("N")));
         var assessment = new StubAssessmentService(ramTotalGb: 16, ramFreeGb: 2, installedModels: new[] { "qwen2.5-coder:0.5b", "qwen2.5-coder:1.5b", "qwen2.5-coder:3b" });
 
-        var session = new LocalModelSession();
+        // La prueba no depende de un Ollama real: el cliente LLM y el probe de
+        // disponibilidad se sustituyen por stubs deterministas.
+        using var http = new HttpClient(new StubOllamaHandler());
+        using var session = new LocalModelSession(http);
         await session.EnsureAvailableAsync("qwen2.5-coder:0.5b", CancellationToken.None);
 
-        var service = new AgentService(store, assessment, session: session);
+        var service = new AgentService(
+            store,
+            assessment,
+            llm: new StubLlmClient(),
+            provider: new StubLlmDiagnostics(),
+            session: session);
 
         var result = await service.RunAsync("hola, que tal", cancellationToken: CancellationToken.None);
 
@@ -248,5 +257,36 @@ public class AgentServiceResourceBlockTests
                 _ => 1848L * 1024 * 1024
             };
         }
+    }
+
+    private sealed class StubLlmClient : ILlmClient
+    {
+        public Task<LlmResponse> CompleteAsync(LlmRequest request, CancellationToken cancellationToken = default)
+            => Task.FromResult(new LlmResponse
+            {
+                Success = true,
+                Content = "Hola. Estoy listo para ayudarte.",
+                Model = request.Model,
+                Outcome = LlmOutcome.Ok
+            });
+    }
+
+    private sealed class StubLlmDiagnostics : ILlmProviderDiagnostics
+    {
+        public Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult(true);
+
+        public string ProviderName => "Stub";
+    }
+
+    private sealed class StubOllamaHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+            => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{\"version\":\"stub\"}", System.Text.Encoding.UTF8, "application/json")
+            });
     }
 }
