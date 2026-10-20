@@ -127,7 +127,7 @@ public sealed class AgentService : IAgentService
                 {
                     Success = false,
                     Reason = "Memoria insuficiente para continuar con esta tarea. Libera memoria y vuelve a intentarlo.",
-                    Model = currentActiveModel,
+                    Model = currentActiveModel ?? string.Empty,
                     Objective = intention,
                     Steps = steps,
                     Checkpoint = checkpoint,
@@ -227,7 +227,7 @@ public sealed class AgentService : IAgentService
                     checkpoint.NextAction = "revisar";
                     progress?.Report(AgentProgress.Of(
                         AgentPhase.Verifying,
-                        message: "Modelo local Â· " + LlmOutcomeLabel(call.ProviderFailure.Value) + " Â· " + call.Error,
+                        message: "Modelo local · " + LlmOutcomeLabel(call.ProviderFailure.Value) + " · " + call.Error,
                         flag: ProgressFlag.ProviderError));
 
                     var recovered = await TryRecoverProviderAsync(model, messages, progress, timeoutCts.Token);
@@ -244,7 +244,7 @@ public sealed class AgentService : IAgentService
                             checkpoint.LastError = BuildProviderFailureReason(call.ProviderFailure.Value, call.Error);
                             progress?.Report(AgentProgress.Of(
                                 AgentPhase.Finalizing,
-                                message: "Modelo local no disponible tras reintentos Â· Condor detuvo la tarea",
+                                message: "Modelo local no disponible tras reintentos · Condor detuvo la tarea",
                                 flag: ProgressFlag.ProviderError));
                             return Fail(checkpoint.LastError, model, intention, steps, checkpoint);
                         }
@@ -263,7 +263,7 @@ public sealed class AgentService : IAgentService
                         checkpoint.LastError = BuildProviderFailureReason(call.ProviderFailure.Value, call.Error);
                         progress?.Report(AgentProgress.Of(
                             AgentPhase.Finalizing,
-                            message: "Modelo local no disponible Â· Condor detuvo la tarea",
+                            message: "Modelo local no disponible · Condor detuvo la tarea",
                             flag: ProgressFlag.ProviderError));
                         return Fail(checkpoint.LastError, model, intention, steps, checkpoint);
                     }
@@ -587,7 +587,7 @@ var modelSetup = CreateModelSetup();
                 {
                     Success = false,
                     Reason = "Memoria insuficiente para continuar con esta tarea. Libera memoria y vuelve a intentarlo.",
-                    Model = currentActiveModel,
+                    Model = currentActiveModel ?? string.Empty,
                     Objective = intention,
                     Steps = steps,
                     Checkpoint = checkpoint,
@@ -645,7 +645,7 @@ var modelSetup = CreateModelSetup();
                 new LlmRequest
                 {
                     Model = model,
-                    Prompt = "Responde en espaÃ±ol, de forma breve y natural, a esta consulta del usuario: " + intention,
+                    Prompt = "Responde en español, de forma breve y natural, a esta consulta del usuario: " + intention,
                     Temperature = 0.2,
                     MaxTokens = 256
                 },
@@ -664,7 +664,7 @@ var modelSetup = CreateModelSetup();
                 response.Error ?? "El modelo no devolvio una respuesta util.");
             progress?.Report(AgentProgress.Of(
                 AgentPhase.Verifying,
-                message: "Modelo local Â· " + checkpoint.LastError,
+                message: "Modelo local · " + checkpoint.LastError,
                 flag: ProgressFlag.ProviderError));
             return Fail(checkpoint.LastError, model, intention, steps, checkpoint);
         }
@@ -1074,7 +1074,7 @@ var modelSetup = CreateModelSetup();
         sb.AppendLine("Motivo: presupuesto de memoria insuficiente.");
         if (budget is not null && budget.IsBudgeted)
         {
-            sb.AppendLine("Presupuesto permitido: " + budget.BudgetGb.ToString("0.0") + " GB Â· reserva operativa: " + budget.ReserveGb.ToString("0.0") + " GB.");
+            sb.AppendLine("Presupuesto permitido: " + budget.BudgetGb.ToString("0.0") + " GB · reserva operativa: " + budget.ReserveGb.ToString("0.0") + " GB.");
         }
         else if (resources is not null)
         {
@@ -1155,7 +1155,7 @@ var modelSetup = CreateModelSetup();
                     if (!string.IsNullOrWhiteSpace(cpu.Name)) parts.Add(cpu.Name);
                     if (cpu.Cores > 0) parts.Add(cpu.Cores + " nucleos");
                     if (cpu.LogicalProcessors > 0) parts.Add(cpu.LogicalProcessors + " hebras");
-                    inventory.Cpu = parts.Count > 0 ? string.Join(" Â· ", parts) : null;
+                    inventory.Cpu = parts.Count > 0 ? string.Join(" · ", parts) : null;
                 }
             }
             catch { /* CPU opcional */ }
@@ -1203,7 +1203,7 @@ var modelSetup = CreateModelSetup();
             return;
         }
 
-        var builder = new System.Text.StringBuilder("Presion de memoria: " + snapshot.FreeGb + " GB libres Â· estado " + snapshot.PressureLabel + ".");
+        var builder = new System.Text.StringBuilder("Presion de memoria: " + snapshot.FreeGb + " GB libres · estado " + snapshot.PressureLabel + ".");
         builder.Append(" Condor reducira temporalmente su carga.");
 
         if (snapshot.TopConsumers.Count > 0)
@@ -1244,6 +1244,6 @@ var modelSetup = CreateModelSetup();
     private static AgentResult Fail(string reason, string model, string objective, List<AgentStep> steps, AgentCheckpoint checkpoint)
         => new() { Success = false, Reason = reason, Model = model, Objective = objective, Steps = steps, Checkpoint = checkpoint };
 
-    private static string Truncate(string s) => s is { Length: > 2000 } ? s.Substring(0, 2000) + " â€¦" : (s ?? "");
+    private static string Truncate(string s) => s is { Length: > 2000 } ? s.Substring(0, 2000) + " …" : (s ?? "");
 }
 

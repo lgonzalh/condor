@@ -260,13 +260,13 @@ public static class ModelSelector
     ///   1. Evalua el presupuesto real (stock - reservas - margen) con la politica.
     ///   2. Filtra el catalogo por SUFICIENCIA funcional para el requisito de la tarea.
     ///   3. Entre los suficientes dentro del presupuesto, elige el MENOR suficiente
-    ///      (eficiencia) que deje margen operativo (1ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¹ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢).
+    ///      (eficiencia) que deje margen operativo (1-).
     ///   4. Determina el siguiente candidato razonable para cuando aumente el presupuesto (1+).
     ///   5. Considera los modelos INSTALADOS del usuario como candidatos validos,
     ///      aunque no sean la primera opcion del catalogo.
     ///
     /// Conserva la compatibilidad con la seleccion clasica; esta entrada enriquece
-    /// con 1ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¹ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢, 1+, presupuesto, reserva e insuficientes. Es una funcion pura (sin IO).
+    /// con 1-, 1+, presupuesto, reserva e insuficientes. Es una funcion pura (sin IO).
     /// </summary>
     public static ModelSelectionResult SelectForTask(
         AssessmentResult? assessment,
@@ -287,7 +287,7 @@ public static class ModelSelector
 
         var memory = assessment.Environment?.Memory;
         result.Budget = policy.Assess(memory);
-        var budget = result.Budget;
+        BudgetAssessment budget = result.Budget ?? BudgetAssessment.NoData();
         result.Resources = ModelMemoryBudget.Snapshot(memory, candidatePeakGb: null);
 
         var installed = (assessment.Tools?.Ollama?.Models ?? new List<ModelInfo>())
@@ -372,9 +372,9 @@ public static class ModelSelector
         }
 
         // Ordenar por eficiencia: menor coste primero; desempate por menor peso.
-        // El menor suficiente y viable es el 1ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¹ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ por defecto (eficiencia > tamaÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â±o).
+        // El menor suficiente y viable es el 1- por defecto (eficiencia > tamano).
         var viable = candidates
-            .Where(x => budget.IsBudgeted && budget.Admits(x.peak) && ModelEfficiencyEvaluator.LeavesMargin(x.c, budget))
+            .Where(x => budget!.IsBudgeted && budget!.Admits(x.peak) && ModelEfficiencyEvaluator.LeavesMargin(x.c, budget!))
             .OrderBy(x => x.peak)
             .ThenBy(x => x.c.WeightGb)
             .ToList();
@@ -399,7 +399,7 @@ public static class ModelSelector
             }
         }
 
-        // 1ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¹ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ : menor suficiente viable dentro del presupuesto con margen.
+        // 1- : menor suficiente viable dentro del presupuesto con margen.
         var node = viable.FirstOrDefault();
         if (node.c is not null)
         {
@@ -413,7 +413,7 @@ public static class ModelSelector
         // 1+ : siguiente candidato razonable (aun viable pero no elegido por ser
         // el mas eficiente; o insuficiente hoy por margen) para cuando aumente el presupuesto.
         var next = candidates
-            .Where(x => budget.IsBudgeted && x.peak < budget.BudgetGb * 1.6)
+            .Where(x => budget!.IsBudgeted && x.peak < budget!.BudgetGb * 1.6)
             .Where(x => x.c.Name != node.c?.Name)
             .OrderBy(x => x.peak)
             .FirstOrDefault();
@@ -427,7 +427,7 @@ public static class ModelSelector
         }
 
         // Modelo instalado del usuario NO en catalogo: considerarlo candidato si es
-        // suficiente y cabe; lo usamos como 1ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¹ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢/desired cuando el catalogo no aporta.
+        // suficiente y cabe; lo usamos como 1-/desired cuando el catalogo no aporta.
         if (node.c is null && result.Desired is null)
         {
             var userInstalled = ConsiderUserInstalledModel(assessment, requirement, budget);
@@ -447,7 +447,7 @@ public static class ModelSelector
             // viable (o no hay presupuesto real). Coherente con la seleccion clasica,
             // que marca BlockedByResources cuando la presion es Insuficiente.
             result.BlockedByResources =
-                (!budget.IsBudgeted) ||
+                (!budget!.IsBudgeted) ||
                 result.Resources?.Pressure == ResourcePressure.Insufficient ||
                 viable.Count == 0;
 

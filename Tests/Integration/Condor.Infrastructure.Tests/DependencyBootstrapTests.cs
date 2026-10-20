@@ -105,7 +105,7 @@ public class DependencyBootstrapTests
     }
     #endregion
 
-    #region F. Condor iniciÃ³ Ollama -> registra propiedad
+    #region F. Condor inició Ollama -> registra propiedad
     [Fact]
     public async Task F_CondorInicioElServer_RegistraPropiedad()
     {
