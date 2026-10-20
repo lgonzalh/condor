@@ -156,7 +156,8 @@ public static class CondorTui
         // ---- Sesion de trabajo: Condor Grande -> Condor Ave --------------------
         host.ShowSession(prep.Model);
         host.SetModel(prep.Model);
-        host.SetWorkspace(bootstrap.Assessment?.WorkingDirectory ?? Environment.CurrentDirectory);
+        var workspace = bootstrap.Assessment?.WorkingDirectory;
+        host.SetWorkspace(string.IsNullOrWhiteSpace(workspace) ? Environment.CurrentDirectory : workspace);
         host.SetEstado("Listo", ActivityKind.Success);
         host.SetProgreso("—");
 

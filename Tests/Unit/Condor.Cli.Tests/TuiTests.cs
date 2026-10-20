@@ -484,14 +484,16 @@ public class ArquitecturaInteraccionesTests
     public void Tui2_Sesion_BarraEstadoMuestraWorkspaceYEstado()
     {
         using var host = HostSesion();
+        host.SetWorkspace("C:\\GitHub\\prueba");
         host.SetEstado("Listo", ActivityKind.Success);
         var grid = Grid(host.SnapshotFullFrame());
 
         var statusBar = grid[grid.Length - 1];
-        // La barra inferior muestra el workspace y el estado real; el modelo y la
-        // version viven SOLO en la cabecera.
+        // La barra inferior muestra el workspace real y el estado; el modelo y la
+        // version viven SOLO en la cabecera. No debe caer en una ruta fija.
         Assert.Contains("Listo", statusBar);
-        Assert.Contains("C:\\GitHub\\condor", statusBar);
+        Assert.Contains("C:\\GitHub\\prueba", statusBar);
+        Assert.DoesNotContain("C:\\GitHub\\condor", statusBar);
         Assert.Contains("RAM", statusBar);
         Assert.DoesNotContain("qwen2.5-coder", statusBar);
         Assert.DoesNotContain("build interno", statusBar);

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Condor.Core.Contracts;
 using Condor.Core.Models;
 using Condor.Infrastructure.DependencyBootstrap;
 
@@ -173,6 +174,25 @@ public class DependencyBootstrapTests
     }
     #endregion
 
+    #region I. El assessment conserva el directorio desde donde se invoca
+    [Fact]
+    public async Task I_Assessment_UsaElDirectorioActual()
+    {
+        var assessment = new CapturingAssessmentService();
+        var health = new FakeHealthChecker(OllamaHealth.ServerAvailable);
+        var boot = new DependencyBootstrapper(
+            new OllamaProvisioner(health, new FakeInstaller(), new FakeLauncher()),
+            assessment);
+
+        var r = await boot.RunAsync();
+
+        Assert.True(r.Ready);
+        Assert.NotNull(assessment.LastRequest);
+        Assert.Equal(Environment.CurrentDirectory, assessment.LastRequest!.WorkingDirectory);
+        Assert.Equal(Environment.CurrentDirectory, r.Assessment?.WorkingDirectory);
+    }
+    #endregion
+
     // --------------------------------------------------------------- fakes
     private sealed class FakeHealthChecker : OllamaHealthChecker
     {
@@ -230,6 +250,22 @@ public class DependencyBootstrapTests
         {
             Calls++;
             return Task.FromResult(Result);
+        }
+    }
+
+    private sealed class CapturingAssessmentService : IAssessmentService
+    {
+        public AssessmentRequest? LastRequest { get; private set; }
+
+        public Task<AssessmentResult> ExecuteAsync(
+            AssessmentRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            LastRequest = request;
+            return Task.FromResult(new AssessmentResult
+            {
+                WorkingDirectory = request.WorkingDirectory
+            });
         }
     }
 }

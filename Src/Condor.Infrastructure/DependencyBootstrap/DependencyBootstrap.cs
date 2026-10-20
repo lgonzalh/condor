@@ -52,7 +52,9 @@ public sealed class DependencyBootstrapper
         {
             try
             {
-                assessment = await _assessmentService.ExecuteAsync(new AssessmentRequest(), cancellationToken);
+                assessment = await _assessmentService.ExecuteAsync(
+                    new AssessmentRequest { WorkingDirectory = Environment.CurrentDirectory },
+                    cancellationToken);
             }
             catch
             {

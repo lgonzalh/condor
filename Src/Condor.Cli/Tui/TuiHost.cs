@@ -730,7 +730,7 @@ public sealed class TuiHost : IDisposable
         sb.Append(Ansi.At(EstadoRow + 1, 1));
         sb.Append(Ansi.ClearLine);
         var frame = _busy ? SpinnerFrames[_spin % SpinnerFrames.Length] + " " : "";
-        var workspace = string.IsNullOrWhiteSpace(_workspace) ? @"C:\GitHub\condor" : _workspace;
+        var workspace = string.IsNullOrWhiteSpace(_workspace) ? Environment.CurrentDirectory : _workspace;
         var footer = workspace + "  ·  " + frame + _estado + "  ·  RAM " + (Environment.WorkingSet / (1024 * 1024)) + " MB";
         var shortcuts = "tab agentes  ctrl+p comandos";
         sb.Append(EstadoColor(_estadoKind) + Clip(footer, Math.Max(1, _width - shortcuts.Length - 3)) + Ansi.Reset);
