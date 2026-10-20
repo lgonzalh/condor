@@ -8,6 +8,7 @@ obj/
 # Ejecutable publicado / artefactos de empaquetado
 .artifacts/
 /build/
+/test-publish/
 
 # Resultados de pruebas
 TestResults/
@@ -27,3 +28,6 @@ err_cli.txt
 out_cli.txt
 validacion_tui.*
 =0
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/
