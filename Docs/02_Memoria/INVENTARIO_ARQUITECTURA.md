@@ -1,6 +1,6 @@
 # INVENTARIO_ARQUITECTURA
 
-Version: 2.4.0
+Version: 2.5.0
 Estado: Activo
 Nivel: Global
 Clasificacion: Inventario Arquitectonico
@@ -132,9 +132,12 @@ Actualizar
             probar)                                      
   -------------------------------------------------------------------------------------------
 
+Nota de vigencia 2026-10-19: ARQ-012 sigue En desarrollo como superficie, aunque ya integra los comandos implementados en T-001..T-014 y la TUI. Su evolucion no significa que las tareas cerradas sigan abiertas; el alcance interactivo no tiene una validacion E2E automatizada de TTY.
+
 Nota: ARQ-002 fue implementado inicialmente mediante T-001. ARQ-012
 cuenta con una CLI inicial (identidad, estado, analizar y consultar) pendiente
-de evolucion con los motores posteriores. ARQ-013 fue implementado
+de evolucion con los motores posteriores; esta nota describe su estado inicial.
+ARQ-013 fue implementado
 mediante T-002 (OllamaClient local y comando consultar). ARQ-015 fue implementado mediante T-003 (ModelRecommender, ModelRoleClassifier, ModelMemoryBudget y comando recomendar). ARQ-002 fue extendido mediante T-004 (descubrimiento de proyecto: ProjectDetector, parsers de manifiestos, seccion PROYECTO y campo project). El contrato publico de la CLI fue corregido al espanol por DEC-025. ARQ-003 fue implementado mediante T-005 (Context Engine inicial: ContextReconstructor en Condor.Core, OperativeArtifactReader y ContextService en Condor.Infrastructure, y comando condor contexto en la CLI; verificacion integral completada con unitarias, integracion, arquitectura, CLI, E2E y determinismo D-D11). ARQ-004 fue implementado mediante T-006 (Planner inicial: WorkPlan, PlanTask y PlanLimits en Condor.Core, PlanGenerator y PlanIntent en Condor.Core.Planning, PlanService en Condor.Infrastructure, comando condor planear en la CLI; verificacion integral con unitarias, integracion, arquitectura, CLI, E2E y determinismo D-E7). ARQ-006 fue implementado mediante T-007 (Builder inicial: BuildAction, BuildActionKind, BuildResult y BuildLimits en Condor.Core, BuildDeriver en Condor.Core.Building, BuildService y ProjectFileWriter en Condor.Infrastructure, comando condor construir en la CLI; verificacion integral con unitarias, integracion, arquitectura, CLI, E2E y determinismo). ARQ-007 fue implementado mediante T-008 (Verifier inicial: VerificationCheck, VerificationResult, VerificationLimits y ProbedFile en Condor.Core, Verifier en Condor.Core.Verification, VerificationService y ProjectFileProbe en Condor.Infrastructure, comando condor verificar en la CLI; verificacion integral con unitarias, integracion, arquitectura, CLI, E2E y determinismo). ARQ-008 fue especificado mediante T-009 (Documentacion y continuidad) con la creacion de DOCUMENTADOR.md que define el rol de Documenter (FN-009). ARQ-016 fue implementado mediante T-010 (Capacidades avanzadas de desarrollo): ciclo de ingenieria parcial (Planner -> Builder -> Verifier) con CycleEngine en Condor.Core, CycleService en Condor.Infrastructure y comando condor avanzar en la CLI; orquesta los motores congelados sin reimplementarlos ni crear Architect. ARQ-017 fue implementado mediante T-011 (Vision local): VisionGate en Condor.Core, VisionService e ImageFileReader en Condor.Infrastructure, extension aditiva multimodal de LlmRequest/OllamaClient y comando condor examinar en la CLI. ARQ-018 fue implementado mediante T-012 (Instalador y puesta en marcha simplificada): SetupEvaluator en Condor.Core, SetupService y StateDirectoryProbe en Condor.Infrastructure y comando condor preparar en la CLI. ARQ-019 fue implementado mediante T-013 (Verificacion semantica, primera concrecion SD-02): SemanticVerifier en Condor.Core, SemanticVerificationService, ProcessRunner, DotNetManifestProbe y ToolProbe en Condor.Infrastructure y comando condor verificar-semantico en la CLI (compilar y ejecutar pruebas con --no-restore).
 
 ------------------------------------------------------------------------
@@ -154,6 +157,10 @@ mediante T-002 (OllamaClient local y comando consultar). ARQ-015 fue implementad
     y el inventario de Ollama (ARQ-013) para producir una recomendacion
     explicable.
 
+Al corte 2026-10-19, ARQ-001, ARQ-005, ARQ-009 y ARQ-011 permanecen
+planificados; ARQ-008 y ARQ-010 permanecen especificados. Son alcance futuro
+registrado, no capacidades que el informe marque como ya implementadas.
+
 ------------------------------------------------------------------------
 
 # Reglas
@@ -171,6 +178,8 @@ mediante T-002 (OllamaClient local y comando consultar). ARQ-015 fue implementad
 
   Version   Cambios
   --------- -------------------------------------------------------------
+  2.5.0     Se aclara el alcance vigente de ARQ-012 tras T-001..T-014 y se
+            distinguen los componentes planificados de los ya implementados.
   2.4.0     ARQ-016 (Ciclo de Ingenieria) se extiende tras T-014: el ciclo
             `condor avanzar` incorpora la etapa de verificacion semantica
             (T-013) de forma aditiva, reutilizando SemanticVerificationService.

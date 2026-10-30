@@ -1,6 +1,6 @@
 # INVENTARIO_FUNCIONAL
 
-Version: 1.7.0\
+Version: 1.8.0\
 Estado: Activo\
 Nivel: Global\
 Clasificacion: Inventario Funcional
@@ -89,7 +89,7 @@ Actualizar
            automaticamente                                    
            el contexto                                        
 
-  FN-004   Evaluar proyecto  Motor             Planificada    ASSESSMENT_ENGINE.md
+  FN-004   Evaluar proyecto  Motor             Implementada   ASSESSMENT_ENGINE.md
            y entorno                                          
 
   FN-005   Planificar tareas Desarrollo        Implementada   KERNEL_CONDOR.md
@@ -115,14 +115,14 @@ Actualizar
            desarrollador                                      
            como un ingeniero                                  
 
-  FN-012   Adaptarse al      Infraestructura   Especificada   ADN_CONDOR.md
+  FN-012   Adaptarse al      Infraestructura   Implementada   ADN_CONDOR.md
            hardware                                           
            disponible                                         
 
-  FN-013   Trabajar con      Infraestructura   Especificada   ADN_CONDOR.md
+  FN-013   Trabajar con      Infraestructura   Implementada   ADN_CONDOR.md
            modelos locales                                    
 
-  FN-014   Operar            Infraestructura   Especificada   ADN_CONDOR.md
+  FN-014   Operar            Infraestructura   Implementada   ADN_CONDOR.md
            inicialmente                                       
            sobre Windows                                      
 
@@ -170,12 +170,18 @@ Actualizar
 4.  Las capacidades futuras permaneceran registradas aun cuando no
     formen parte de la version actual.
 
+Nota de alcance: los estados implementados reflejan el alcance descrito y validado en tareas y pruebas hasta el 2026-10-19; no prometen compatibilidad universal con cualquier hardware, modelo o terminal.
+
 ------------------------------------------------------------------------
 
 # Historial de cambios
 
   Version   Cambios
   --------- --------------------------------------------------------
+  1.8.0     Se reconcilian FN-004 y FN-012..FN-014 con Assessment (T-001),
+            Ollama (T-002), recomendacion y presupuesto de modelos (T-003,
+            T-015, T-016) y soporte inicial Windows; evidencia con corte
+            2026-10-19.
   1.7.0     Se registra FN-019 (Compilar y probar el proyecto objetivo, condor
             verificar-semantico) como Implementada tras T-013, primera concrecion
             de la verificacion semantica y de calidad (SD-02). T-013 queda

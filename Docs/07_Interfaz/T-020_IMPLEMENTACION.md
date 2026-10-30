@@ -1,8 +1,8 @@
 ﻿# T-020 — Unificación de etiquetas de progreso y barra de estado de la CLI
 
 > Subtarea de la época `07_Interfaz`. Deriva de la deuda documentada en **T-019**
-> (auditoría de implementación TUI/CLI). Estado: **P1–P4 finalizados y verificados**;
-> **P5 (mascota) bloqueado** pendiente de decisión (ver apartado al final).
+> (auditoría de implementación TUI/CLI). Estado: **P1–P5 finalizados y verificados**;
+> **P5 (mascota) implementado** por decisión del usuario (ver apartado al final).
 
 > **Nota de vigencia 2026-10-19.** Este documento describe el diseno de T-020 en su
 > momento. La TUI vigente usa cabecera compacta de 5 filas, cabeza 8x8 en cuatro
