@@ -15,6 +15,8 @@ Fecha de actualizacion: 2026-10-30
 
 **Separacion de proveedores:** Condor conserva Ollama como proveedor local para sus pruebas y ejecucion. Graft debe usar OpenAI API por la CLI; no se usa Ollama para generar su capa semantica. La API se factura por consumo y no se ha llamado desde esta actualizacion.
 
+**Pendiente de decision, no tarea activa:** la aspiracion de software abierto del Cuaderno IV (A-005) sigue condicionada a resolver lo legal; `LICENSE` y `NOTICE` declaran All Rights Reserved.
+
 **Alcance de la verificacion:** las cifras de Condor corresponden al 2026-10-19 y no se repitieron hoy. La configuracion Graft esta versionada, pero su capa semantica requiere `GRAFT_API_KEY` en el entorno local, fuera del repositorio.
 
 Los apartados siguientes son el tablero historico del 2026-08-19 y se conservan como antecedente; no representan trabajo abierto actual.

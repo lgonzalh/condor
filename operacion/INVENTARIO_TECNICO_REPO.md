@@ -1,11 +1,12 @@
 # INVENTARIO_TECNICO_REPO
 
-Version: 1.0.0
+Version: 1.2.0
 Estado: Vigente (snapshot tecnico)
 Nivel: Global
 Clasificacion: Inventario Tecnico
-Fecha de corte: 2026-10-19
-Fuente: HEAD 35cc09b + arbol de trabajo local
+Fecha de corte del snapshot base: 2026-10-19
+Fecha de actualizacion: 2026-10-30
+Fuente del software probado: `420026b` (2026-10-19). Configuracion Graft: `25af837` (2026-10-30).
 
 ## ESTADO POST-CORRECCION (2026-10-19)
 
@@ -41,15 +42,23 @@ Este documento responde:
 - que se verifico con build y pruebas;
 - que brechas existen entre el codigo, las pruebas y la documentacion.
 
+## ACTUALIZACION DEL ARBOL LOCAL (2026-10-30)
+
+El snapshot detallado de codigo, pruebas y estructura de las secciones siguientes corresponde al 2026-10-19. Este delta registra solo hechos locales revisados el 2026-10-30:
+
+- `assets/` contiene los Cuadernos I-V en sus rutas actuales. Los archivos estan presentes localmente, aparecen sin seguimiento en Git y no se movieron ni modificaron.
+- `AGENTS.md`, `.claude/`, `.ignore`, `.mcp.json` y `opencode.json` son configuracion de Graft y herramientas compatibles, versionada desde el commit `25af837`.
+- `GRAFT_API_KEY` y `OPENAI_API_KEY` no estan configuradas en los ambitos Process, User ni Machine. `graft_repo_map` y `graft check` confirmaron el estado estructural desde Codex. El intento previo de `graft build --deep` se detuvo en 73/334 archivos y no genero la capa semantica ni invoco la API de OpenAI.
+- No se ejecutaron pruebas ni build de Condor en esta actualizacion. Los resultados 664/664 y build 0/0 que aparecen abajo siguen siendo el snapshot verificado el 2026-10-19.
+
 ## METODO
 
-1. `graft_repo_map` para orientacion estructural.
-2. Grafo generado con `graft build --deep` en la sesion del usuario (sin API key).
-3. `graft check` para validar frescura del grafo.
-4. `dotnet build Condor.slnx -c Release`.
-5. `dotnet test Condor.slnx -c Release --no-build`.
-6. `git status`, `git log`, `git remote -v`.
-7. Verificacion de codificacion UTF-8 sobre `.cs` y `.md`.
+1. `graft_repo_map` desde Codex para orientacion estructural.
+2. `graft check` el 2026-10-30 para verificar frescura del grafo de cableado.
+3. La capa semantica de `graft build --deep` no se completo. La CLI requiere una API key propia del proveedor; Codex no comparte su autenticacion con la CLI. No se configuro ni uso una API key de OpenAI.
+4. `dotnet build Condor.slnx -c Release` y `dotnet test Condor.slnx -c Release --no-build` corresponden al snapshot verificado el 2026-10-19; no se repitieron en esta actualizacion documental.
+5. `git status`, `git log`, `git remote -v`.
+6. Verificacion de codificacion UTF-8 sobre `.cs` y `.md`.
 
 No se modifico codigo de produccion para producir este inventario.
 
@@ -62,12 +71,13 @@ No se modifico codigo de produccion para producir este inventario.
 | Build interno | beta |
 | Version de ensamblado | 1.0.0 |
 | Rama | main |
-| HEAD | 35cc09b |
-| Fecha del HEAD | 2026-09-08 |
+| Commit del software probado | 420026b (2026-10-19) |
+| Commit de configuracion Graft | 25af837 (2026-10-30) |
 | Remoto | https://github.com/lgonzalh/condor.git |
 | Solucion | Condor.slnx (7 proyectos) |
 | Runtime | .NET 10 (net10.0) |
-| Proveedor LLM | Ollama local en 127.0.0.1:11434 |
+| Proveedor LLM de Condor | Ollama local en 127.0.0.1:11434 |
+| Proveedor semantico de Graft | OpenAI API, pendiente de `GRAFT_API_KEY` |
 
 ## 2. ESTRUCTURA DEL REPOSITORIO
 
@@ -85,7 +95,7 @@ condor/
 │   └── Functional/condor-lifecycle.func.ps1    (fuera de la solucion)
 ├── Docs/                      133 archivos .md en 10 niveles (00 a 09)
 ├── operacion/                 23 archivos .md (22 previos + este inventario) + TAREAS/T-001..T-016
-├── Assets/                    vacio
+├── assets/                    5 cuadernos fuente locales (sin seguimiento en Git)
 ├── build/                     vacio
 ├── tools/                     vacio
 ├── graft/                     grafo local, ignorado por git
@@ -311,52 +321,31 @@ solucion ni se ejecuto en esta verificacion.
   - `TAREAS/` contiene T-001 a T-016.
   - `ESTADO_DESARROLLO.md` conserva el cierre historico de T-018 (625 pruebas)
     y agrega la actualizacion 2026-10-19 con 664/664 y build 0w/0e.
-  - `KANBAN.md` declara resuelto el bloqueo de seleccion de modelo.
-  - `BACKLOG.md` y `RELEVO.md` conservan texto de investigacion activa y
-    contradicen el estado mas reciente.
-- `Docs/07_Interfaz/` contiene T-018, T-019 y T-020, pero no existen fichas
-  equivalentes en `operacion/TAREAS/` para T-017 a T-020.
-- `Docs/02_Memoria/INVENTARIO_ARQUITECTURA.md` mantiene componentes como
-  "Planificado" o "En desarrollo" que ya tienen implementacion en el codigo.
+- `KANBAN.md`, `BACKLOG.md`, `RELEVO.md` y `ESTADO_PROYECTO.md` se alinean en
+  esta actualizacion con el corte de software 2026-10-19 y separan el pendiente
+  de Graft de la operacion de Condor.
+- `Docs/07_Interfaz/` contiene T-018, T-019 y T-020. No se localizo una ficha
+  T-017 ni se crearon duplicados en `operacion/TAREAS/`; el hueco es de
+  trazabilidad documental, no evidencia por si mismo de una tarea activa.
+- `Docs/02_Memoria/INVENTARIO_ARQUITECTURA.md` aclara que ARQ-012 sigue En
+  desarrollo como superficie, mientras Architect, Guardian y ciclo de vida de
+  artefactos permanecen en estados planificados/especificados.
 
 ## 8. GRAFT
 
 | Metrica | Valor |
 |---|---|
 | Archivos indexados | 334 (333 C# + 1 Python) |
-| Simbolos | 2.743 |
-| Aristas de cableado | 2.073 |
+| Simbolos | 2.754 |
+| Aristas de cableado | 2.079 |
 | Tarjetas Markdown | 334 |
-| Nodos pendientes de significado | 3.077 |
-| Tier de significado | 0% |
-| Estado del cableado | En sincronia con el codigo |
+| Nodos semanticos pendientes | 3.088 |
+| Tier semantico | 0% |
+| Estado del cableado | En sincronia con el codigo (2026-10-30) |
 
-Interpretacion del mensaje de `graft check`:
+`graft check` confirma que el grafo estructural esta actualizado, pero tambien indica `deep layer: not built`. Los 3.088 nodos siguen pendientes de conceptos y resumenes. El intento local anterior se detuvo a los 73/334 archivos; no completo la capa semantica ni invoco la API directa de OpenAI. La revision y los cambios documentales de este informe se hicieron con Codex.
 
-```text
-NO GRAPH / No graft/manifest.json
-graph check: OK - the wiring graph is in sync with the code
-tier 0% complete - 3077 of 3077 node(s) pending
-```
-
-No es un error de frescura estructural. Significa:
-
-1. El grafo de cableado (simbolos, archivos, aristas) esta sincronizado con el
-   codigo actual.
-2. No existe `graft/manifest.json` porque no se genero la capa de significado.
-3. `graft build --deep` se ejecuto sin `GRAFT_API_KEY`; hizo fallback al build
-   estructural y dejo los 3.077 nodos sin resumen/concepto LLM.
-4. Reejecutar el comando sin configurar una API key no cambia ese 0%.
-
-Para completar la capa semantica:
-
-```text
-GRAFT_API_KEY=...
-GRAFT_PROVIDER=...
-GRAFT_BASE_URL=...
-GRAFT_MODEL=...
-graft build --deep
-```
+La CLI de Graft necesita una configuracion de proveedor independiente, incluida `GRAFT_API_KEY`; la autenticacion de Codex no se transfiere automaticamente al proceso CLI. Para completar la capa con OpenAI, el usuario debe crear y configurar localmente su API key de plataforma. El uso de la API se factura aparte por consumo; esta revision no utilizo la API.
 
 ## 9. ESTADO VERIFICADO
 
@@ -393,19 +382,10 @@ stub.
 ### 9.3 Git
 
 - Rama: `main`.
-- HEAD: `35cc09b` (2026-09-08), sin commits nuevos.
-- Cambios de produccion locales: `condor.cmd`, `IdentityHeader.cs`,
-  `CondorArt.cs`, `TuiHost.cs`, `ModelSelector.cs`, `AgentService.cs`.
-- Pruebas y documentacion actualizadas: `TuiTests.cs`,
-  `AgentServiceResourceBlockTests.cs`, `DependencyBootstrapTests.cs`,
-  `README.md`, `MASCOTA_CLI_UNICODE.md`, `T-020_IMPLEMENTACION.md` y documentos
-  de `operacion/`.
-- `.gitignore`: agrega `/graft/` y `/test-publish/`.
-- `test-publish/` (0,9 MB) sigue presente pero ya no se rastrea; su eliminacion
-  requiere autorizacion explicita.
-- Archivos no rastreados de entorno: `.claude/`, `.ignore`, `.mcp.json`,
-  `AGENTS.md`, `opencode.json`, mockups de la mascota,
-  `TuiPresentationChangeTests.cs` y este inventario.
+- El snapshot de software y pruebas corresponde a `420026b` (2026-10-19).
+- La configuracion Graft se versiono en `25af837` (2026-10-30); no modifica codigo de Condor.
+- `assets/` permanece local y sin seguimiento; los Cuadernos I-V no se editaron.
+- Los cambios de esta actualizacion son documentales y de configuracion Graft; no se ejecutaron pruebas ni build de Condor.
 
 ### 9.4 Codificacion UTF-8 y anti-Mojibake
 
@@ -429,13 +409,14 @@ Total inicial: 301 coincidencias de mojibake en 7 archivos, mas 21 bytes
 invalidos en `IdentityHeader.cs`. Todos fueron corregidos. Los 20 archivos con
 BOM UTF-8 se conservan; el BOM es valido y no es mojibake.
 
-## 10. HALLAZGOS PRIORIZADOS
+## 10. HALLAZGOS DEL SNAPSHOT INICIAL Y ESTADO ACTUAL
 
 > **Cierre 2026-10-19:** los P0/P1/P2 de esta tabla quedaron corregidos,
 > mitigados o registrados como deuda documental. La capa semantica de Graft
-> sigue pendiente de `GRAFT_API_KEY` (P2); no afecta el build ni las pruebas.
-> Las fichas T-017..T-020 siguen ausentes en `operacion/TAREAS/`, pero su
-> contenido vive en `Docs/07_Interfaz/` y quedo enlazado desde este inventario.
+> sigue pendiente de configurar un proveedor y una API key propios para la CLI de Graft (P2); no afecta el build ni las pruebas.
+> T-018..T-020 tienen documentos en `Docs/07_Interfaz/`; no se localizo T-017.
+> Este hueco de trazabilidad no se convierte en una tarea de producto sin una
+> fuente que la identifique.
 > `README.md` ya no es un hallazgo bloqueante: se agrego la seccion de ejecucion
 > global.
 
@@ -445,10 +426,10 @@ BOM UTF-8 se conservan; el BOM es valido y no es mojibake.
 | P0 | Mojibake en cadenas de runtime | `AgentService.cs` lineas 230, 247, 266, 648, 667, 1077, 1158, 1206, 1247 | Mensajes al usuario con separadores y "español" doblemente codificados | Reemplazar por `·`, `español`, `…` sin cambiar logica |
 | P0 | UTF-8 invalido en fuente | `IdentityHeader.cs` | Texto deteriorado en CLI clasica | Recodificar el archivo a UTF-8 sin cambiar contenido |
 | P1 | Documentacion operativa desalineada | `BACKLOG.md`, `RELEVO.md`, `KANBAN.md`, `ESTADO_PROYECTO.md` | Continuidad confusa | Sincronizar estado y fechas; no borrar historia |
-| P1 | Fichas T-017..T-020 ausentes | `operacion/TAREAS/` llega a T-016 | Trazabilidad incompleta | Crear fichas o registrar referencia a `Docs/07_Interfaz/` |
+| P2 | T-017 no localizada; T-018..T-020 viven en `Docs/07_Interfaz/` | `operacion/TAREAS/` llega a T-016 | Hueco de trazabilidad, no defecto de producto | Mantener las rutas; crear T-017 solo si existe una fuente para esa tarea |
 | P1 | Advertencias nullable | 3 en ModelSelector, 2 en AgentService | Ruido de compilacion | Guardas minimas de nulabilidad |
-| P2 | `test-publish/` no ignorado | 0,9 MB sin rastrear | Ruido en git | Agregar a `.gitignore` o eliminar con autorizacion |
-| P2 | Capa semantica de graft incompleta | 3.077 nodos pendientes | Sin resumenes conceptuales | Configurar `GRAFT_API_KEY` y ejecutar `graft build --deep` |
+| P2 | `test-publish/` conservado localmente | Esta ignorado por Git y no se versiona | Artefacto residual; su eliminacion requiere autorizacion | Conservarlo hasta autorizacion expresa |
+| P2 | Capa semantica de graft incompleta | 3.088 nodos pendientes (0%) | Sin resumenes conceptuales | Configurar una API key OpenAI local en `GRAFT_API_KEY` y ejecutar `graft build --deep` |
 | P3 | README menciona Samples/Scripts | Directorios inexistentes | Deriva documental menor | Corregir README o crear directorios si se requieren |
 
 ## 11. CRITERIO DE CIERRE PARA EL SIGUIENTE CICLO
@@ -460,8 +441,9 @@ BOM UTF-8 se conservan; el BOM es valido y no es mojibake.
 5. Documentos operativos alineados con HEAD.
 6. Arbol de trabajo sin artefactos compilados no rastreados.
 
-Estado 2026-10-19: 1, 2, 3 y 5 cumplidos. El grafo de cableado esta en
-sincronia; la capa semantica sigue en 0% por falta de `GRAFT_API_KEY`. El
+Estado del software al corte 2026-10-19: build, pruebas y codificacion cubiertos.
+La documentacion operativa se alineo el 2026-10-30. El grafo de cableado sigue
+sincronizado; la capa semantica permanece en 0% y la CLI no tiene una API key configurada. El
 artefacto `test-publish/` ya esta ignorado, pero se conserva hasta recibir
 autorizacion para eliminarlo.
 
@@ -481,3 +463,9 @@ autorizacion para eliminarlo.
 - `operacion/KANBAN.md`
 - `operacion/BACKLOG.md`
 - `operacion/RELEVO.md`
+
+## ACTUALIZACIONES
+
+| Version | Fecha | Cambio |
+|---|---|---|
+| 1.2.0 | 2026-10-30 | Se alinea Git con los commits vigentes, se documenta Graft pendiente de API y se distingue la evidencia de software del 19-10 de los cambios documentales actuales. |
