@@ -1,9 +1,20 @@
 # ESTADO_PROYECTO
 
-Version: 2.1.0
+Version: 2.2.0
 Estado: Vigente
 Clasificacion: Estado del Proyecto
-Fecha: 2026-08-19
+Fecha: 2026-10-30
+
+## CORTE VIGENTE
+
+- Estado del software y pruebas: corte 2026-10-19, confirmado por el usuario.
+- Build Release: 0 errores y 0 advertencias; suite: 664/664 correctas, 0 fallidas y 0 omitidas.
+- T-001 a T-016: completadas al corte; T-002 estaba integrada en `main` desde `dfaa5d6`, pero su ficha seguia marcada En revision y se reconcilia en esta actualizacion documental.
+- La contradiccion de presupuesto/seleccion de modelo descrita en el relevo de agosto quedo corregida; no es un problema activo de Condor.
+- Graft: grafo estructural sincronizado; capa semantica 0%, 3.088 nodos pendientes. Falta configurar `GRAFT_API_KEY` para OpenAI Platform en el entorno local de la CLI. La autenticacion de Codex no sirve como esa clave.
+- Los Cuadernos I-V siguen en `assets/`, sin cambios ni movimientos.
+
+Los apartados heredados a continuacion conservan el estado historico del 2026-08-19. La evidencia de Condor se mantiene con corte al 2026-10-19; la configuracion de Graft se reviso el 2026-10-30.
 
 ## FUENTE OFICIAL
 
@@ -69,3 +80,9 @@ Resolver la causa de seleccion/compatibilidad del modelo.
 
 El flujo cliente incognito debe funcionar de extremo a extremo antes de declarar estable la version real de Condor 1.0:
 entorno nuevo -> Ollama/modelo -> presupuesto -> seleccion -> ejecucion -> progreso -> resultado.
+
+## HISTORIAL DE CAMBIOS
+
+| Version | Cambios |
+|---|---|
+| 2.2.0 | Se agrega el corte vigente al 19-10-2026, se identifica como historico el diagnostico anterior y se registra Graft pendiente de API OpenAI. |

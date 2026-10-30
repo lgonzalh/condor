@@ -1,7 +1,7 @@
 # REGISTRO_CAMBIOS
 
-Version: 2.1.0
-Fecha de continuidad: 2026-08-19
+Version: 2.2.0
+Fecha de continuidad: 2026-10-30
 
 ## Cambios recientes relevantes
 
@@ -708,3 +708,14 @@ En lanzamientos automatizados via `Start-Process` se observa una carrera del tra
 - `test-publish/` y `C:\Users\lgonz\.condor\.artifacts\condor` se eliminaron
   tras autorizacion explicita; sus copias ya no compiten con la version canonica.
 - La unica version canonica es la publicada por `C:\GitHub\condor\condor.cmd`.
+
+---
+
+## ACTUALIZACION DOCUMENTAL Y GRAFT (2026-10-30)
+
+- Se versiono y publico la configuracion de Graft para el repositorio en el commit `25af837`; no cambia el producto Condor.
+- Se actualizan el tablero, estado, backlog y relevo para usar como corte de software el 2026-10-19: build 0 errores/0 advertencias y suite 664/664, segun la evidencia existente y la confirmacion del usuario.
+- T-002 estaba integrada en `main` desde `dfaa5d6`; se corrige su ficha en la reconciliacion documental.
+- El grafo estructural de Graft esta sincronizado (2.754 simbolos y 2.079 aristas). La capa semantica sigue en 0%, con 3.088 nodos pendientes; `GRAFT_API_KEY` no esta configurada.
+- No se repitieron pruebas/build de Condor ni se ejecuto `graft build --deep` en esta actualizacion. No se uso Ollama para Graft.
+- Los Cuadernos I-V permanecen en `assets/`; no se movieron ni modificaron.

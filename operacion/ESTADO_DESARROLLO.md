@@ -1,12 +1,15 @@
 # ESTADO_DESARROLLO
 
-Version: 2.1.0
+Version: 2.2.0
 Estado: Activo
 Modo: Evolucion Continua
 MVP: Condor 1.0
-Fecha: 2026-08-19
+Fecha de actualizacion: 2026-10-30
+Fecha de corte de evidencia de software: 2026-10-19
 
 ## ACTUALIZACION 2026-10-19
+
+Este registro corresponde a las pruebas realizadas por el usuario en esa fecha; esta actualizacion documental no vuelve a ejecutarlas.
 
 Estado vigente tras el cierre de correcciones:
 
@@ -26,6 +29,17 @@ Estado vigente tras el cierre de correcciones:
 
 La seccion T-018 siguiente se conserva como registro historico; sus cifras
 625/625 corresponden a ese cierre.
+
+## ESTADO OPERATIVO ACTUAL (2026-10-30)
+
+- T-001 a T-016: cerradas segun sus fichas y el corte de pruebas del 2026-10-19. T-002 conserva evidencia de su implementacion original y se cierra documentalmente contra su commit integrado en `main`.
+- Sin cambios de codigo de Condor en esta actualizacion; no se ejecutaron build ni pruebas.
+- El indice estructural de Graft esta sincronizado. La capa semantica (0%, 3.088 nodos) espera una API key OpenAI configurada localmente como `GRAFT_API_KEY`.
+- La integracion Ollama pertenece al producto Condor; no se uso Ollama para Graft ni durante esta actualizacion.
+
+| Version | Cambios |
+|---|---|
+| 2.2.0 | Se fecha el estado documental y se separa la evidencia de software del 19-10-2026 del estado de Graft revisado el 30-10-2026. |
 
 ## CAPACIDADES VERIFICADAS
 

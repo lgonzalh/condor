@@ -1,9 +1,23 @@
 # KANBAN
 
-Version: 2.1.0
+Version: 2.2.0
 Estado: Activo
 Nivel: Global
-Fecha: 2026-08-19
+Fecha de actualizacion: 2026-10-30
+
+## DASHBOARD VIGENTE
+
+**Corte de software y pruebas: 2026-10-19.** El usuario confirma que build y pruebas se realizaron correctamente. El estado de Graft se reviso el 2026-10-30.
+
+| Que hacer | Haciendo | Hecho |
+|---|---|---|
+| Configurar `GRAFT_API_KEY` con una clave propia de OpenAI Platform; ejecutar `graft build --deep` y validar con `graft check`. | Ningun cambio de producto Condor en curso. Graft espera la clave; capa semantica 0%, 3.088 nodos pendientes. | T-001 a T-016 completadas/cerradas. Condor: build Release 0 errores/0 advertencias; suite 664/664 correctas. Cuadernos I-V conservados sin modificar. |
+
+**Separacion de proveedores:** Condor conserva Ollama como proveedor local para sus pruebas y ejecucion. Graft debe usar OpenAI API por la CLI; no se usa Ollama para generar su capa semantica. La API se factura por consumo y no se ha llamado desde esta actualizacion.
+
+**Alcance de la verificacion:** las cifras de Condor corresponden al 2026-10-19 y no se repitieron hoy. La configuracion Graft esta versionada, pero su capa semantica requiere `GRAFT_API_KEY` en el entorno local, fuera del repositorio.
+
+Los apartados siguientes son el tablero historico del 2026-08-19 y se conservan como antecedente; no representan trabajo abierto actual.
 
 ## EN PROGRESO
 
