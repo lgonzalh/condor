@@ -1,6 +1,6 @@
 # INVENTARIO_TECNICO_REPO
 
-Version: 1.2.0
+Version: 1.3.0
 Estado: Vigente (snapshot tecnico)
 Nivel: Global
 Clasificacion: Inventario Tecnico
@@ -99,6 +99,7 @@ condor/
 ├── build/                     vacio
 ├── tools/                     vacio
 ├── graft/                     grafo local, ignorado por git
+├── graft-deep.cmd              lanzador local, clave temporal no persistida
 ├── Condor.slnx
 ├── README.md
 ├── ESTADO_PROYECTO.md
@@ -384,6 +385,7 @@ stub.
 - Rama: `main`.
 - El snapshot de software y pruebas corresponde a `420026b` (2026-10-19).
 - La configuracion Graft se versiono en `25af837` (2026-10-30); no modifica codigo de Condor.
+- `graft-deep.cmd` vive en la raiz, solicita la clave con entrada oculta, ejecuta `graft build --deep` y `graft check`, y elimina `GRAFT_API_KEY` del proceso al finalizar.
 - `assets/` permanece local y sin seguimiento; los Cuadernos I-V no se editaron.
 - Los cambios de esta actualizacion son documentales y de configuracion Graft; no se ejecutaron pruebas ni build de Condor.
 
@@ -468,4 +470,5 @@ autorizacion para eliminarlo.
 
 | Version | Fecha | Cambio |
 |---|---|---|
+| 1.3.0 | 2026-10-30 | Se registra el lanzador seguro de Graft en la raiz y el flujo de uso temporal de la clave. |
 | 1.2.0 | 2026-10-30 | Se alinea Git con los commits vigentes, se documenta Graft pendiente de API y se distingue la evidencia de software del 19-10 de los cambios documentales actuales. |

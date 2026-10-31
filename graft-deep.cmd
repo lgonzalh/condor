@@ -1,6 +1,6 @@
 @echo off
 setlocal
-cd /d "%~dp0..\.."
+cd /d "%~dp0"
 
 echo Este proceso solicitara la clave completa con entrada oculta.
 echo La clave solo estara en memoria durante este proceso y no se guardara en disco.

@@ -1,6 +1,6 @@
 # INVENTARIO_PROYECTO
 
-Version: 1.3.0
+Version: 1.4.0
 Estado: Activo
 Nivel: Global
 Clasificacion: Inventario Maestro
@@ -52,10 +52,10 @@ Total observado: 160 archivos Markdown (133 en `Docs/`, 23 en `operacion/` y 4 e
 | `Docs/00_Fundamentos/DIRECTIVA_GLOBAL.md` | Global | 1.0.0 | Congelado | Directiva Operativa | ADN |
 | `Docs/00_Fundamentos/DIRECTIVA_OPERATIVA_PROYECTO_CONDOR.md` | Global | 2.3.0 | Vigente | Directiva Operativa | Directiva Global |
 | `Docs/00_Fundamentos/ESTANDAR_DOCUMENTAL.md` | Global | 1.1.0 | Activo | Estandar | No declaradas |
-| `Docs/00_Fundamentos/ESTRUCTURA_REPOSITORIO.md` | Global | 2.0.2 | Activo | Arquitectura | No declaradas |
+| `Docs/00_Fundamentos/ESTRUCTURA_REPOSITORIO.md` | Global | 2.0.3 | Activo | Arquitectura | No declaradas |
 | `Docs/00_Fundamentos/FLUJO_INTERNO_NUCLEO.md` | 01 - Arquitectura | 1.0.0 | Activo | Arquitectura | No declaradas |
 | `Docs/00_Fundamentos/GRAFO_CONOCIMIENTO.md` | 01 - Arquitectura | 1.0.0 | Activo | Arquitectura | No declaradas |
-| `Docs/00_Fundamentos/INVENTARIO_PROYECTO.md` | Global | 1.3.0 | Activo | Inventario Maestro | Ninguna |
+| `Docs/00_Fundamentos/INVENTARIO_PROYECTO.md` | Global | 1.4.0 | Activo | Inventario Maestro | Ninguna |
 | `Docs/00_Fundamentos/KANBAN.md` | Global | 1.0.0 | Activo | Gestion del Proyecto | No declaradas |
 | `Docs/00_Fundamentos/MODELO_CICLO_VIDA_ARTEFACTOS.md` | Global | 1.0.0 | Activo | Modelo | Directivas |
 | `Docs/00_Fundamentos/MODELO_CONOCIMIENTO.md` | 01 - Arquitectura | 1.0.0 | Activo | Arquitectura | No declaradas |
@@ -178,7 +178,7 @@ Total observado: 160 archivos Markdown (133 en `Docs/`, 23 en `operacion/` y 4 e
 | `INVENTARIO_PROYECTO.md` | Global | 1.3.0 | Vigente | No declarada | No declaradas |
 | `operacion/BACKLOG.md` | No declarado | 4.1.0 | Activo | No declarada | No declaradas |
 | `operacion/ESTADO_DESARROLLO.md` | No declarado | 2.2.0 | Activo | No declarada | No declaradas |
-| `operacion/INVENTARIO_TECNICO_REPO.md` | Global | 1.2.0 | Vigente (snapshot tecnico) | Inventario Tecnico | No declaradas |
+| `operacion/INVENTARIO_TECNICO_REPO.md` | Global | 1.3.0 | Vigente (snapshot tecnico) | Inventario Tecnico | No declaradas |
 | `operacion/KANBAN.md` | Global | 2.2.0 | Activo | No declarada | No declaradas |
 | `operacion/README.md` | No declarado | No declarada | No declarado | No declarada | No declaradas |
 | `operacion/REGISTRO_CAMBIOS.md` | No declarado | 2.2.0 | No declarado | No declarada | No declaradas |
@@ -217,6 +217,7 @@ Los cinco archivos de `assets/` se conservan en su ruta actual. Son fuentes de t
 ## Otros artefactos no Markdown
 
 - `LICENSE` y `NOTICE` en la raiz.
+- `graft-deep.cmd` en la raiz: solicita `GRAFT_API_KEY` con entrada oculta y ejecuta el build profundo y su verificacion sin guardar la clave.
 - `Docs/07_Interfaz/Mockups/condor_mockups_nivel_07_actualizados.html`
 - `Docs/07_Interfaz/Mockups/condor_pequeno.ans`
 - `Docs/07_Interfaz/Mockups/condor_pequeno.ps1`
@@ -244,6 +245,7 @@ Los archivos de configuracion local de herramientas (`AGENTS.md`, `.mcp.json`, `
 
 | Version | Cambios |
 |---|---|
+| 1.4.0 | Se registra el lanzador `graft-deep.cmd` en los artefactos de raiz y se sincronizan las versiones documentales. |
 | 1.3.0 | Se sincronizan los metadatos con las actualizaciones documentales del 2026-10-30; se mantienen las 160 rutas y su ubicacion. |
 | 1.2.0 | Se amplia a las 160 rutas Markdown observadas, se corrigen estados copiandolos de las fuentes y se separan cuadernos y artefactos auxiliares. |
 | 1.1.0 | Se sincroniza el inventario con el Nivel 09 activo, se registran sus ocho entregables y se establece que INVENTARIO_PROYECTO.md no determina el nivel activo. |
