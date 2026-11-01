@@ -1,10 +1,10 @@
 # ESTADO_DESARROLLO
 
-Version: 2.2.0
+Version: 2.3.0
 Estado: Activo
 Modo: Evolucion Continua
 MVP: Condor 1.0
-Fecha de actualizacion: 2026-10-30
+Fecha de actualizacion: 2026-11-01
 Fecha de corte de evidencia de software: 2026-10-19
 
 ## ACTUALIZACION 2026-10-19
@@ -30,15 +30,18 @@ Estado vigente tras el cierre de correcciones:
 La seccion T-018 siguiente se conserva como registro historico; sus cifras
 625/625 corresponden a ese cierre.
 
-## ESTADO OPERATIVO ACTUAL (2026-10-30)
+## ESTADO OPERATIVO ACTUAL (2026-11-01)
 
-- T-001 a T-016: cerradas segun sus fichas y el corte de pruebas del 2026-10-19. T-002 conserva evidencia de su implementacion original y se cierra documentalmente contra su commit integrado en `main`.
-- Sin cambios de codigo de Condor en esta actualizacion; no se ejecutaron build ni pruebas.
-- El indice estructural de Graft esta sincronizado. La capa semantica (0%, 3.088 nodos) espera una API key OpenAI configurada localmente como `GRAFT_API_KEY`.
-- La integracion Ollama pertenece al producto Condor; no se uso Ollama para Graft ni durante esta actualizacion.
+- T-001 a T-020: tareas previas cerradas segun sus fichas. T-021 queda completada, verificada, integrada y publicada.
+- Build Release: 0 errores y 0 advertencias.
+- Suite completa: 671/671 correctas (Architecture 22, Core 272, CLI 56, Infrastructure 321). Estas pruebas se ejecutaron para T-021 y no reemplazan el corte confirmado por el usuario de 664/664 al 2026-10-19.
+- T-021 agrega la generacion determinista de informes Antes/Durante/Despues para agente y `/avanzar`; no uso proveedor externo ni Ollama para generar esos informes.
+- `graft build` estructural: 342 archivos, 3.145 nodos y 2.108 aristas. `graft check` marca ocho archivos nuevos/cambiados y 25 resumenes semanticos obsoletos; la siguiente pasada `graft build --deep` queda pendiente por separado.
+- La salida previa de `graft build --deep` compartida por el usuario registro 37 conceptos, 3.088 nodos calculados y 0 pendientes antes de los cambios T-021.
 
 | Version | Cambios |
 |---|---|
+| 2.3.0 | Se cierra T-021 con build 0/0 y suite 671/671; se separa del corte historico 664/664 y se registra el estado Graft tras los nuevos archivos. |
 | 2.2.0 | Se fecha el estado documental y se separa la evidencia de software del 19-10-2026 del estado de Graft revisado el 30-10-2026. |
 
 ## CAPACIDADES VERIFICADAS

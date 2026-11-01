@@ -1,6 +1,6 @@
 # INVENTARIO_ARQUITECTURA
 
-Version: 2.5.0
+Version: 2.6.0
 Estado: Activo
 Nivel: Global
 Clasificacion: Inventario Arquitectonico
@@ -93,7 +93,7 @@ Actualizar
 
   ARQ-007   Verifier       Engine            Implementado   KERNEL_CONDOR.md
 
-  ARQ-008   Documenter     Servicio          Especificado   DOCUMENTADOR.md
+  ARQ-008   Documenter     Servicio          Implementado   DOCUMENTADOR.md
 
   ARQ-009   Guardian       Servicio          Planificado    GUARDIAN.md
 
@@ -132,7 +132,7 @@ Actualizar
             probar)                                      
   -------------------------------------------------------------------------------------------
 
-Nota de vigencia 2026-10-19: ARQ-012 sigue En desarrollo como superficie, aunque ya integra los comandos implementados en T-001..T-014 y la TUI. Su evolucion no significa que las tareas cerradas sigan abiertas; el alcance interactivo no tiene una validacion E2E automatizada de TTY.
+Nota historica al corte 2026-10-19: ARQ-008 seguia especificado en esa fecha. T-021 lo implementa para informes de tarea. ARQ-012 sigue En desarrollo como superficie, aunque integra los comandos implementados en T-001..T-014 y la TUI; el alcance interactivo no tiene una validacion E2E automatizada de TTY.
 
 Nota: ARQ-002 fue implementado inicialmente mediante T-001. ARQ-012
 cuenta con una CLI inicial (identidad, estado, analizar y consultar) pendiente
@@ -161,6 +161,11 @@ Al corte 2026-10-19, ARQ-001, ARQ-005, ARQ-009 y ARQ-011 permanecen
 planificados; ARQ-008 y ARQ-010 permanecen especificados. Son alcance futuro
 registrado, no capacidades que el informe marque como ya implementadas.
 
+Estado vigente tras T-021: ARQ-008 genera informes Antes/Durante/Despues para
+el agente y `/avanzar`, a partir de resultados observados. La actualizacion
+semantica de documentos propietarios sigue vinculada a la tarea y al documento
+que esta identifique.
+
 ------------------------------------------------------------------------
 
 # Reglas
@@ -178,6 +183,8 @@ registrado, no capacidades que el informe marque como ya implementadas.
 
   Version   Cambios
   --------- -------------------------------------------------------------
+  2.6.0     ARQ-008 pasa a Implementado tras T-021: `IDocumenter` genera
+            informes Antes/Durante/Despues para agente y `/avanzar`.
   2.5.0     Se aclara el alcance vigente de ARQ-012 tras T-001..T-014 y se
             distinguen los componentes planificados de los ya implementados.
   2.4.0     ARQ-016 (Ciclo de Ingenieria) se extiende tras T-014: el ciclo

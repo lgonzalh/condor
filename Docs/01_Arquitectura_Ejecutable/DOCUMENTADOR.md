@@ -1,13 +1,14 @@
 # DOCUMENTADOR
 
-Version: 1.0.0 Estado: Especificado Nivel: 03 Clasificacion: Servicio
+Version: 1.1.0 Estado: Activo Nivel: 03 Clasificacion: Servicio
 
 # Proposito
 
 Definir el rol y la responsabilidad del Servicio Documenter del Proyecto Condor
-(FN-009, ARQ-008). Este documento especifica QUIEN actualiza la documentacion
-permanente y BAJO QUE criterios; NO redefine el flujo de desarrollo, que vive en
-SISTEMA_DESARROLLO_CONDOR.md.
+(FN-009, ARQ-008), y los criterios para mantener la documentacion permanente.
+Este documento no redefine el flujo de desarrollo, que vive en
+SISTEMA_DESARROLLO_CONDOR.md. El contrato tecnico del componente implementado se
+mantiene en DOCUMENTER.md.
 
 Responde la pregunta:
 
@@ -22,6 +23,20 @@ con el estado real y permita la continuidad sin depender de conversaciones.
 El flujo general del desarrollo (Comprender -> Planificar -> Disenar -> Implementar
 -> Verificar -> Documentar -> Congelar -> Continuar) es definido por
 SISTEMA_DESARROLLO_CONDOR.md y no se repite en este documento.
+
+# Implementacion vigente
+
+Desde T-021, `IDocumenter` genera un informe UTF-8 nuevo para cada ejecucion de
+agente en lenguaje natural y cada ciclo `/avanzar`, bajo
+`docs/condor/tareas/`. Cada informe separa `Antes`, `Durante` y `Despues`, y
+registra solamente la intencion, los pasos o etapas observados, el estado final
+y las limitaciones disponibles. El resultado devuelve la ruta del informe; si
+la escritura falla, informa ese fallo sin ocultar ni alterar el resultado de la
+tarea.
+
+El informe registra la ejecucion y aporta trazabilidad permanente. No sustituye
+la actualizacion semantica del documento propietario: Condor no elige ni edita
+un documento oficial por inferencia cuando la tarea no lo identifica.
 
 # Responsabilidades
 
@@ -40,11 +55,13 @@ SISTEMA_DESARROLLO_CONDOR.md y no se repite en este documento.
 
 # Reglas
 
-- No implementar software ni motores; Documenter es documental.
+- La politica no implementa software ni motores; el contrato tecnico de la
+  implementacion esta en DOCUMENTER.md.
 - No modificar historial congelado de tareas completadas.
 - Una unica fuente de verdad por decision (ESTRATEGIA_MEMORIA.md).
 - Documentacion proporcional al cambio (DIRECTIVA_OPERATIVA_PROYECTO_CONDOR.md).
 - Todo texto visible nuevo en espanol latinoamericano sin tildes ni acentos.
+- El informe de tarea registra el resultado observado y no afirma pruebas que no se ejecutaron.
 
 # Relaciones
 
@@ -59,10 +76,17 @@ SISTEMA_DESARROLLO_CONDOR.md y no se repite en este documento.
 - Todo conocimiento permanente es trazable a un documento propietario.
 - La continuidad es posible sin recuperar conversaciones.
 - No existen duplicidades catalogadas entre documentos.
+- Las rutas de agente y `/avanzar` generan informes `Antes`/`Durante`/`Despues`
+  sin proveedor externo y sin sobreescribir informes previos.
+- El fallo documental se devuelve de forma visible y diferenciada del resultado
+  de la tarea.
 
 # Historial de cambios
 
   Version   Cambios
   --------- ---------------------------------------------------------
+  1.1.0     T-021 implementa informes Antes/Durante/Despues para el agente y
+            `/avanzar`; el informe no reemplaza las actualizaciones semanticas
+            de documentos propietarios.
   1.0.0     Especificacion del rol y responsabilidad de Documenter
             (FN-009 / ARQ-008) tras T-009.

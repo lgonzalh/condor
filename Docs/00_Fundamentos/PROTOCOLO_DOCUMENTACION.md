@@ -1,6 +1,6 @@
 # PROTOCOLO_DOCUMENTACION
 
-Version: 1.0.0
+Version: 1.1.0
 Estado: Activo
 Nivel: 01 - Arquitectura
 Clasificacion: Protocolo de Ingenieria
@@ -29,8 +29,9 @@ Definir el proceso obligatorio para crear, actualizar y preservar la documentaci
 3. Crear o actualizar el documento correspondiente.
 4. Registrar decisiones relevantes.
 5. Actualizar el Kanban.
-6. Validar consistencia entre documentacion e implementacion.
-7. Finalizar la tarea.
+6. Generar el informe de ejecucion con `Antes`, `Durante` y `Despues`.
+7. Validar consistencia entre documentacion e implementacion.
+8. Finalizar la tarea.
 
 ---
 
@@ -42,6 +43,9 @@ Definir el proceso obligatorio para crear, actualizar y preservar la documentaci
 - Registrar la version dentro del documento.
 - Actualizar el historial de cambios cuando corresponda.
 - Todo documento debe indicar sus dependencias cuando existan.
+- El informe de ejecucion usa solamente resultados y acciones observados por Condor.
+- Cada informe se crea como archivo nuevo; una tarea fallida o limitada conserva ese estado.
+- El informe no reemplaza la actualizacion semantica del documento propietario cuando la tarea la requiere.
 
 ---
 
@@ -58,6 +62,15 @@ Al finalizar cualquier tarea, el proyecto debera quedar mas documentado, mas com
 - ADN_CONDOR.md
 - PROTOCOLO_IMPLEMENTACION.md
 - MODELO_CONOCIMIENTO.md
+
+---
+
+# Historial
+
+| Version | Fecha | Cambio |
+|---|---|---|
+| 1.1.0 | 2026-11-01 | T-021 agrega el informe de ejecucion Antes/Durante/Despues para agente y `/avanzar`. |
+| 1.0.0 | No declarada | Creacion del protocolo de documentacion. |
 
 ---
 

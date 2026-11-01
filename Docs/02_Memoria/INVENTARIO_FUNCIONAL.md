@@ -1,6 +1,6 @@
 # INVENTARIO_FUNCIONAL
 
-Version: 1.8.0\
+Version: 1.9.0\
 Estado: Activo\
 Nivel: Global\
 Clasificacion: Inventario Funcional
@@ -104,7 +104,7 @@ Actualizar
   FN-008   Verificar         Desarrollo        Implementada    SISTEMA_DESARROLLO_CONDOR.md
             resultados                                         
 
-  FN-009   Documentar        Documentacion     Especificada   DOCUMENTADOR.md
+  FN-009   Documentar        Documentacion     Implementada  DOCUMENTADOR.md
             automaticamente                                    
 
   FN-010   Mantener          Gobernanza        Especificada   DIRECTIVA_GLOBAL.md
@@ -178,6 +178,8 @@ Nota de alcance: los estados implementados reflejan el alcance descrito y valida
 
   Version   Cambios
   --------- --------------------------------------------------------
+  1.9.0     FN-009 genera informes Antes/Durante/Despues para el agente y
+            `/avanzar` (T-021), con estado y ruta verificables.
   1.8.0     Se reconcilian FN-004 y FN-012..FN-014 con Assessment (T-001),
             Ollama (T-002), recomendacion y presupuesto de modelos (T-003,
             T-015, T-016) y soporte inicial Windows; evidencia con corte

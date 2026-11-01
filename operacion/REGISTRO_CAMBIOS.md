@@ -719,3 +719,35 @@ En lanzamientos automatizados via `Start-Process` se observa una carrera del tra
 - El grafo estructural de Graft esta sincronizado (2.754 simbolos y 2.079 aristas). La capa semantica sigue en 0%, con 3.088 nodos pendientes; `GRAFT_API_KEY` no esta configurada.
 - No se repitieron pruebas/build de Condor ni se ejecuto `graft build --deep` en esta actualizacion. No se uso Ollama para Graft.
 - Los Cuadernos I-V permanecen en `assets/`; no se movieron ni modificaron.
+
+---
+
+## T-021 — INFORMES DE TAREA ANTES, DURANTE Y DESPUES (2026-11-01)
+
+### Cambio
+
+- Se implementa `IDocumenter` para crear un informe Markdown UTF-8 nuevo por
+  ejecucion, en `docs/condor/tareas/`, sin reemplazar archivos previos.
+- Se integra con agente en lenguaje natural, TUI y `/avanzar`; la salida expone
+  la ruta o el fallo de documentacion.
+- El informe registra acciones/etapas y estados observados; omite vistas previas
+  de archivos y redacta formatos reconocibles de credenciales.
+- `DOCUMENTER.md` conserva el contrato tecnico y `DOCUMENTADOR.md` la politica
+  operativa. Se actualizan los inventarios y el protocolo.
+
+### Verificacion
+
+- `dotnet build Condor.slnx -c Release --no-restore`: 0 errores, 0 advertencias.
+- `dotnet test Condor.slnx -c Release --no-restore`: 671/671 (Architecture 22,
+  Core 272, CLI 56, Infrastructure 321).
+- Pruebas especificas nuevas: generacion real para agente y ciclo, UTF-8 sin
+  BOM, no sobreescritura, omision de previews/credenciales, renderizado y JSON.
+- `graft build`: 342 archivos, 3.145 nodos, 2.108 aristas. `graft check` marca
+  8 archivos nuevos/cambiados y 25 resumenes semanticos obsoletos; la pasada
+  `--deep` queda como seguimiento independiente.
+
+### Commits publicados
+
+- `2a00386` — contrato y alcance de T-021.
+- `a32bb79` — implementacion y pruebas de T-021.
+- La sincronizacion documental se publica en un commit separado.

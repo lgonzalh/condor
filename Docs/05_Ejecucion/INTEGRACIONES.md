@@ -1,6 +1,6 @@
 # INTEGRACIONES
 
-Version: 1.2.0
+Version: 1.3.0
 Estado: Activo
 Nivel: 05 - Implementacion
 Clasificacion: Documento de Ingenieria
@@ -32,7 +32,7 @@ Definir la arquitectura de integraciones del Proyecto Condor, estableciendo cont
 | Arquitecto | Implementador | IImplementador | Cambios |
 | Implementador | Revisor | IRevisor | Observaciones |
 | Revisor | Validador | IValidador | Validacion |
-| Validador | Documentador | IDocumentador | Documentacion |
+| Agente / ciclo | Documentador | IDocumenter | Informe Antes/Durante/Despues |
 
 ---
 
@@ -144,5 +144,6 @@ Modulo solicitante
 
 | Version | Fecha | Cambio |
 |----------|------------|----------------------------------------------|
+| 1.3.0 | 2026-11-01 | Se registra `IDocumenter` entre las rutas de agente/ciclo y los informes Antes/Durante/Despues de T-021. |
 | 1.2.0 | 2026-08-11 | Se documentan los endpoints reales de Ollama utilizados por T-002 y T-003. |
 | 1.1.0 | 2026-08-04 | Regeneracion incorporando contratos, adaptadores y arquitectura de integraciones. |

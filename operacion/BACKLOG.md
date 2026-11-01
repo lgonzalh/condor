@@ -1,18 +1,18 @@
 # BACKLOG
 
-Version: 4.1.0
+Version: 4.2.0
 Estado: Activo
 Modo: Evolucion Continua
 MVP: Condor 1.0
-Fecha de actualizacion: 2026-10-30
+Fecha de actualizacion: 2026-11-01
 
-## ESTADO VIGENTE (CORTE DE SOFTWARE 2026-10-19)
+## ESTADO VIGENTE (CORTE HISTORICO DE SOFTWARE 2026-10-19)
 
 | Que hacer | Haciendo | Hecho |
 |---|---|---|
-| Completar la capa semantica de Graft cuando `GRAFT_API_KEY` de OpenAI este configurada localmente; luego ejecutar `graft build --deep` y `graft check`. | Ninguna tarea de producto Condor abierta en el corte. La capa semantica de Graft espera la credencial. | T-001 a T-016 cerradas; build Release 0 errores/0 advertencias; pruebas 664/664. |
+| Refrescar resumenes semanticos Graft para los 8 archivos nuevos/cambiados de T-021; `graft check` aun marca 25 resumenes obsoletos. | Ninguna tarea de producto Condor abierta. | T-021 completada y publicada; build Release 0 errores/0 advertencias y suite 671/671 al 2026-11-01. La evidencia 664/664 del 2026-10-19 sigue siendo historica. |
 
-La clave se configura localmente y no se almacena en el repositorio ni se pega en el chat. La API se cobra por uso; el estado de Graft no afecta el build ni las pruebas de Condor. La evidencia de pruebas es del 2026-10-19, confirmada por el usuario; no se repitio en esta actualizacion.
+El estado de Graft se mantiene separado de las pruebas de Condor. Su capa semantica se genero previamente (37 conceptos, 3.088 nodos, 0 pendientes); los cambios T-021 requieren una nueva pasada `graft build --deep` para volver a sincronizar esos resumenes.
 
 Los apartados marcados como historicos abajo se conservan para trazabilidad y no describen trabajo activo.
 
@@ -36,10 +36,11 @@ T-014: integracion posterior del ciclo.
 | ID | Trabajo | Estado |
 |---|---|---|
 | T-014 | Integracion de verificacion semantica en el ciclo | Cerrada/absorbida por evolucion posterior |
-| T-015 | Recomendador/seleccion de modelos por capacidad y presupuesto | En estabilizacion |
-| T-016 | Prueba cliente incognito y coherencia del ciclo agente | En investigacion |
+| T-015 | Recomendador/seleccion de modelos por capacidad y presupuesto | Cerrada |
+| T-016 | Prueba cliente incognito y coherencia del ciclo agente | Cerrada |
+| T-021 | Generacion de informes Antes/Durante/Despues del agente y `/avanzar` | Completada, verificada y publicada |
 
-Nota: T-016 representa el problema operativo actual identificado en pruebas reales. No se debe dividir en subtareas innecesarias.
+Nota historica: T-016 registro el problema operativo de seleccion de modelo identificado entonces y quedo cerrada segun su ficha.
 
 ## T-015 - Frontera actual
 
@@ -51,7 +52,7 @@ Debe garantizar:
 - descarga solo despues de seleccionar una variante viable;
 - fallback honesto cuando ninguna variante sirve.
 
-## T-016 - Objetivo actual
+## T-016 - Objetivo historico
 
 Eliminar la contradiccion:
 "Modelo local listo: qwen2.5-coder:3b"

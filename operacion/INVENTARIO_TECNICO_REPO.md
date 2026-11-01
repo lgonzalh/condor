@@ -1,12 +1,12 @@
 # INVENTARIO_TECNICO_REPO
 
-Version: 1.3.0
+Version: 1.4.0
 Estado: Vigente (snapshot tecnico)
 Nivel: Global
 Clasificacion: Inventario Tecnico
 Fecha de corte del snapshot base: 2026-10-19
-Fecha de actualizacion: 2026-10-30
-Fuente del software probado: `420026b` (2026-10-19). Configuracion Graft: `25af837` (2026-10-30).
+Fecha de actualizacion: 2026-11-01
+Fuente del snapshot base: `420026b` (2026-10-19). Implementacion T-021: `a32bb79` (2026-11-01). Configuracion Graft: `25af837` (2026-10-30).
 
 ## ESTADO POST-CORRECCION (2026-10-19)
 
@@ -41,6 +41,20 @@ Este documento responde:
 - como esta organizado el codigo;
 - que se verifico con build y pruebas;
 - que brechas existen entre el codigo, las pruebas y la documentacion.
+
+## ACTUALIZACION DE ESTADO T-021 (2026-11-01)
+
+- Build Release: 0 errores, 0 advertencias.
+- Suite completa: 671/671 correctas (Architecture 22, Core 272, CLI 56,
+  Infrastructure 321). El corte previo de 664/664 al 2026-10-19 se conserva
+  como evidencia historica independiente.
+- T-021 agrega informes Antes/Durante/Despues en las rutas del agente y
+  `/avanzar`; la generacion usa datos observados, no llama un proveedor externo.
+- La ultima salida `graft build --deep` compartida por el usuario registro 37
+  conceptos, 3.088 nodos calculados y 0 pendientes antes de T-021.
+- Tras T-021, `graft build` estructural registra 342 archivos, 3.145 nodos y
+  2.108 aristas. `graft check` marca 8 archivos nuevos/cambiados y 25 resumenes
+  semanticos obsoletos; el refresco `--deep` queda pendiente como seguimiento.
 
 ## ACTUALIZACION DEL ARBOL LOCAL (2026-10-30)
 
@@ -77,7 +91,7 @@ No se modifico codigo de produccion para producir este inventario.
 | Solucion | Condor.slnx (7 proyectos) |
 | Runtime | .NET 10 (net10.0) |
 | Proveedor LLM de Condor | Ollama local en 127.0.0.1:11434 |
-| Proveedor semantico de Graft | OpenAI API, pendiente de `GRAFT_API_KEY` |
+| Proveedor semantico de Graft | OpenAI API; la pasada profunda anterior se completo y los resumenes de T-021 requieren refresco |
 
 ## 2. ESTRUCTURA DEL REPOSITORIO
 
@@ -336,15 +350,15 @@ solucion ni se ejecuto en esta verificacion.
 
 | Metrica | Valor |
 |---|---|
-| Archivos indexados | 334 (333 C# + 1 Python) |
-| Simbolos | 2.754 |
-| Aristas de cableado | 2.079 |
-| Tarjetas Markdown | 334 |
-| Nodos semanticos pendientes | 3.088 |
-| Tier semantico | 0% |
-| Estado del cableado | En sincronia con el codigo (2026-10-30) |
+| Archivos indexados | 342 (341 C# + 1 Python) |
+| Simbolos | 3.145 |
+| Aristas de cableado | 2.108 |
+| Tarjetas Markdown | 342 |
+| Resumenes semanticamente obsoletos | 25; 8 archivos nuevos/cambiados |
+| Tier semantico | Pasada profunda anterior completa; refresco T-021 pendiente |
+| Estado del cableado | Reconstruido localmente; `graft check` marca cambios posteriores a la pasada profunda |
 
-`graft check` confirma que el grafo estructural esta actualizado, pero tambien indica `deep layer: not built`. Los 3.088 nodos siguen pendientes de conceptos y resumenes. El intento local anterior se detuvo a los 73/334 archivos; no completo la capa semantica ni invoco la API directa de OpenAI. La revision y los cambios documentales de este informe se hicieron con Codex.
+La pasada profunda anterior genero 37 conceptos y calculo 3.088 nodos sin pendientes, segun la salida del usuario. Los cambios de T-021 agregaron archivos que aun no tienen resumen semantico actualizado: `graft check` informa 8 archivos nuevos/cambiados y 25 resumenes obsoletos. En T-021 se ejecuto solo `graft build` estructural; no se invoco la API de OpenAI.
 
 La CLI de Graft necesita una configuracion de proveedor independiente, incluida `GRAFT_API_KEY`; la autenticacion de Codex no se transfiere automaticamente al proceso CLI. Para completar la capa con OpenAI, el usuario debe crear y configurar localmente su API key de plataforma. El uso de la API se factura aparte por consumo; esta revision no utilizo la API.
 
@@ -431,7 +445,7 @@ BOM UTF-8 se conservan; el BOM es valido y no es mojibake.
 | P2 | T-017 no localizada; T-018..T-020 viven en `Docs/07_Interfaz/` | `operacion/TAREAS/` llega a T-016 | Hueco de trazabilidad, no defecto de producto | Mantener las rutas; crear T-017 solo si existe una fuente para esa tarea |
 | P1 | Advertencias nullable | 3 en ModelSelector, 2 en AgentService | Ruido de compilacion | Guardas minimas de nulabilidad |
 | P2 | `test-publish/` conservado localmente | Esta ignorado por Git y no se versiona | Artefacto residual; su eliminacion requiere autorizacion | Conservarlo hasta autorizacion expresa |
-| P2 | Capa semantica de graft incompleta | 3.088 nodos pendientes (0%) | Sin resumenes conceptuales | Configurar una API key OpenAI local en `GRAFT_API_KEY` y ejecutar `graft build --deep` |
+| P2 | Refresco semantico de Graft tras T-021 | 8 archivos nuevos/cambiados; 25 resumenes obsoletos | Los resumenes no cubren el codigo nuevo | Ejecutar `graft build --deep` y verificar `graft check` |
 | P3 | README menciona Samples/Scripts | Directorios inexistentes | Deriva documental menor | Corregir README o crear directorios si se requieren |
 
 ## 11. CRITERIO DE CIERRE PARA EL SIGUIENTE CICLO
@@ -444,10 +458,9 @@ BOM UTF-8 se conservan; el BOM es valido y no es mojibake.
 6. Arbol de trabajo sin artefactos compilados no rastreados.
 
 Estado del software al corte 2026-10-19: build, pruebas y codificacion cubiertos.
-La documentacion operativa se alineo el 2026-10-30. El grafo de cableado sigue
-sincronizado; la capa semantica permanece en 0% y la CLI no tiene una API key configurada. El
-artefacto `test-publish/` ya esta ignorado, pero se conserva hasta recibir
-autorizacion para eliminarlo.
+T-021 se verifico el 2026-11-01 con build limpio y suite 671/671. El cableado
+se reconstruyo localmente; `graft check` mantiene pendientes los resumenes
+indicados arriba. El artefacto `test-publish/` sigue ignorado y conservado.
 
 ## 12. TRAZABILIDAD
 

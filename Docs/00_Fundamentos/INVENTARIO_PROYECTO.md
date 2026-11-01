@@ -1,10 +1,10 @@
 # INVENTARIO_PROYECTO
 
-Version: 1.4.0
+Version: 1.5.0
 Estado: Activo
 Nivel: Global
 Clasificacion: Inventario Maestro
-Fecha de actualizacion: 2026-10-30
+Fecha de actualizacion: 2026-11-01
 
 ---
 
@@ -36,7 +36,7 @@ Los documentos planificados se identifican como tales en su propio estado. Esta 
 
 # INVENTARIO DOCUMENTAL
 
-Total observado: 160 archivos Markdown (133 en `Docs/`, 23 en `operacion/` y 4 en la raiz).
+Total observado: 161 archivos Markdown (133 en `Docs/`, 24 en `operacion/` y 4 en la raiz).
 
 | Ruta | Nivel | Version | Estado | Clasificacion | Dependencias declaradas |
 |---|---|---|---|---|---|
@@ -55,7 +55,7 @@ Total observado: 160 archivos Markdown (133 en `Docs/`, 23 en `operacion/` y 4 e
 | `Docs/00_Fundamentos/ESTRUCTURA_REPOSITORIO.md` | Global | 2.0.3 | Activo | Arquitectura | No declaradas |
 | `Docs/00_Fundamentos/FLUJO_INTERNO_NUCLEO.md` | 01 - Arquitectura | 1.0.0 | Activo | Arquitectura | No declaradas |
 | `Docs/00_Fundamentos/GRAFO_CONOCIMIENTO.md` | 01 - Arquitectura | 1.0.0 | Activo | Arquitectura | No declaradas |
-| `Docs/00_Fundamentos/INVENTARIO_PROYECTO.md` | Global | 1.4.0 | Activo | Inventario Maestro | Ninguna |
+| `Docs/00_Fundamentos/INVENTARIO_PROYECTO.md` | Global | 1.5.0 | Activo | Inventario Maestro | Ninguna |
 | `Docs/00_Fundamentos/KANBAN.md` | Global | 1.0.0 | Activo | Gestion del Proyecto | No declaradas |
 | `Docs/00_Fundamentos/MODELO_CICLO_VIDA_ARTEFACTOS.md` | Global | 1.0.0 | Activo | Modelo | Directivas |
 | `Docs/00_Fundamentos/MODELO_CONOCIMIENTO.md` | 01 - Arquitectura | 1.0.0 | Activo | Arquitectura | No declaradas |
@@ -66,7 +66,7 @@ Total observado: 160 archivos Markdown (133 en `Docs/`, 23 en `operacion/` y 4 e
 | `Docs/00_Fundamentos/PLAN_CONSOLIDACION_NIVEL_00.md` | 00 - Fundamentos | 1.0.0 | Activo | Plan de Consolidacion | No declaradas |
 | `Docs/00_Fundamentos/PROTOCOLO_CONTINUA.md` | Global | 1.0.0 | Activo | Protocolo de Ingenieria | No declaradas |
 | `Docs/00_Fundamentos/PROTOCOLO_DESCUBRIMIENTO.md` | Global | 1.0.0 | Activo | Protocolo de Ingenieria | No declaradas |
-| `Docs/00_Fundamentos/PROTOCOLO_DOCUMENTACION.md` | 01 - Arquitectura | 1.0.0 | Activo | Protocolo de Ingenieria | No declaradas |
+| `Docs/00_Fundamentos/PROTOCOLO_DOCUMENTACION.md` | 01 - Arquitectura | 1.1.0 | Activo | Protocolo de Ingenieria | No declaradas |
 | `Docs/00_Fundamentos/PROTOCOLO_IMPLEMENTACION.md` | 01 - Arquitectura | 1.0.0 | Activo | Protocolo de Ingenieria | No declaradas |
 | `Docs/01_Arquitectura_Ejecutable/ACTA_CONGELAMIENTO_NIVEL_01.md` | 01 - Arquitectura Ejecutable | 1.0.0 | Congelado | Acta | No declaradas |
 | `Docs/01_Arquitectura_Ejecutable/ARCHITECT.md` | 01 - Arquitectura Ejecutable | 1.0.0 | Activo | Componente | No declaradas |
@@ -76,8 +76,8 @@ Total observado: 160 archivos Markdown (133 en `Docs/`, 23 en `operacion/` y 4 e
 | `Docs/01_Arquitectura_Ejecutable/CONTEXT_ENGINE.md` | 03 | 1.0.0 | Activo | Engine | No declaradas |
 | `Docs/01_Arquitectura_Ejecutable/CONTRATO_KERNEL.md` | 01 - Arquitectura Ejecutable | 1.0.0 | Activo | Contrato | No declaradas |
 | `Docs/01_Arquitectura_Ejecutable/CONTRATOS_INTERCOMPONENTES.md` | 01 - Arquitectura Ejecutable | 1.0.0 | Activo | Contratos | No declaradas |
-| `Docs/01_Arquitectura_Ejecutable/DOCUMENTADOR.md` | 03 | 1.0.0 | Especificado | Servicio | No declaradas |
-| `Docs/01_Arquitectura_Ejecutable/DOCUMENTER.md` | 01 - Arquitectura Ejecutable | 1.0.0 | Activo | Componente | No declaradas |
+| `Docs/01_Arquitectura_Ejecutable/DOCUMENTADOR.md` | 03 | 1.1.0 | Activo | Servicio | No declaradas |
+| `Docs/01_Arquitectura_Ejecutable/DOCUMENTER.md` | 01 - Arquitectura Ejecutable | 1.1.0 | Activo | Componente | No declaradas |
 | `Docs/01_Arquitectura_Ejecutable/ESPECIFICACION_KERNEL.md` | 01 - Arquitectura Ejecutable | 1.0.0 | Activo | Especificacion | No declaradas |
 | `Docs/01_Arquitectura_Ejecutable/ESTADO_KERNEL.md` | 01 - Arquitectura Ejecutable | 1.0.0 | Activo | Estado | No declaradas |
 | `Docs/01_Arquitectura_Ejecutable/EVENTOS_KERNEL.md` | 01 - Arquitectura Ejecutable | 1.0.0 | Activo | Eventos | No declaradas |
@@ -102,8 +102,8 @@ Total observado: 160 archivos Markdown (133 en `Docs/`, 23 en `operacion/` y 4 e
 | `Docs/02_Memoria/CONTEXTO.md` | 02 - Memoria | 1.0.0 | Activo | No declarada Arquitectura | No declaradas |
 | `Docs/02_Memoria/ESTRATEGIA_MEMORIA.md` | 02 - Memoria | 1.0.0 | Activo | No declarada Arquitectura | No declaradas |
 | `Docs/02_Memoria/FUENTES.md` | 02 - Memoria | 1.0.0 | Activo | No declarada Arquitectura | No declaradas |
-| `Docs/02_Memoria/INVENTARIO_ARQUITECTURA.md` | Global | 2.5.0 | Activo | Inventario Arquitectonico | Arquitectura |
-| `Docs/02_Memoria/INVENTARIO_FUNCIONAL.md` | Global | 1.8.0 | Activo | Inventario Funcional | Arquitectura |
+| `Docs/02_Memoria/INVENTARIO_ARQUITECTURA.md` | Global | 2.6.0 | Activo | Inventario Arquitectonico | Arquitectura |
+| `Docs/02_Memoria/INVENTARIO_FUNCIONAL.md` | Global | 1.9.0 | Activo | Inventario Funcional | Arquitectura |
 | `Docs/02_Memoria/MEMORIA.md` | 02 - Memoria | 1.0.0 | Activo | No declarada Arquitectura | No declaradas |
 | `Docs/02_Memoria/MODELO_MEMORIA.md` | 02 - Memoria | 1.0.0 | Activo | No declarada Arquitectura | No declaradas |
 | `Docs/02_Memoria/PERSISTENCIA.md` | 02 - Memoria | 1.0.0 | Activo | No declarada Arquitectura | No declaradas |
@@ -132,8 +132,8 @@ Total observado: 160 archivos Markdown (133 en `Docs/`, 23 en `operacion/` y 4 e
 | `Docs/05_Ejecucion/GESTION_ERRORES.md` | 05 - Implementacion | 1.1.0 | Activo | Documento de Ingenieria | No declaradas |
 | `Docs/05_Ejecucion/IMPLEMENTACION.md` | 05 - Implementacion | 1.0.0 | Activo | Documento de Ingenieria | No declaradas |
 | `Docs/05_Ejecucion/INSTALACION_PUESTA_EN_MARCHA.md` | 05 - Implementacion | 1.2.0 | Activo | Guia de puesta en marcha | No declaradas |
-| `Docs/05_Ejecucion/INTEGRACIONES.md` | 05 - Implementacion | 1.2.0 | Activo | Documento de Ingenieria | No declaradas |
-| `Docs/05_Ejecucion/MODULOS.md` | 05 - Implementacion | 1.1.0 | Activo | Documento de Ingenieria | No declaradas |
+| `Docs/05_Ejecucion/INTEGRACIONES.md` | 05 - Implementacion | 1.3.0 | Activo | Documento de Ingenieria | No declaradas |
+| `Docs/05_Ejecucion/MODULOS.md` | 05 - Implementacion | 1.2.0 | Activo | Documento de Ingenieria | No declaradas |
 | `Docs/05_Ejecucion/VALIDACION_IMPLEMENTACION.md` | 05 - Implementacion | 1.1.0 | Activo | Documento de Ingenieria | No declaradas |
 | `Docs/06_Herramientas/CICLO_VIDA.md` | 06 - Construccion | 1.0.0 | Activo | Arquitectura | No declaradas |
 | `Docs/06_Herramientas/EJECUCION.md` | 06 - Construccion | 1.0.0 | Activo | Arquitectura | No declaradas |
@@ -175,10 +175,10 @@ Total observado: 160 archivos Markdown (133 en `Docs/`, 23 en `operacion/` y 4 e
 | `Docs/09_Evolucion/ROADMAP_EVOLUCION.md` | 09 - Evolucion | 1.4.0 | Activo | Roadmap | EVOLUCION.md |
 | `Docs/09_Evolucion/VERSIONADO.md` | 09 - Evolucion | 1.0.0 | Activo | Versionado | EVOLUCION.md |
 | `ESTADO_PROYECTO.md` | No declarado | 2.2.0 | Vigente | Estado del Proyecto | Documentos globales |
-| `INVENTARIO_PROYECTO.md` | Global | 1.3.0 | Vigente | No declarada | No declaradas |
+| `INVENTARIO_PROYECTO.md` | Global | 1.5.0 | Vigente | No declarada | No declaradas |
 | `operacion/BACKLOG.md` | No declarado | 4.1.0 | Activo | No declarada | No declaradas |
 | `operacion/ESTADO_DESARROLLO.md` | No declarado | 2.2.0 | Activo | No declarada | No declaradas |
-| `operacion/INVENTARIO_TECNICO_REPO.md` | Global | 1.3.0 | Vigente (snapshot tecnico) | Inventario Tecnico | No declaradas |
+| `operacion/INVENTARIO_TECNICO_REPO.md` | Global | 1.4.0 | Vigente (snapshot tecnico) | Inventario Tecnico | No declaradas |
 | `operacion/KANBAN.md` | Global | 2.2.0 | Activo | No declarada | No declaradas |
 | `operacion/README.md` | No declarado | No declarada | No declarado | No declarada | No declaradas |
 | `operacion/REGISTRO_CAMBIOS.md` | No declarado | 2.2.0 | No declarado | No declarada | No declaradas |
@@ -199,6 +199,7 @@ Total observado: 160 archivos Markdown (133 en `Docs/`, 23 en `operacion/` y 4 e
 | `operacion/TAREAS/T-014.md` | No declarado | 1.1.0 | Cerrada y congelada (completada, verificada, integrada y publicada) | No declarada | No declaradas |
 | `operacion/TAREAS/T-015.md` | No declarado | 2.1.0 | Completada y cerrada | No declarada | No declaradas |
 | `operacion/TAREAS/T-016.md` | No declarado | 1.0.0 | Completada y cerrada | No declarada | No declaradas |
+| `operacion/TAREAS/T-021.md` | No declarado | 1.1.0 | Completada, verificada, integrada y publicada | No declarada | No declaradas |
 | `README.md` | No declarado | No declarada | No declarado | No declarada | No declaradas |
 ---
 
@@ -245,6 +246,7 @@ Los archivos de configuracion local de herramientas (`AGENTS.md`, `.mcp.json`, `
 
 | Version | Cambios |
 |---|---|
+| 1.5.0 | Se registra el cierre de T-021 y las versiones actualizadas de Documenter y los inventarios; el inventario conserva 161 rutas. |
 | 1.4.0 | Se registra el lanzador `graft-deep.cmd` en los artefactos de raiz y se sincronizan las versiones documentales. |
 | 1.3.0 | Se sincronizan los metadatos con las actualizaciones documentales del 2026-10-30; se mantienen las 160 rutas y su ubicacion. |
 | 1.2.0 | Se amplia a las 160 rutas Markdown observadas, se corrigen estados copiandolos de las fuentes y se separan cuadernos y artefactos auxiliares. |

@@ -1,17 +1,17 @@
 # RELEVO
 
-Fecha: 2026-10-30
+Fecha: 2026-11-01
 Tipo: Continuidad de chat
-Estado: Software estable al corte 2026-10-19; Graft semantico pendiente de API
+Estado: T-021 completada y publicada; resumenes semanticos Graft pendientes de refresco tras los cambios nuevos
 
 ## ESTADO VIGENTE
 
-- Condor: el usuario confirma build y pruebas correctas al 2026-10-19 (0 errores, 0 advertencias; 664/664).
-- T-001 a T-016: cerradas; T-002 ya estaba integrada en `main` aunque su ficha seguia en revision.
+- Condor: build Release 0 errores/0 advertencias y suite 671/671 en la verificacion T-021 del 2026-11-01. El corte previo confirmado por el usuario, 664/664 al 2026-10-19, permanece historico.
+- T-001 a T-020: tareas previas cerradas; T-021 completada, verificada, integrada y publicada.
 - El problema historico de compatibilidad/seleccion de modelo y presupuesto quedo resuelto al 2026-10-19.
-- Graft: cableado estructural sincronizado; capa semantica 0%, 3.088 nodos pendientes. No hay `GRAFT_API_KEY` ni `OPENAI_API_KEY` en Process/User/Machine.
-- Siguiente paso: el usuario configura una API key de OpenAI Platform localmente como `GRAFT_API_KEY`; despues se ejecutan `graft build --deep` y `graft check`.
-- No solicitar ni registrar la clave en chat o repositorio. No ejecutar Ollama para Graft; Ollama se mantiene como integracion del producto Condor cuando el usuario ejecuta sus pruebas.
+- Graft deep previo: 37 conceptos, 3.088 nodos calculados y 0 pendientes, segun la salida compartida por el usuario. Tras T-021, `graft build` deja 342 archivos, 3.145 nodos y 2.108 aristas; `graft check` aun marca 8 archivos nuevos/cambiados y 25 resumenes semanticos obsoletos.
+- Siguiente paso independiente: refrescar esos resumenes con `graft build --deep` y volver a comprobar; ese comando usa OpenAI API. El cierre T-021 ejecuto solo el refresco estructural sin API.
+- No ejecutar Ollama para Graft; Ollama se mantiene como integracion del producto Condor.
 - Los Cuadernos I-V permanecen en `assets/` y no se modificaron.
 
 Lo que sigue es el relevo historico de agosto, conservado para trazabilidad. Sus incidencias se consideran cerradas con la evidencia del 2026-10-19.

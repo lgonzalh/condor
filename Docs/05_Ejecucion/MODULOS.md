@@ -1,6 +1,6 @@
 # MODULOS
 
-Version: 1.1.0
+Version: 1.2.0
 Estado: Activo
 Nivel: 05 - Implementacion
 Clasificacion: Documento de Ingenieria
@@ -173,19 +173,19 @@ Revisor.
 ## Documentador
 
 ### Responsabilidad
-Actualizar el conocimiento permanente del proyecto.
+Generar un informe de ejecucion con datos observados y estado verificable.
 
 ### Entradas
 - Cambios aprobados.
 
 ### Salidas
-- Documentacion sincronizada.
+- Informe UTF-8 con secciones Antes, Durante y Despues.
 
 ### Interfaces
-- IDocumentador
+- IDocumenter
 
 ### Dependencias
-Validador.
+Agente o ciclo de ingenieria.
 
 ---
 
@@ -217,4 +217,5 @@ Validador.
 
 | Version | Fecha | Cambio |
 |----------|------------|----------------------------------------------|
+| 1.2.0 | 2026-11-01 | Se actualiza el contrato Documentador con `IDocumenter` y su informe Antes/Durante/Despues. |
 | 1.1.0 | 2026-08-04 | Regeneracion con contratos, interfaces, entradas, salidas y matriz de dependencias. |

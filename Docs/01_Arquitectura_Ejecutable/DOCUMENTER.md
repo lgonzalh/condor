@@ -1,6 +1,6 @@
 # DOCUMENTER
 
-Version: 1.0.0
+Version: 1.1.0
 Estado: Activo
 Nivel: 01 - Arquitectura Ejecutable
 Clasificacion: Componente
@@ -9,7 +9,7 @@ Clasificacion: Componente
 
 # Proposito
 
-Actualizar y generar la documentacion oficial del Proyecto Condor a partir de los artefactos validados, garantizando que el conocimiento permanezca sincronizado con la implementacion.
+Generar un informe verificable de cada ejecucion de ingenieria de Condor a partir de sus resultados observados. El informe conserva el estado Antes, Durante y Despues sin reemplazar documentos existentes ni afirmar verificaciones no realizadas.
 
 ---
 
@@ -18,6 +18,8 @@ Actualizar y generar la documentacion oficial del Proyecto Condor a partir de lo
 - KERNEL_CONDOR.md
 - CONTRATO_KERNEL.md
 - VALIDATOR.md
+- `IDocumenter` (Condor.Core) y sus modelos de solicitud y resultado.
+- `AgentResult` y `CycleResult` como consumidores opcionales del resultado documental.
 
 ---
 
@@ -31,38 +33,43 @@ Actualizar y generar la documentacion oficial del Proyecto Condor a partir de lo
 
 # Responsabilidades
 
-- Actualizar la documentacion oficial.
-- Incorporar nuevas decisiones y cambios aprobados.
-- Mantener la trazabilidad entre documentacion e implementacion.
-- Preparar los entregables documentales.
-- Mantener sincronizado el conocimiento del proyecto.
+- Crear un informe Markdown por ejecucion de agente en lenguaje natural y por ciclo `/avanzar`.
+- Registrar la intencion, las acciones/etapas observadas, el resultado y las limitaciones.
+- Devolver el estado y la ruta relativa del informe para la CLI, la TUI y la salida JSON.
+- Escribir UTF-8 sin BOM en `docs/condor/tareas/` con un nombre nuevo por ejecucion.
+- Evitar incluir vistas previas de archivos y redactar formatos reconocibles de credenciales.
+- Comunicar los fallos de escritura sin alterar ni falsear el resultado de la tarea.
+- No elegir ni modificar documentos propietarios por inferencia; su actualizacion semantica permanece en la tarea aprobada.
 
 ---
 
 # Entradas
 
-- Artefactos validados.
-- Resultado de validacion.
-- Documentacion oficial vigente.
+- Intencion y directorio de trabajo.
+- Pasos del agente o resultados del ciclo Planner/Builder/Verifier.
+- Resultado y limitaciones que Condor haya observado.
 
 ---
 
 # Salidas
 
-- Documentacion actualizada.
-- Historial de cambios.
-- Entregables listos para el repositorio.
-- Estado del proyecto actualizado.
+- Informe Markdown con secciones `Antes`, `Durante` y `Despues`.
+- `DocumentationResult` con exito, ruta relativa o motivo del fallo.
 
 ---
 
 # Reglas
 
-- Nunca utilizar la conversacion como fuente oficial.
-- Toda actualizacion debe preservar el historial documental.
-- El nombre de los documentos nunca cambia.
+- La conversacion no es fuente de verdad para decisiones permanentes; la intencion se registra solo como contexto de ejecucion.
+- Cada informe se crea con `CreateNew`; no reemplaza un archivo anterior.
+- El contenido procede de datos observados; el componente no usa LLM ni proveedor externo.
+- Un fallo o limite de la tarea tambien se documenta como tal.
+- La salida no incluye contenido de archivos ni vistas previas de cambios.
+- Una falla al escribir se reporta; no se presenta como informe generado.
+- Los documentos oficiales propietarios no se alteran por inferencias automaticas.
+- Las reglas de nombre estable aplican a documentos existentes; cada informe de ejecucion es un artefacto nuevo.
 - La version vive exclusivamente dentro del documento.
-- Todo entregable debe quedar listo para reemplazar el existente en el repositorio.
+- Todo informe se crea como archivo nuevo y queda listo para incorporarse al repositorio, sin reemplazar uno existente.
 
 ---
 
@@ -76,4 +83,5 @@ Toda modificacion requiere revisar ESTANDAR_DOCUMENTAL.md y PROTOCOLO_DOCUMENTAC
 
 | Version | Cambios |
 |----------|---------|
+| 1.1.0 | T-021 implementa informes Antes/Durante/Despues en agente y `/avanzar`, con salida UTF-8, sin proveedor externo y sin sobreescritura. |
 | 1.0.0 | Primera version del Documenter. |
