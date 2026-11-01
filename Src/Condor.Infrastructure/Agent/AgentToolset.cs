@@ -328,6 +328,8 @@ public sealed class AgentToolset
         catch { return null; }
     }
 
+    internal bool HasBuildManifest => !string.IsNullOrWhiteSpace(FindManifest());
+
     private string Resolve(string rel)
     {
         return Path.IsPathRooted(rel)

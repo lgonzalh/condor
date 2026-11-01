@@ -38,6 +38,22 @@ public class AgentHarnessTests
     }
 
     [Fact]
+    public async Task VerifyAsync_SinManifiestoMarcaBuildTestComoNoAplicables()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "condor-harness-no-manifest-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        var steps = new List<AgentStep>();
+        var harness = new AgentHarness(root, AgentLimits.Default, steps);
+
+        var result = await harness.VerifyAsync(CancellationToken.None);
+
+        Assert.True(result.Done, result.Reason);
+        Assert.False(result.ChecksApplicable);
+        Assert.Contains("no aplican", result.Reason, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(steps);
+    }
+
+    [Fact]
     public void Restores_SeDetectaCuandoFaltaProjectAssets()
     {
         // Verifica el umbral de deteccion de fallo por restauracion.

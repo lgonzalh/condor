@@ -55,11 +55,46 @@ public class AgentEngineTests
         var steps = new List<AgentStep>();
         for (var i = 0; i < 3; i++)
         {
-            steps.Add(new AgentStep { Action = AgentAction.ActionReadFile, Path = "a.cs", ResultPreview = "" });
+            steps.Add(new AgentStep { Action = AgentAction.ActionReadFile, Path = "a.cs", ResultPreview = "", Success = true });
         }
 
         var d = AgentEngine.CheckProgress(1, steps, new AgentLimits { MaxRepeatedAction = 3 });
         Assert.True(d.Fail);
+    }
+
+    [Fact]
+    public void CheckProgress_UnFalloInicial_PermiteLaIteracionDePlanB()
+    {
+        var steps = new List<AgentStep>
+        {
+            new() { Action = AgentAction.ActionReadFile, Path = "missing.cs", Success = false, ResultPreview = "no existe" }
+        };
+
+        var decision = AgentEngine.CheckProgress(
+            1,
+            steps,
+            new AgentLimits { MaxIterations = 1, MaxPlanBIterations = 1 },
+            maxIterationsOverride: 2);
+
+        Assert.False(decision.Fail);
+    }
+
+    [Fact]
+    public void CheckProgress_FalloRepetido_DetienePlanBEnLugarDeRepetir()
+    {
+        var steps = new List<AgentStep>
+        {
+            new() { Action = AgentAction.ActionReadFile, Path = "missing.cs", Success = false, ResultPreview = "no existe" },
+            new() { Action = AgentAction.ActionReadFile, Path = "missing.cs", Success = false, ResultPreview = "no existe" }
+        };
+
+        var decision = AgentEngine.CheckProgress(
+            2,
+            steps,
+            new AgentLimits { MaxIterations = 8, MaxRepeatedFailedAction = 2 });
+
+        Assert.True(decision.Fail);
+        Assert.Contains("Plan B", decision.Reason, System.StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

@@ -206,10 +206,27 @@ public static class AgentEngine
         return (readAny ? (true, null) : (false, "Aun no leiste ningun archivo; aporta al menos una lectura real antes de concluir, o especifica que necesitas construir/arreglar."));
     }
 
-    public static ProgressDecision CheckProgress(int iteration, IReadOnlyList<AgentStep> steps, AgentLimits limits)
+    public static ProgressDecision CheckProgress(
+        int iteration,
+        IReadOnlyList<AgentStep> steps,
+        AgentLimits limits,
+        int? maxIterationsOverride = null)
     {
-        if (iteration >= limits.MaxIterations)
-            return new ProgressDecision(false, true, "Se alcanzo el limite de iteraciones.");
+        var repeatedFailureLimit = Math.Max(2, limits.MaxRepeatedFailedAction);
+        var last = steps.LastOrDefault();
+        if (last is { Success: false })
+        {
+            var repeatedFailures = steps.Reverse()
+                .TakeWhile(step =>
+                    !step.Success &&
+                    string.Equals(step.Action, last.Action, StringComparison.Ordinal) &&
+                    string.Equals(step.Path, last.Path, StringComparison.OrdinalIgnoreCase))
+                .Take(repeatedFailureLimit)
+                .Count();
+
+            if (repeatedFailures >= repeatedFailureLimit)
+                return new ProgressDecision(false, true, "Plan B no corrigio la misma accion fallida; Condor detuvo la repeticion.");
+        }
 
         var recent = steps.TakeLast(limits.MaxRepeatedAction).ToList();
         if (recent.Count >= limits.MaxRepeatedAction)
@@ -221,6 +238,9 @@ public static class AgentEngine
             if (allSame)
                 return new ProgressDecision(false, true, "Loop improductivo (misma accion sin progreso).");
         }
+
+        if (iteration >= (maxIterationsOverride ?? limits.MaxIterations))
+            return new ProgressDecision(false, true, "Se alcanzo el limite de iteraciones.");
 
         return new ProgressDecision(false, false, null);
     }

@@ -6,7 +6,11 @@ using Condor.Core.Models;
 
 namespace Condor.Infrastructure.Agent;
 
-public readonly record struct HarnessVerifyResult(bool Done, string? Reason, string Detail);
+public readonly record struct HarnessVerifyResult(
+    bool Done,
+    string? Reason,
+    string Detail,
+    bool ChecksApplicable = true);
 
 /// <summary>
 /// Harness externo del agente: ejecuta build y test de forma real e independiente
@@ -29,6 +33,12 @@ public sealed class AgentHarness
     public async Task<HarnessVerifyResult> VerifyAsync(CancellationToken ct)
     {
         var toolset = new AgentToolset(_workingDir, maxContent: _limits.MaxContentLength);
+
+        if (!toolset.HasBuildManifest)
+        {
+            const string reason = "No se detecto un manifiesto compatible para build/test; esas verificaciones no aplican a este proyecto.";
+            return new HarnessVerifyResult(true, reason, "Build/test omitidos (no aplicables).", ChecksApplicable: false);
+        }
 
         var build = await toolset.ExecuteAsync(new AgentAction { Action = AgentAction.ActionBuild }, 0, ct);
         _steps.Add(build);

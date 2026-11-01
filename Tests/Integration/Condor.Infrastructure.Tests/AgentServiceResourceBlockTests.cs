@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -194,6 +195,77 @@ public class AgentServiceResourceBlockTests
         Assert.Equal("qwen2.5-coder:0.5b", result.Model);
     }
 
+    [Fact]
+    public async Task RunAsync_FalloInicial_ActivaPlanB_AnalizaCorrigeYExponeElEstado()
+    {
+        var projectRoot = TempDir();
+        Directory.CreateDirectory(projectRoot);
+        var store = new LocalStateStore(Path.Combine(TempDir(), "state-" + Guid.NewGuid().ToString("N")));
+        var assessment = new StubAssessmentService(ramTotalGb: 16, ramFreeGb: 8, installedModels: new[] { "qwen2.5-coder:3b" });
+        using var http = new HttpClient(new StubOllamaHandler());
+        using var session = new LocalModelSession(http);
+        await session.EnsureAvailableAsync("qwen2.5-coder:3b", CancellationToken.None);
+
+        var llm = new SequenceLlmClient(
+            "{\"action\":\"read_file\",\"path\":\"index.html\"}",
+            "{\"action\":\"create_file\",\"path\":\"index.html\",\"content\":\"<!doctype html><html lang=\\\"es\\\"><body>Condor</body></html>\"}");
+        var service = new AgentService(
+            store,
+            assessment,
+            new AgentLimits { MaxIterations = 1, MaxPlanBIterations = 1 },
+            llm,
+            new StubLlmDiagnostics(),
+            session,
+            () => projectRoot);
+        var progress = new CollectingAgentProgressObserver();
+
+        var result = await service.RunAsync("Crea una pagina web sencilla en index.html", progress, CancellationToken.None);
+
+        Assert.True(result.Success, result.Reason);
+        Assert.True(File.Exists(Path.Combine(projectRoot, "index.html")));
+        Assert.False(result.Steps[0].Success);
+        Assert.Contains(result.Steps, step => step.Action == AgentAction.ActionCreateFile && step.Success);
+        Assert.Equal("no_aplicable", result.Checkpoint?.HarnessState);
+        Assert.Contains("Plan B", result.Reason, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("no aplican", result.Reason, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(2, llm.CallCount);
+        Assert.Contains(llm.Prompts[1], message => message.Contains("PLAN B ACTIVADO", StringComparison.Ordinal));
+        Assert.Contains(progress.Updates, update => update.Message?.Contains("Plan B activado", StringComparison.OrdinalIgnoreCase) == true);
+        Assert.DoesNotContain(result.Steps, step =>
+            step.Action is AgentAction.ActionBuild or AgentAction.ActionTest);
+    }
+
+    [Fact]
+    public async Task RunAsync_FalloTrasPlanB_DetieneSinConsumirElLimiteCompleto()
+    {
+        var projectRoot = TempDir();
+        Directory.CreateDirectory(projectRoot);
+        var store = new LocalStateStore(Path.Combine(TempDir(), "state-" + Guid.NewGuid().ToString("N")));
+        var assessment = new StubAssessmentService(ramTotalGb: 16, ramFreeGb: 8, installedModels: new[] { "qwen2.5-coder:3b" });
+        using var http = new HttpClient(new StubOllamaHandler());
+        using var session = new LocalModelSession(http);
+        await session.EnsureAvailableAsync("qwen2.5-coder:3b", CancellationToken.None);
+
+        var llm = new SequenceLlmClient(
+            "{\"action\":\"read_file\",\"path\":\"missing.html\"}",
+            "{\"action\":\"read_file\",\"path\":\"missing.html\"}");
+        var service = new AgentService(
+            store,
+            assessment,
+            new AgentLimits { MaxIterations = 8, MaxPlanBIterations = 1 },
+            llm,
+            new StubLlmDiagnostics(),
+            session,
+            () => projectRoot);
+
+        var result = await service.RunAsync("Crea una pagina web sencilla en index.html", cancellationToken: CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal(2, llm.CallCount);
+        Assert.Contains("Plan B no pudo corregir", result.Reason, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("plan_b_fallido", result.Checkpoint?.LastDecision);
+    }
+
     private static string TempDir()
     {
         return Path.Combine(Path.GetTempPath(), "condor-agent-resource-" + Guid.NewGuid().ToString("N"));
@@ -269,6 +341,39 @@ public class AgentServiceResourceBlockTests
                 Model = request.Model,
                 Outcome = LlmOutcome.Ok
             });
+    }
+
+    private sealed class SequenceLlmClient : ILlmClient
+    {
+        private readonly Queue<string> _responses;
+
+        public SequenceLlmClient(params string[] responses)
+        {
+            _responses = new Queue<string>(responses);
+        }
+
+        public List<string[]> Prompts { get; } = new();
+        public int CallCount => Prompts.Count;
+
+        public Task<LlmResponse> CompleteAsync(LlmRequest request, CancellationToken cancellationToken = default)
+        {
+            Prompts.Add(request.Messages?.Select(message => message.Content ?? "").ToArray() ?? Array.Empty<string>());
+            var content = _responses.Count > 0 ? _responses.Dequeue() : "";
+            return Task.FromResult(new LlmResponse
+            {
+                Success = true,
+                Content = content,
+                Model = request.Model,
+                Outcome = LlmOutcome.Ok
+            });
+        }
+    }
+
+    private sealed class CollectingAgentProgressObserver : IAgentProgressObserver
+    {
+        public List<AgentProgress> Updates { get; } = new();
+
+        public void Report(AgentProgress progress) => Updates.Add(progress);
     }
 
     private sealed class StubLlmDiagnostics : ILlmProviderDiagnostics

@@ -99,6 +99,8 @@ public sealed class AgentLimits
     public int TimeoutMilliseconds { get; init; } = 300_000;
     public int MaxModifications { get; init; } = 8;
     public int MaxRepeatedAction { get; init; } = 3;
+    public int MaxRepeatedFailedAction { get; init; } = 2;
+    public int MaxPlanBIterations { get; init; } = 1;
     public int MaxRedundantObservations { get; init; } = 2;
     public int MaxInvalidOutputs { get; init; } = 8;
     public int MaxContentLength { get; init; } = 200_000;

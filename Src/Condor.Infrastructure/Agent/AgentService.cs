@@ -22,6 +22,7 @@ public sealed class AgentService : IAgentService
     private readonly ILlmProviderDiagnostics _provider;
     private readonly AgentLimits _limits;
     private readonly LocalModelSession? _session;
+    private readonly Func<string> _workingDirectoryProvider;
 
     public AgentService(
         IStateStore stateStore,
@@ -29,11 +30,13 @@ public sealed class AgentService : IAgentService
         AgentLimits? limits = null,
         ILlmClient? llm = null,
         ILlmProviderDiagnostics? provider = null,
-        LocalModelSession? session = null)
+        LocalModelSession? session = null,
+        Func<string>? workingDirectoryProvider = null)
     {
         _stateStore = stateStore;
         _assessmentService = assessmentService;
         _session = session;
+        _workingDirectoryProvider = workingDirectoryProvider ?? (() => Environment.CurrentDirectory);
         if (session is not null)
         {
             // Sesion compartida: un unico proveedor/HttpClient para toda la ejecucion.
@@ -60,8 +63,12 @@ public sealed class AgentService : IAgentService
         var checkpoint = new AgentCheckpoint { Task = intention, GeneratedAtUtc = DateTime.UtcNow };
         var steps = new List<AgentStep>();
         var modifications = 0;
+        var effectiveMaxIterations = _limits.MaxIterations;
+        var planBUsed = false;
+        string? planBInitialFailure = null;
+        var awaitingPlanBAction = false;
 
-        var workingDir = Environment.CurrentDirectory;
+        var workingDir = _workingDirectoryProvider();
         if (string.IsNullOrWhiteSpace(workingDir) || !Directory.Exists(workingDir))
         {
             return Fail("No hay un directorio de trabajo util. Ejecuta desde el proyecto.", "", intention, steps, checkpoint);
@@ -114,7 +121,7 @@ public sealed class AgentService : IAgentService
             {
                 progress?.Report(AgentProgress.Of(
                     AgentPhase.Verifying,
-                    message: "Memoria insuficiente para continuar con esta tarea.",
+                    message: "Memoria insuficiente: ninguna alternativa compatible cabe en el presupuesto seguro.",
                     resourceState: selection.Resources?.PressureLabel,
                     availableGb: selection.Resources?.FreeGb,
                     safeBudgetGb: selection.Budget?.BudgetGb,
@@ -137,12 +144,11 @@ public sealed class AgentService : IAgentService
 
             // Sin modelo utilizable en absoluto: fallo controlado honesto.
             progress?.Report(AgentProgress.Of(
-                AgentPhase.Verifying,
-                message: "Modelo no ejecutable por presupuesto de memoria.",
+                AgentPhase.Analyzing,
+                message: "No hay un modelo compatible que pueda cargarse con seguridad.",
                 resourceState: selection.Resources?.PressureLabel,
                 availableGb: selection.Resources?.FreeGb,
-                safeBudgetGb: selection.Budget?.BudgetGb,
-                flag: ProgressFlag.ProviderError));
+                safeBudgetGb: selection.Budget?.BudgetGb));
 
             return Fail(BuildModelNotExecutableReason(selection), "", intention, steps, checkpoint);
         }
@@ -198,7 +204,6 @@ public sealed class AgentService : IAgentService
 
         try
         {
-            var invalidOutputs = 0;
             var redundantObservations = 0;
             var resourcesWarned = false;
 
@@ -209,7 +214,7 @@ public sealed class AgentService : IAgentService
                 availableGb: initialResources?.FreeGb,
                 safeBudgetGb: initialResources?.SafeBudgetGb));
 
-            for (var iteration = 0; iteration < _limits.MaxIterations; iteration++)
+            for (var iteration = 0; iteration < effectiveMaxIterations; iteration++)
             {
                 checkpoint.Iteration = iteration + 1;
 
@@ -221,6 +226,11 @@ public sealed class AgentService : IAgentService
                 //    modelo (respuesta no-JSON), para no consumir iteraciones
                 //    como si el modelo siguiera disponible cuando no lo esta.
                 var call = await RequestActionAsync(model, messages, timeoutCts.Token);
+
+                // Una respuesta no estructurada es un fallo de protocolo, no una
+                // caida del proveedor. Se corrige en Plan B sin esperar al limite.
+                if (call.ProviderFailure == LlmOutcome.InvalidResponse)
+                    call = new AgentModelCall(null, null, call.Error);
 
                 if (call.ProviderFailure is not null)
                 {
@@ -234,6 +244,9 @@ public sealed class AgentService : IAgentService
                     if (recovered is not null)
                     {
                         call = recovered.Value;
+                        if (call.ProviderFailure == LlmOutcome.InvalidResponse)
+                            call = new AgentModelCall(null, null, call.Error);
+
                         // Si tras la recuperacion el proveedor sigue fallando (p. ej.
                         // HTTP 500 persistente o timeout), NO se degrada a "respuesta
                         // del modelo invalida": es un fallo del proveedor y se detiene
@@ -249,13 +262,6 @@ public sealed class AgentService : IAgentService
                             return Fail(checkpoint.LastError, model, intention, steps, checkpoint);
                         }
 
-                        if (call.Action is null && call.ProviderFailure is null)
-                        {
-                            // El proveedor volvio pero la salida no fue JSON: protocolo, no proveedor.
-                            invalidOutputs++;
-                            messages.Add(new LlmMessage { Role = "user", Content = "El modelo respondio pero no como JSON; reintenta con una accion estructurada valida." });
-                            continue;
-                        }
                     }
                     else
                     {
@@ -271,50 +277,50 @@ public sealed class AgentService : IAgentService
 
                 if (call.Action is null)
                 {
-                    invalidOutputs++;
-                    if (invalidOutputs >= _limits.MaxInvalidOutputs)
+                    var protocolFailure = call.Error ?? "El modelo no produjo una accion JSON valida.";
+                    steps.Add(new AgentStep
                     {
-                        checkpoint.NextAction = "revisar";
-                        // Para una solicitud informativa de comprension, Condor
-                        // observa por si mismo (list_dir real + lee archivos
-                        // representativos) y entrega una descripcion fundamentada
-                        // en EVIDENCIA REAL, sin inventar exito ni codigo.
-                        if (IsInformationalRequest(intention))
-                        {
-                            checkpoint.LastDecision = "describir";
-                            progress?.Report(AgentProgress.Of(AgentPhase.Finalizing, message: "Preparando respuesta"));
-                            var grounded = await GroundInformationalAsync(toolset, workingDir, steps, timeoutCts.Token);
-                            return grounded is null
-                                ? Fail(checkpoint.LastError ?? "No fue posible describir el directorio.", model, intention, steps, checkpoint)
-                                : new AgentResult { Success = true, Reason = grounded, Model = model, Objective = intention, Steps = steps, Checkpoint = checkpoint, Inventory = inventory };
-                        }
+                        Iteration = iteration + 1,
+                        Action = "respuesta_estructurada",
+                        Success = false,
+                        ResultPreview = protocolFailure,
+                        AtUtc = DateTime.UtcNow
+                    });
 
-                        checkpoint.LastError = "El modelo no produjo acciones estructuradas validas tras varios intentos.";
-                        return Fail(checkpoint.LastError, model, intention, steps, checkpoint);
-                    }
-
-                    // Guiado situacional (no lista rigida): segun cuanto se ha
-                    // observado, se sugiere el siguiente paso concreto en formato
-                    // JSON para que el modelo entre al protocolo estructurado.
-                    string hint;
-                    if (steps.Count == 0)
+                    if (IsInformationalRequest(intention))
                     {
-                        hint = "Todavia no has observado el directorio. Emite exactamente: {\"action\":\"list_dir\",\"path\":\"\",\"reason\":\"observar el proyecto\"}";
-                    }
-                    else if (!steps.Any(s => s.Success && s.Action == AgentAction.ActionReadFile))
-                    {
-                        hint = "Ya listaste pero aun no lees ningun archivo. Emite read_file sobre uno de los archivos que viste en list_dir.";
-                    }
-                    else
-                    {
-                        hint = "Ya observas contenido. Si tienes suficiente evidencia, responde con done usando 'reason' para tu sintesis; si no, continua leyendo/comprendiendo.";
+                        checkpoint.LastDecision = "plan_b_describir";
+                        checkpoint.LastError = protocolFailure;
+                        checkpoint.NextAction = "observar_y_describir";
+                        progress?.Report(AgentProgress.Of(
+                            AgentPhase.Analyzing,
+                            action: "Plan B",
+                            iteration: iteration + 1,
+                            message: "Plan B: la respuesta no fue estructurada; Condor observara el proyecto y resumira evidencia real."));
+                        var grounded = await GroundInformationalAsync(toolset, workingDir, steps, timeoutCts.Token);
+                        return grounded is null
+                            ? Fail("Plan B no pudo obtener evidencia suficiente para describir el proyecto.", model, intention, steps, checkpoint)
+                            : new AgentResult { Success = true, Reason = "Plan B entrego una descripcion basada en archivos observados por Condor. " + grounded, Model = model, Objective = intention, Steps = steps, Checkpoint = checkpoint, Inventory = inventory };
                     }
 
-                    messages.Add(new LlmMessage { Role = "user", Content = "Tu texto no fue un JSON valido. No respondas con prosa: emite un JSON de accion. " + hint + ". Forma valida: {\"action\":\"<accion>\",\"path\":\"<ruta>\",\"original\":\"\",\"replacement\":\"\",\"content\":\"\",\"reason\":\"<justificacion o sintesis>\"}." });
+                    var planBFailure = StartPlanB(
+                        "respuesta_estructurada",
+                        null,
+                        protocolFailure,
+                        ref planBUsed,
+                        ref planBInitialFailure,
+                        ref awaitingPlanBAction,
+                        ref effectiveMaxIterations,
+                        iteration + 1,
+                        messages,
+                        progress,
+                        checkpoint);
+                    if (planBFailure is not null)
+                    {
+                        return Fail(planBFailure, model, intention, steps, checkpoint);
+                    }
                     continue;
                 }
-
-                invalidOutputs = 0;
 
                 // A partir de aqui hay una accion util; el caso nulo ya hizo continue.
                 var action = call.Action!;
@@ -323,8 +329,59 @@ public sealed class AgentService : IAgentService
                 var validation = AgentEngine.ValidateAction(action);
                 if (!validation.Valid)
                 {
-                    messages.Add(new LlmMessage { Role = "user", Content = "Accion invalida: " + (validation.Reason ?? "sin motivo") + " Devuelve nuevamente un JSON con una accion permitida." });
+                    var validationFailure = validation.Reason ?? "La accion no cumple el contrato.";
+                    steps.Add(new AgentStep
+                    {
+                        Iteration = iteration + 1,
+                        Action = action.Action,
+                        Path = action.Path,
+                        Success = false,
+                        ResultPreview = validationFailure,
+                        AtUtc = DateTime.UtcNow
+                    });
+                    var planBFailure = StartPlanB(
+                        action.Action,
+                        action.Path,
+                        validationFailure,
+                        ref planBUsed,
+                        ref planBInitialFailure,
+                        ref awaitingPlanBAction,
+                        ref effectiveMaxIterations,
+                        iteration + 1,
+                        messages,
+                        progress,
+                        checkpoint);
+                    if (planBFailure is not null)
+                        return Fail(planBFailure, model, intention, steps, checkpoint);
                     continue;
+                }
+
+                if (action.Action == AgentAction.ActionDone && awaitingPlanBAction)
+                {
+                    var agentRefusal = action.Reason ?? action.Content;
+                    var earlyDoneFailure = "El agente intento terminar sin ejecutar una accion de recuperacion tras el fallo." +
+                        (string.IsNullOrWhiteSpace(agentRefusal) ? "" : " Motivo del agente: " + agentRefusal);
+                    steps.Add(new AgentStep
+                    {
+                        Iteration = iteration + 1,
+                        Action = action.Action,
+                        Success = false,
+                        ResultPreview = earlyDoneFailure,
+                        AtUtc = DateTime.UtcNow
+                    });
+                    var planBFailure = StartPlanB(
+                        action.Action,
+                        action.Path,
+                        earlyDoneFailure,
+                        ref planBUsed,
+                        ref planBInitialFailure,
+                        ref awaitingPlanBAction,
+                        ref effectiveMaxIterations,
+                        iteration + 1,
+                        messages,
+                        progress,
+                        checkpoint);
+                    return Fail(planBFailure ?? "Plan B no pudo completar una accion correctiva.", model, intention, steps, checkpoint);
                 }
 
                 // 3. Notifica la accion que esta por ejecutar.
@@ -349,6 +406,28 @@ public sealed class AgentService : IAgentService
                     Content = "Resultado de " + action.Action + "(" + (action.Path ?? "") + "):\n" + (step.Success ? (step.ResultPreview ?? "ok") : ("ERROR: " + (step.ResultPreview ?? "sin detalle")))
                 });
 
+                if (!step.Success)
+                {
+                    var planBFailure = StartPlanB(
+                        action.Action,
+                        action.Path,
+                        step.ResultPreview ?? "La herramienta no pudo completar la accion.",
+                        ref planBUsed,
+                        ref planBInitialFailure,
+                        ref awaitingPlanBAction,
+                        ref effectiveMaxIterations,
+                        iteration + 1,
+                        messages,
+                        progress,
+                        checkpoint);
+                    if (planBFailure is not null)
+                        return Fail(planBFailure, model, intention, steps, checkpoint);
+                }
+                else if (awaitingPlanBAction)
+                {
+                    awaitingPlanBAction = false;
+                }
+
                 // 4b. Monitoreo de recursos en cada accion (advertencia solo):
                 //     el MODELO esta bloqueado para toda la tarea. Si la presion de
                 //     RAM empeora, se advierte una vez (sin saturar) y se pospone
@@ -372,17 +451,38 @@ public sealed class AgentService : IAgentService
                             // Sin informacion nueva y repitiendo: entregar (si es
                             // informativo/analisis) o fallar honestamente (si se
                             // esperaba un cambio de codigo).
-                            if (modifications == 0)
+                            if (modifications == 0 && IsInformationalRequest(intention))
                             {
                                 checkpoint.NextAction = "entregar";
-                                checkpoint.LastDecision = "describir";
+                                checkpoint.LastDecision = planBUsed ? "plan_b_corregido" : "describir";
                                 var summary = BuildObservedSummary(steps, workingDir);
-                                return new AgentResult { Success = true, Reason = summary, Model = model, Objective = intention, Steps = steps, Checkpoint = checkpoint };
+                                return new AgentResult
+                                {
+                                    Success = true,
+                                    Reason = (planBUsed ? "Plan B recupero la tarea tras el fallo inicial. " : "") + summary,
+                                    Model = model,
+                                    Objective = intention,
+                                    Steps = steps,
+                                    Checkpoint = checkpoint
+                                };
                             }
 
                             checkpoint.LastError = "Observaciones redundantes sin informacion nueva y sin un cambio de codigo verificado.";
-                            checkpoint.NextAction = "detener";
-                            return Fail(checkpoint.LastError, model, intention, steps, checkpoint);
+                            var planBFailure = StartPlanB(
+                                null,
+                                null,
+                                checkpoint.LastError,
+                                ref planBUsed,
+                                ref planBInitialFailure,
+                                ref awaitingPlanBAction,
+                                ref effectiveMaxIterations,
+                                iteration + 1,
+                                messages,
+                                progress,
+                                checkpoint);
+                            if (planBFailure is not null)
+                                return Fail(planBFailure, model, intention, steps, checkpoint);
+                            continue;
                         }
 
                         messages.Add(new LlmMessage { Role = "user", Content = "Ya observaste esto exactamente antes y el resultado no cambio; repetir la misma observacion no aporta informacion nueva. Si la solicitud es de comprension/analisis, sintetiza lo visto y responde con done. Si la tarea requiere un cambio de codigo, edita con patch/edit_file y verifica con build/test." });
@@ -398,7 +498,9 @@ public sealed class AgentService : IAgentService
                 {
                     progress?.Report(AgentProgress.Of(AgentPhase.Verifying, action: "build/test", iteration: iteration + 1));
                     var result = await harness.VerifyAsync(timeoutCts.Token);
-                    checkpoint.HarnessState = result.Done ? "exito" : result.Reason;
+                    checkpoint.HarnessState = !result.ChecksApplicable
+                        ? "no_aplicable"
+                        : result.Done ? "exito" : result.Reason;
                     checkpoint.LastError = result.Done ? null : result.Reason;
 
                     if (result.Done)
@@ -412,13 +514,32 @@ public sealed class AgentService : IAgentService
                         }
 
                         checkpoint.NextAction = "entregar";
-                        checkpoint.LastDecision = "verificar";
-                        progress?.Report(AgentProgress.Of(AgentPhase.Finalizing, message: "Finalizando"));
-                        return new AgentResult { Success = true, Reason = "El harness confirmo build y pruebas tras la correccion.", Model = model, Objective = intention, Steps = steps, Checkpoint = checkpoint };
+                        checkpoint.LastDecision = planBUsed
+                            ? "plan_b_corregido"
+                            : result.ChecksApplicable ? "verificar" : "verificacion_no_aplicable";
+                        var completionReason = HarnessCompletionReason(result, planBUsed);
+                        progress?.Report(AgentProgress.Of(AgentPhase.Finalizing, message: completionReason));
+                        return new AgentResult { Success = true, Reason = completionReason, Model = model, Objective = intention, Steps = steps, Checkpoint = checkpoint };
                     }
 
-                    // Devuelve al modelo la evidencia real del harness (build/test) para que decida.
-                    messages.Add(new LlmMessage { Role = "user", Content = buildErrorPreamble(result) + result.Detail });
+                    var failedHarnessStep = steps.LastOrDefault(s => !s.Success &&
+                        (s.Action.Equals(AgentAction.ActionBuild, StringComparison.OrdinalIgnoreCase) ||
+                         s.Action.Equals(AgentAction.ActionTest, StringComparison.OrdinalIgnoreCase)))
+                        ?? new AgentStep { Action = "harness", Success = false, ResultPreview = result.Detail };
+                    var planBFailure = StartPlanB(
+                        failedHarnessStep.Action,
+                        failedHarnessStep.Path,
+                        (result.Reason ?? "Build/test fallo.") + " " + result.Detail,
+                        ref planBUsed,
+                        ref planBInitialFailure,
+                        ref awaitingPlanBAction,
+                        ref effectiveMaxIterations,
+                        iteration + 1,
+                        messages,
+                        progress,
+                        checkpoint);
+                    if (planBFailure is not null)
+                        return Fail(planBFailure, model, intention, steps, checkpoint);
                 }
 
                 // 6. Si el modelo dice 'done', decidir la entrega:
@@ -448,15 +569,15 @@ public sealed class AgentService : IAgentService
                         }
 
                         checkpoint.NextAction = "entregar";
-                        checkpoint.LastDecision = "describir";
+                        checkpoint.LastDecision = planBUsed ? "plan_b_corregido" : "describir";
                         progress?.Report(AgentProgress.Of(AgentPhase.Finalizing, message: "Preparando respuesta"));
                         var summary = action.Reason ?? action.Content ?? "";
                         return new AgentResult
                         {
                             Success = true,
-                            Reason = string.IsNullOrWhiteSpace(summary)
+                            Reason = (planBUsed ? "Plan B recupero la tarea tras el fallo inicial. " : "") + (string.IsNullOrWhiteSpace(summary)
                                 ? "Condor observo el directorio y describio lo encontrado."
-                                : summary,
+                                : summary),
                             Inventory = inventory,
                             Model = model,
                             Objective = intention,
@@ -467,7 +588,9 @@ public sealed class AgentService : IAgentService
 
                     progress?.Report(AgentProgress.Of(AgentPhase.Verifying, action: "build/test", iteration: iteration + 1));
                     var r = await harness.VerifyAsync(timeoutCts.Token);
-                    checkpoint.HarnessState = r.Done ? "exito" : r.Reason;
+                    checkpoint.HarnessState = !r.ChecksApplicable
+                        ? "no_aplicable"
+                        : r.Done ? "exito" : r.Reason;
                     checkpoint.LastError = r.Done ? null : r.Reason;
 
                     if (r.Done)
@@ -481,20 +604,43 @@ public sealed class AgentService : IAgentService
                         }
 
                         checkpoint.NextAction = "entregar";
-                        checkpoint.LastDecision = "verificar";
-                        progress?.Report(AgentProgress.Of(AgentPhase.Finalizing, message: "Finalizando"));
-                        return new AgentResult { Success = true, Reason = "El harness confirmo build y pruebas.", Model = model, Objective = intention, Steps = steps, Checkpoint = checkpoint };
+                        checkpoint.LastDecision = planBUsed
+                            ? "plan_b_corregido"
+                            : r.ChecksApplicable ? "verificar" : "verificacion_no_aplicable";
+                        var completionReason = HarnessCompletionReason(r, planBUsed);
+                        progress?.Report(AgentProgress.Of(AgentPhase.Finalizing, message: completionReason));
+                        return new AgentResult { Success = true, Reason = completionReason, Model = model, Objective = intention, Steps = steps, Checkpoint = checkpoint };
                     }
 
-                    messages.Add(new LlmMessage { Role = "user", Content = "El harness no confirmo: " + r.Reason + "\n" + r.Detail });
+                    var failedHarnessStep = steps.LastOrDefault(s => !s.Success &&
+                        (s.Action.Equals(AgentAction.ActionBuild, StringComparison.OrdinalIgnoreCase) ||
+                         s.Action.Equals(AgentAction.ActionTest, StringComparison.OrdinalIgnoreCase)))
+                        ?? new AgentStep { Action = "harness", Success = false, ResultPreview = r.Detail };
+                    var planBFailure = StartPlanB(
+                        failedHarnessStep.Action,
+                        failedHarnessStep.Path,
+                        (r.Reason ?? "Build/test fallo.") + " " + r.Detail,
+                        ref planBUsed,
+                        ref planBInitialFailure,
+                        ref awaitingPlanBAction,
+                        ref effectiveMaxIterations,
+                        iteration + 1,
+                        messages,
+                        progress,
+                        checkpoint);
+                    if (planBFailure is not null)
+                        return Fail(planBFailure, model, intention, steps, checkpoint);
                     continue;
                 }
 
                 // 7. Progress check.
-                var progressCheck = AgentEngine.CheckProgress(iteration + 1, steps, _limits);
+                var progressCheck = AgentEngine.CheckProgress(iteration + 1, steps, _limits, effectiveMaxIterations);
                 if (progressCheck.Fail)
                 {
-                    checkpoint.LastError = progressCheck.Reason;
+                    var progressReason = progressCheck.Reason ?? "Limite sin progreso.";
+                    if (planBUsed && progressReason.Contains("limite de iteraciones", StringComparison.OrdinalIgnoreCase))
+                        progressReason = "Plan B no completo la tarea dentro del presupuesto de iteraciones.";
+                    checkpoint.LastError = progressReason;
 
                     // Si la intencion es de comprension/diagnostico y hay evidencia,
                     // se entrega la respuesta observada en vez de un crptico fallo
@@ -502,11 +648,25 @@ public sealed class AgentService : IAgentService
                     var delivered = TryDeliverInformational(checkpoint, steps, workingDir, model, intention, progress, lastDoneReason, inventory);
                     if (delivered is not null)
                     {
-                        return delivered;
+                        return ApplyPlanBCompletion(delivered, planBUsed);
                     }
 
-                    checkpoint.NextAction = "detener";
-                    return Fail(progressCheck.Reason ?? "Limite sin progreso.", model, intention, steps, checkpoint);
+                    var lastStep = steps.LastOrDefault();
+                    var planBFailure = StartPlanB(
+                        null,
+                        lastStep?.Path,
+                        progressReason + (lastStep is null ? "" : " Ultima accion: " + lastStep.Action + ". Resultado: " + (lastStep.ResultPreview ?? "sin detalle")),
+                        ref planBUsed,
+                        ref planBInitialFailure,
+                        ref awaitingPlanBAction,
+                        ref effectiveMaxIterations,
+                        iteration + 1,
+                        messages,
+                        progress,
+                        checkpoint);
+                    if (planBFailure is not null)
+                        return Fail(planBFailure, model, intention, steps, checkpoint);
+                    continue;
                 }
 
                 checkpoint.NextAction = "siguiente";
@@ -525,8 +685,15 @@ public sealed class AgentService : IAgentService
         // agente recolecto evidencia, se entrega una respuesta fundamentada (no un
         // crptico "limite de iteraciones"). Para una intencion de CONSTRUIR, sin
         // cambio verificado no hay respuesta que entregar.
-        return TryDeliverInformational(checkpoint, steps, workingDir, model, intention, progress, lastDoneReason, inventory)
-            ?? Fail("El agente no pudo completar la tarea dentro de los limites.", model, intention, steps, checkpoint);
+        var finalDelivery = TryDeliverInformational(checkpoint, steps, workingDir, model, intention, progress, lastDoneReason, inventory);
+        if (finalDelivery is not null)
+            return ApplyPlanBCompletion(finalDelivery, planBUsed);
+        return Fail(
+            planBUsed ? "Plan B no pudo completar la tarea dentro de los limites." : "El agente no pudo completar la tarea dentro de los limites.",
+            model,
+            intention,
+            steps,
+            checkpoint);
     }
 
     private async Task<AgentResult> RunDirectConsultAsync(
@@ -946,8 +1113,90 @@ var modelSetup = CreateModelSetup();
         }
     }
 
-    private static string buildErrorPreamble(HarnessVerifyResult r)
-        => "El harness reporto un error real tras la correccion: " + r.Reason + ".\nPuedes leer de nuevo el archivo con read_file o revertir la ultima edicion con undo_file, luego corregir con patch y volver a intentar.\nEvidencia real de build/test:\n";
+    private string? StartPlanB(
+        string? failedAction,
+        string? failedPath,
+        string failureDetail,
+        ref bool planBUsed,
+        ref string? planBInitialFailure,
+        ref bool awaitingPlanBAction,
+        ref int effectiveMaxIterations,
+        int failedIteration,
+        List<LlmMessage> messages,
+        IAgentProgressObserver? progress,
+        AgentCheckpoint checkpoint)
+    {
+        var detail = Truncate(string.IsNullOrWhiteSpace(failureDetail) ? "sin detalle" : failureDetail);
+        var location = string.IsNullOrWhiteSpace(failedPath) ? "" : " en '" + failedPath + "'";
+        var failureContext = string.IsNullOrWhiteSpace(failedAction)
+            ? "Bloqueo detectado: " + detail
+            : "Accion fallida: " + failedAction + location + ". Resultado real: " + detail;
+        var failureLabel = string.IsNullOrWhiteSpace(failedAction) ? "falta de progreso" : failedAction + location;
+
+        if (planBUsed)
+        {
+            awaitingPlanBAction = false;
+            checkpoint.LastDecision = "plan_b_fallido";
+            checkpoint.LastError = detail;
+            checkpoint.NextAction = "detener";
+            var message = "Plan B no pudo corregir el fallo. Condor detuvo la tarea para evitar repetir intentos.";
+            progress?.Report(AgentProgress.Of(
+                AgentPhase.Finalizing,
+                action: "Plan B",
+                iteration: failedIteration,
+                message: message));
+            return "Plan B no pudo corregir el fallo inicial. Fallo inicial: " +
+                   (planBInitialFailure ?? "sin detalle") + " Recuperacion fallida: " + detail;
+        }
+
+        planBUsed = true;
+        planBInitialFailure = detail;
+        awaitingPlanBAction = true;
+        effectiveMaxIterations = Math.Max(
+            effectiveMaxIterations,
+            failedIteration + Math.Max(1, _limits.MaxPlanBIterations));
+        checkpoint.LastDecision = "plan_b";
+        checkpoint.LastError = detail;
+        checkpoint.NextAction = "analizar_y_corregir";
+
+        messages.Add(new LlmMessage
+        {
+            Role = "user",
+            Content = "PLAN B ACTIVADO tras el fallo de la iteracion " + failedIteration +
+                      ". " + failureContext +
+                      "\nAnaliza ese resultado y corrige la causa antes de continuar. No repitas la misma accion con los mismos datos si ya fallo; observa el archivo/ruta o adapta la accion usando la evidencia disponible. " +
+                      "Emite exactamente una accion JSON permitida por el system. Si la correccion tiene exito, continua la tarea y verifica el resultado. No declares done antes de ejecutar una accion de recuperacion exitosa; si no existe una correccion segura, detente con el motivo en reason."
+        });
+
+        progress?.Report(AgentProgress.Of(
+            AgentPhase.Analyzing,
+            action: "Plan B",
+            iteration: failedIteration,
+                message: "Plan B activado tras detectar " + failureLabel + "; Condor analiza el resultado y prepara una correccion."));
+        return null;
+    }
+
+    private static AgentResult ApplyPlanBCompletion(AgentResult result, bool planBUsed)
+    {
+        if (planBUsed)
+        {
+            result.Reason = "Plan B recupero la tarea tras el fallo inicial. " + result.Reason;
+            if (result.Checkpoint is not null)
+                result.Checkpoint.LastDecision = "plan_b_corregido";
+        }
+
+        return result;
+    }
+
+    private static string HarnessCompletionReason(HarnessVerifyResult result, bool planBUsed)
+    {
+        var recovery = planBUsed ? "Plan B recupero la tarea tras el fallo inicial. " : "";
+        if (!result.ChecksApplicable)
+            return recovery + "Tarea completada; build/test no aplican a este proyecto. " +
+                   (result.Reason ?? result.Detail);
+
+        return recovery + "El harness confirmo build y pruebas.";
+    }
 
     private static async Task<string> ListRootSnapshotAsync(AgentToolset toolset, string workingDir, CancellationToken ct)
     {
