@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Condor.Core.Contracts;
 using Condor.Core.Cycle;
@@ -18,6 +19,7 @@ public sealed class CycleService : ICycleService
     private readonly ISemanticVerificationService? _semanticService;
     private readonly IStateStore _stateStore;
     private readonly CycleLimits _limits;
+    private readonly IDocumenter? _documenter;
 
     public CycleService(
         IPlanService planService,
@@ -25,7 +27,8 @@ public sealed class CycleService : ICycleService
         IVerificationService verificationService,
         IStateStore stateStore,
         CycleLimits? limits = null,
-        ISemanticVerificationService? semanticService = null)
+        ISemanticVerificationService? semanticService = null,
+        IDocumenter? documenter = null)
     {
         _planService = planService;
         _buildService = buildService;
@@ -33,10 +36,12 @@ public sealed class CycleService : ICycleService
         _stateStore = stateStore;
         _limits = limits ?? CycleLimits.Default;
         _semanticService = semanticService;
+        _documenter = documenter;
     }
 
     public async Task<CycleResult> AdvanceAsync(string userRequest, CancellationToken cancellationToken = default)
     {
+        var startedAtUtc = DateTime.UtcNow;
         var timeout = TimeSpan.FromMilliseconds(_limits.CycleTimeoutMilliseconds);
 
         try
@@ -88,26 +93,27 @@ public sealed class CycleService : ICycleService
                         continue;
                     }
 
-                    return Result(plan, build, verification, semanticInfo, cycleId, iteration,
-                        CycleStage.Detenido, "La verificacion semantica del proyecto fallo de forma no recuperable.", limitsApplied);
+                    return await DocumentResultAsync(Result(plan, build, verification, semanticInfo, cycleId, iteration,
+                        CycleStage.Detenido, "La verificacion semantica del proyecto fallo de forma no recuperable.", limitsApplied),
+                        userRequest, startedAtUtc);
                 }
 
                 if (decision.Complete)
                 {
                     if (semanticInfo.Status == "no_disponible" || semanticInfo.Status == "incompleta")
                     {
-                        return Result(plan, build, verification, semanticInfo, cycleId, iteration,
-                            CycleStage.Degradado, semanticInfo.Reason, limitsApplied);
+                        return await DocumentResultAsync(Result(plan, build, verification, semanticInfo, cycleId, iteration,
+                            CycleStage.Degradado, semanticInfo.Reason, limitsApplied), userRequest, startedAtUtc);
                     }
 
-                    return Result(plan, build, verification, semanticInfo, cycleId, iteration,
-                        CycleStage.Completado, null, limitsApplied);
+                    return await DocumentResultAsync(Result(plan, build, verification, semanticInfo, cycleId, iteration,
+                        CycleStage.Completado, null, limitsApplied), userRequest, startedAtUtc);
                 }
 
                 if (decision.Stopped)
                 {
-                    return Result(plan, build, verification, semanticInfo, cycleId, iteration,
-                        decision.Stage, decision.Reason, limitsApplied);
+                    return await DocumentResultAsync(Result(plan, build, verification, semanticInfo, cycleId, iteration,
+                        decision.Stage, decision.Reason, limitsApplied), userRequest, startedAtUtc);
                 }
 
                 if (decision.Regenerate)
@@ -119,14 +125,83 @@ public sealed class CycleService : ICycleService
         }
         catch (TimeoutException)
         {
-            return new CycleResult
+            return await DocumentResultAsync(new CycleResult
             {
                 SchemaVersion = "1.0.0",
                 Status = DetectionStatus.Limited,
                 Reason = ReasonTimeout,
                 GeneratedAtUtc = DateTime.UtcNow
+            }, userRequest, startedAtUtc);
+        }
+    }
+
+    private async Task<CycleResult> DocumentResultAsync(
+        CycleResult result,
+        string userRequest,
+        DateTime startedAtUtc)
+    {
+        if (_documenter is null)
+        {
+            return result;
+        }
+
+        var completedAtUtc = DateTime.UtcNow;
+        var workingDirectory = string.IsNullOrWhiteSpace(result.WorkingDirectory)
+            ? Environment.CurrentDirectory
+            : result.WorkingDirectory;
+        var outcome = result.Status switch
+        {
+            DetectionStatus.Detected when result.Checkpoint.Stage == CycleStage.Completado => "completado",
+            DetectionStatus.Limited => "limitado",
+            _ => "no detectado"
+        };
+
+        var request = new DocumentationRequest
+        {
+            TaskType = "Ciclo de ingenieria (/avanzar)",
+            Intention = string.IsNullOrWhiteSpace(userRequest) ? result.Intention : userRequest,
+            WorkingDirectory = workingDirectory,
+            StartedAtUtc = startedAtUtc,
+            CompletedAtUtc = completedAtUtc,
+            Outcome = outcome,
+            Reason = result.Reason,
+            Before = new List<string>
+            {
+                $"Intencion recibida: {userRequest}",
+                $"Directorio de trabajo: {workingDirectory}",
+                $"Inicio UTC: {startedAtUtc:O}"
+            },
+            During = new List<string>
+            {
+                $"Etapas registradas: {result.Stages} de 3",
+                $"Iteraciones: {result.Iterations}",
+                $"Cambios aplicados: {result.Applied}",
+                $"Comprobaciones verificadas: {result.Verified}",
+                $"Verificacion semantica: {result.SemanticStatus ?? "omitida"}",
+                $"Limites aplicados: {(result.LimitsApplied.Count == 0 ? "ninguno" : string.Join(", ", result.LimitsApplied))}"
+            },
+            After = new List<string>
+            {
+                $"Resultado del ciclo: {outcome}; etapa: {result.Checkpoint.Stage}",
+                $"Fin UTC: {completedAtUtc:O}"
+            }
+        };
+
+        try
+        {
+            result.Documentation = await _documenter.WriteAsync(request, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            result.Documentation = new DocumentationResult
+            {
+                Success = false,
+                Reason = $"{exception.GetType().Name}: {exception.Message}",
+                GeneratedAtUtc = DateTime.UtcNow
             };
         }
+
+        return result;
     }
 
     private async Task<SemanticVerificationResult?> RunSemanticAsync(CancellationToken cancellationToken)

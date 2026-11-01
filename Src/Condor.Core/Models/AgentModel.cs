@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace Condor.Core.Models;
 
@@ -52,6 +53,10 @@ public class AgentResult
     /// Opcional: informativo; cuando es null el renderer omite el bloque.
     /// </summary>
     public AgentInventory? Inventory { get; set; }
+
+    /// <summary>Informe Antes/Durante/Despues de esta ejecucion, si pudo generarse.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public DocumentationResult? Documentation { get; set; }
 }
 
 /// <summary>

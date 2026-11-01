@@ -5,12 +5,50 @@ using Condor.Core.Contracts;
 using Condor.Core.Models;
 using Condor.Core.Serialization;
 using Condor.Infrastructure.Cycle;
+using Condor.Infrastructure.Documentation;
 using Condor.Infrastructure.State;
 
 namespace Condor.Infrastructure.Tests;
 
 public class CycleServiceTests
 {
+    [Fact]
+    public async Task AdvanceAsync_CicloCompleto_GeneraInformeAntesDuranteDespues()
+    {
+        var root = DirectorioTemporal();
+        Directory.CreateDirectory(root);
+        var plan = WorkPlanDetectado();
+        plan.WorkingDirectory = root;
+        var service = new CycleService(
+            new StubPlan(plan),
+            new StubBuild(BuildDetectado()),
+            new StubVerify(VerDetectado()),
+            new LocalStateStore(Path.Combine(root, "state")),
+            new CycleLimits { MaxIterations = 3 },
+            documenter: new DocumenterService());
+
+        try
+        {
+            var result = await service.AdvanceAsync("agregar una validacion", CancellationToken.None);
+
+            Assert.Equal(DetectionStatus.Detected, result.Status);
+            Assert.NotNull(result.Documentation);
+            Assert.True(result.Documentation!.Success, result.Documentation.Reason);
+
+            var reportPath = Path.Combine(root, result.Documentation.RelativePath!.Replace('/', Path.DirectorySeparatorChar));
+            var content = await File.ReadAllTextAsync(reportPath);
+            Assert.Contains("## Antes", content);
+            Assert.Contains("## Durante", content);
+            Assert.Contains("## Despues", content);
+            Assert.Contains("Cambios aplicados: 1", content);
+            Assert.Contains("Comprobaciones verificadas: 1", content);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     [Fact]
     public async Task AdvanceAsync_CicloCompleto_DevuelveCompletado()
     {

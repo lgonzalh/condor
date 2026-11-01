@@ -9,6 +9,7 @@ using Condor.Infrastructure.Context;
 using Condor.Infrastructure.Building;
 using Condor.Infrastructure.Cycle;
 using Condor.Infrastructure.DependencyBootstrap;
+using Condor.Infrastructure.Documentation;
 using Condor.Infrastructure.Llm;
 using Condor.Infrastructure.Planning;
 using Condor.Infrastructure.State;
@@ -130,7 +131,9 @@ public static class Program
                 // Intencion natural en una sola linea: se entrega al motor agente,
                 // que ya ejecuta su propia preparacion interna y actua con herramientas.
                 return await AgentCommand.ExecuteAsync(
-                    new AgentService(stateStore, assessmentService, session: session),
+                    new DocumentingAgentService(
+                        new AgentService(stateStore, assessmentService, session: session),
+                        new DocumenterService()),
                     args,
                     shutdownCts.Token);
             }
@@ -196,7 +199,9 @@ public static class Program
         var interpreter = new Interpreter(
             slash => HandleSlashAsync(slash, assessmentService, stateStore, llmClient, session),
             free => AgentCommand.ExecuteAsync(
-                new AgentService(stateStore, assessmentService, session: session),
+                new DocumentingAgentService(
+                    new AgentService(stateStore, assessmentService, session: session),
+                    new DocumenterService()),
                 free.Intention.Split(' ', System.StringSplitOptions.RemoveEmptyEntries | System.StringSplitOptions.TrimEntries),
                 shutdownToken),
             onBeforePrompt: () =>
@@ -322,7 +327,8 @@ public static class Program
                     new BuildService(stateStore),
                     new VerificationService(stateStore),
                     stateStore,
-                    semanticService: new SemanticVerificationService(stateStore)),
+                    semanticService: new SemanticVerificationService(stateStore),
+                    documenter: new DocumenterService()),
                 stateStore,
                 args,
                 CancellationToken.None),

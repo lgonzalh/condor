@@ -53,6 +53,8 @@ public static class AgentRenderer
             Terminal.WriteCyan("He modificado " + string.Join(", ", paths) + ".");
         }
 
+        RenderDocumentation(result.Documentation);
+
         // Pie de respuesta (firma permanente).
         Terminal.WriteLine();
         Terminal.WriteWhite(SignatureLine(result, elapsed));
@@ -99,11 +101,38 @@ public static class AgentRenderer
             sb.AppendLine("He modificado " + string.Join(", ", paths) + ".");
         }
 
+        if (result.Documentation is { } documentation)
+        {
+            sb.AppendLine();
+            sb.AppendLine(documentation.Success
+                ? "Informe Antes/Durante/Despues: " + documentation.RelativePath
+                : "No se genero el informe de tarea: " + (documentation.Reason ?? "motivo no disponible"));
+        }
+
         // Firma permanente del ADN de Condor.
         sb.AppendLine();
         sb.AppendLine(SignatureLine(result, elapsed));
 
         return sb.ToString();
+    }
+
+    private static void RenderDocumentation(DocumentationResult? documentation)
+    {
+        if (documentation is null)
+        {
+            return;
+        }
+
+        Terminal.WriteLine();
+        if (documentation.Success)
+        {
+            Terminal.WriteDim("Informe Antes/Durante/Despues: " + documentation.RelativePath);
+        }
+        else
+        {
+            Terminal.WriteWarning("No se genero el informe de tarea: " +
+                (documentation.Reason ?? "motivo no disponible"));
+        }
     }
 
     private static string SignatureLine(AgentResult result, TimeSpan? elapsed)

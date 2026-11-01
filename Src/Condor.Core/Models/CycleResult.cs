@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace Condor.Core.Models;
 
@@ -23,4 +24,7 @@ public class CycleResult
     public string? SemanticReference { get; set; }
     public List<string> LimitsApplied { get; set; } = new();
     public DateTime GeneratedAtUtc { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public DocumentationResult? Documentation { get; set; }
 }

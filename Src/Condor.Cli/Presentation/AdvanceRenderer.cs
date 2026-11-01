@@ -16,6 +16,13 @@ public static class AdvanceRenderer
 
         RenderSemantic(result);
 
+        if (result.Documentation is { } documentation)
+        {
+            Terminal.WriteLine(documentation.Success
+                ? "  Informe de tarea : " + documentation.RelativePath
+                : "  Informe fallido : " + (documentation.Reason ?? "motivo no disponible"));
+        }
+
         Terminal.WriteLine(
             "  Limites aplicados : " +
             (result.LimitsApplied.Count > 0 ? string.Join(", ", result.LimitsApplied) : "ninguno"));

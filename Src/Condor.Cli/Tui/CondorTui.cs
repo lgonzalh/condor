@@ -7,6 +7,7 @@ using Condor.Core.Models;
 using Condor.Infrastructure;
 using Condor.Infrastructure.Agent;
 using Condor.Infrastructure.DependencyBootstrap;
+using Condor.Infrastructure.Documentation;
 using Condor.Infrastructure.Llm;
 using Condor.Infrastructure.Setup;
 
@@ -347,7 +348,9 @@ public static class CondorTui
                             host.SetBusy(true);
                             runningCts = CancellationTokenSource.CreateLinkedTokenSource(shutdownToken);
                             var agentBridge = new AgentProgressObserverBridge(new TuiAgentProgressView(host));
-                            var agent = new AgentService(stateStore, assessmentService, session: session);
+                            var agent = new DocumentingAgentService(
+                                new AgentService(stateStore, assessmentService, session: session),
+                                new DocumenterService());
                             runningWatch.Restart();
                             var token = runningCts.Token;
                             running = Task.Run(() => agent.RunAsync(free.Intention, agentBridge, token));
