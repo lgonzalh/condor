@@ -147,6 +147,13 @@ public sealed class AgentHarness
     {
         if (string.IsNullOrWhiteSpace(intention)) return null;
         var match = Regex.Match(intention, @"(?i)\benlace\s+relativo\s+exacto\s+(?<path>[A-Za-z0-9._/-]+\.html)\b");
+        if (!match.Success)
+        {
+            match = Regex.Match(
+                intention,
+                @"(?i)\bhref\s*=\s*(?<quote>['""])(?<path>[A-Za-z0-9._/-]+\.html)\k<quote>");
+        }
+
         if (!match.Success) return null;
 
         var path = match.Groups["path"].Value;

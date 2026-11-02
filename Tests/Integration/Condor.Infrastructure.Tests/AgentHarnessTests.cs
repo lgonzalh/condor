@@ -76,18 +76,37 @@ public class AgentHarnessTests
     {
         var root = Path.Combine(Path.GetTempPath(), "condor-harness-html-valid-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
-        await File.WriteAllTextAsync(Path.Combine(root, "index.html"), "<!doctype html><html lang=\"es\"><body><h1>Listo</h1><a href=\"docs/tareas/indice-condor.html\">Documentacion</a></body></html>");
+        await File.WriteAllTextAsync(Path.Combine(root, "index.html"), "<!doctype html><html lang=\"es\"><body><h1>Listo</h1><a href=\"docs/indice-condor.html\">Documentacion</a></body></html>");
         var steps = new List<AgentStep>
         {
             new() { Action = AgentAction.ActionEditFile, Path = "index.html", Success = true }
         };
         var harness = new AgentHarness(root, AgentLimits.Default, steps,
-            "Conserva el enlace relativo exacto docs/tareas/indice-condor.html.");
+            "Agrega este enlace literalmente: <a href=\"docs/indice-condor.html\">Documentacion</a>.");
 
         var result = await harness.VerifyAsync(CancellationToken.None);
 
         Assert.True(result.Done, result.Reason);
         Assert.False(result.ChecksApplicable);
+    }
+
+    [Fact]
+    public async Task VerifyAsync_SinManifiesto_RechazaHrefExplicitoDelPromptCuandoFalta()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "condor-harness-html-explicit-link-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        await File.WriteAllTextAsync(Path.Combine(root, "index.html"), "<!doctype html><html lang=\"es\"><body><h1>Listo</h1></body></html>");
+        var steps = new List<AgentStep>
+        {
+            new() { Action = AgentAction.ActionEditFile, Path = "index.html", Success = true }
+        };
+        var harness = new AgentHarness(root, AgentLimits.Default, steps,
+            "Inserta literalmente <a href=\"docs/indice-condor.html\">Documentacion</a> dentro de body.");
+
+        var result = await harness.VerifyAsync(CancellationToken.None);
+
+        Assert.False(result.Done);
+        Assert.Contains("docs/indice-condor.html", result.Reason, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -101,12 +120,12 @@ public class AgentHarnessTests
             new() { Action = AgentAction.ActionEditFile, Path = "index.html", Success = true }
         };
         var harness = new AgentHarness(root, AgentLimits.Default, steps,
-            "Conserva el enlace relativo exacto docs/tareas/indice-condor.html.");
+            "Conserva el enlace relativo exacto docs/indice-condor.html.");
 
         var result = await harness.VerifyAsync(CancellationToken.None);
 
         Assert.False(result.Done);
-        Assert.Contains("docs/tareas/indice-condor.html", result.Reason, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("docs/indice-condor.html", result.Reason, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
