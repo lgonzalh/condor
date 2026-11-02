@@ -456,6 +456,11 @@ public static class CondorTui
 
                         case FreeIntentionRoute free when !string.IsNullOrWhiteSpace(free.Intention):
                             host.SetBusy(true);
+                            host.SetEstado("Preparando análisis de la tarea");
+                            host.SetProgreso("0 s");
+                            host.SetModelStatus(
+                                (string.IsNullOrWhiteSpace(session.ActiveModel) ? "Modelo local" : session.ActiveModel) + " · preparando análisis",
+                                working: true);
                             runningCts = CancellationTokenSource.CreateLinkedTokenSource(shutdownToken);
                             var agentBridge = new AgentProgressObserverBridge(new TuiAgentProgressView(host));
                             var agent = new DocumentingAgentService(
