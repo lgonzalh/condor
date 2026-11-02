@@ -25,12 +25,16 @@ public static class TaskIntentClassifier
         var text = (intention ?? "").ToLowerInvariant();
 
         var requiresCoding = ContainsAny(text, CodingSignals);
+        var requiresWebMarkup = ContainsAny(text, WebMarkupSignals);
         var readsMultipleFiles = ContainsAny(text, MultiFileSignals);
         var requiresVision = ContainsAny(text, VisionSignals);
 
         int codingLevel = 0;
         int multiFile = 0;
         if (requiresCoding) codingLevel = 3;
+        // Una pagina web estatica de un solo archivo requiere edicion de codigo,
+        // pero no el mismo nivel que corregir codigo de produccion o compilar.
+        if (requiresWebMarkup) codingLevel = System.Math.Max(codingLevel, 2);
         if (readsMultipleFiles) { multiFile = 2; codingLevel = Math.Max(codingLevel, 2); }
 
         if (requiresVision)
@@ -51,7 +55,7 @@ public static class TaskIntentClassifier
             !requiresCoding &&
             !readsMultipleFiles &&
             !ContainsAny(text, InformationalSignals) &&
-            !ContainsAny(text, ModificationSignals))
+            !RequiresModification(text))
         {
             return new TaskModelRequirement
             {
@@ -72,7 +76,7 @@ public static class TaskIntentClassifier
             RequiredMultiFileLevel = multiFile,
             RequiresToolUse = true,
             RequiresStructuredOutput = true,
-            PreferSmallestSufficient = true,
+            PreferSmallestSufficient = false,
             Label = requiresCoding
                 ? "agente de ingenieria (coding + herramientas)"
                 : "agente de comprension/analisis"
@@ -83,7 +87,13 @@ public static class TaskIntentClassifier
     {
         var text = (intention ?? "").ToLowerInvariant();
         return ContainsAny(text, InformationalSignals) &&
-               !ContainsAny(text, ModificationSignals);
+               !RequiresModification(text);
+    }
+
+    public static bool RequiresModification(string? intention)
+    {
+        var text = (intention ?? "").ToLowerInvariant();
+        return ContainsAny(text, ModificationSignals);
     }
 
     private static bool ContainsAny(string text, string[] signals)
@@ -98,8 +108,11 @@ public static class TaskIntentClassifier
     private static readonly string[] CodingSignals =
         { "codi", "compila", "build", "bug", "corrig", "funcion", "programa", "archivo", "archivos", "refactor", "escribe el" };
 
+    private static readonly string[] WebMarkupSignals =
+        { "html", "pagina web", "página web", "sitio web estático", "sitio web estatico" };
+
     private static readonly string[] MultiFileSignals =
-        { "proyecto", "repositorio", "repositor", "aplicacion", "estructura", "carpet", "src", "tests", "toda la app", "analiza el" };
+        { "repositorio completo", "todo el repositorio", "aplicacion completa", "aplicación completa", "estructura", "carpet", "src", "tests", "toda la app", "analiza el", "analiza que contiene este proyecto" };
 
     private static readonly string[] VisionSignals =
         { "imagen", "vision", "foto", "captura", "image", "screenshot", "ver esta imagen" };
@@ -111,5 +124,5 @@ public static class TaskIntentClassifier
         { "que hay", "que es", "describe", "cuent", "analiza", "explica", "resumen", "que contiene", "que hace", "revisa", "revisa y" };
 
     private static readonly string[] ModificationSignals =
-        { "corrig", "arregla", "modifica", "cambia", "refactor", "implementa", "anade", "agrega", "crea", "escribe el", "build", "compila", "test" };
+        { "corrig", "arregla", "modifica", "actualiza", "actualizar", "actualización", "actualizacion", "cambia", "refactor", "implementa", "anade", "agrega", "crea", "escribe el", "build", "compila", "test" };
 }

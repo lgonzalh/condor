@@ -25,8 +25,8 @@ public sealed class TaskModelRequirement
     public bool RequiresStructuredOutput { get; init; }
 
     /// <summary>
-    /// True si se prefiere el modelo MAS PEQUENO que sea suficiente (eficiencia).
-    /// False si la tarea se beneficia de la maxima capacidad viable.
+    /// True para consultas que priorizan rapidez; False para tareas de agente,
+    /// que priorizan capacidades dentro del presupuesto seguro de RAM.
     /// </summary>
     public bool PreferSmallestSufficient { get; init; }
 

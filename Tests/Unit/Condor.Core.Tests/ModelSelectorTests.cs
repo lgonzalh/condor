@@ -20,7 +20,7 @@ public class ModelSelectorTests
     [Fact]
     public void Recommend_ModeloDeseadoInstalado_ReutilizaSinDescargar()
     {
-        var assessment = AssessmentConModelo("qwen2.5-coder:7b", ramFreeGb: 10, ramTotalGb: 16);
+        var assessment = AssessmentConModelo("qwen2.5-coder:7b", ramFreeGb: 12, ramTotalGb: 16);
 
         var r = ModelSelector.RecommendFromCatalog(assessment, ModelCatalog.Default);
 
@@ -28,6 +28,54 @@ public class ModelSelectorTests
         Assert.True(r.AlreadyInstalled);
         Assert.Equal("qwen2.5-coder:7b", r.InstalledName);
         Assert.Contains("reutiliza", r.Reason, System.StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Recommend_ModeloLocalConHerramientasDeOtraFamilia_EvitaDescarga()
+    {
+        var assessment = AssessmentConModelo("granite4.2:3b", ramFreeGb: 8, ramTotalGb: 16);
+        assessment.Tools!.Ollama!.Models[0] = new ModelInfo
+        {
+            Name = "granite4.2:3b",
+            SizeBytes = 2_200L * 1024 * 1024,
+            Family = "granite",
+            ParameterSize = "3B",
+            Capabilities = new List<string> { "completion", "tools", "thinking" }
+        };
+
+        var result = ModelSelector.RecommendFromCatalog(assessment, ModelCatalog.Default);
+
+        Assert.True(result.AlreadyInstalled);
+        Assert.Equal("granite4.2:3b", result.Desired?.Name);
+        Assert.Equal("granite4.2:3b", result.InstalledName);
+    }
+
+    [Fact]
+    public void SelectForTask_ModeloInstaladoNoRecibeCapacidadesExigidasPorLaTarea()
+    {
+        var assessment = AssessmentConModelo("modelo-local:3b", ramFreeGb: 8, ramTotalGb: 16);
+        assessment.Tools!.Ollama!.Models[0] = new ModelInfo
+        {
+            Name = "modelo-local:3b",
+            SizeBytes = 2L * 1024 * 1024 * 1024,
+            Capabilities = new List<string> { "completion", "tools" }
+        };
+        var requirement = new TaskModelRequirement
+        {
+            IntentKind = TaskIntentKinds.Coding,
+            RequiredCodingLevel = 3,
+            RequiredMultiFileLevel = 2,
+            RequiresToolUse = true,
+            RequiresStructuredOutput = true
+        };
+
+        var result = ModelSelector.SelectForTask(
+            assessment,
+            System.Array.Empty<ModelCandidate>(),
+            requirement,
+            BudgetPolicy.Default);
+
+        Assert.Null(result.Desired);
     }
 
     [Fact]
@@ -42,18 +90,29 @@ public class ModelSelectorTests
     }
 
     [Fact]
+    public void Recommend_SinModeloLocalViable_UsaPerfilGeneralistaYNoUnaFamiliaFija()
+    {
+        var assessment = AssessmentConModelo("modelo-sin-capacidades", ramFreeGb: 8, ramTotalGb: 16);
+
+        var result = ModelSelector.RecommendFromCatalog(assessment, ModelCatalog.Default);
+
+        Assert.False(result.AlreadyInstalled);
+        Assert.Equal("granite4.2:3b", result.Desired?.Name);
+        Assert.NotEqual("qwen2", result.Desired?.Family);
+    }
+
+    [Fact]
     public void Recommend_AlternativaMenosCapazNoPisaAlDeseadoMasCapaz()
     {
-        // La alternativa instalada (llama3.2:3b, general) es MENOS capaz en
-        // ingenieria que el deseado de mayor capacidad viable. No debe
-        // reutilizarse la menos capaz si el deseado es viable y obtenible.
+        // El inventario local no declara herramientas para llama3.2:3b; el
+        // arranque elige un perfil agente con capacidades conocidas.
         var assessment = AssessmentConModelo("llama3.2:3b", ramFreeGb: 10, ramTotalGb: 16);
 
         var r = ModelSelector.RecommendFromCatalog(assessment, ModelCatalog.Default);
 
         Assert.NotNull(r.Desired);
         Assert.False(r.AlreadyInstalled);
-        Assert.Equal("qwen2.5-coder:7b", r.Desired.PullName);
+        Assert.Equal("granite4.2:3b", r.Desired.PullName);
     }
 
     [Fact]
@@ -62,7 +121,10 @@ public class ModelSelectorTests
         // Solo 1 GB libre -> ningun modelo del catalogo cabe (bloqueo por recursos).
         var assessment = AssessmentConModelo("vacio", ramFreeGb: 1, ramTotalGb: 2);
 
-        var r = ModelSelector.RecommendFromCatalog(assessment, ModelCatalog.Default);
+        var qwenSevenB = ModelCatalog.Default
+            .Where(candidate => candidate.Name == "qwen2.5-coder:7b")
+            .ToList();
+        var r = ModelSelector.RecommendFromCatalog(assessment, qwenSevenB);
 
         Assert.Null(r.Desired);
         Assert.True(r.BlockedByResources);
@@ -89,7 +151,10 @@ public class ModelSelectorTests
         // Se permite con advertencia explicita.
         var assessment = AssessmentConModelo("sin-instalar", ramFreeGb: 10, ramTotalGb: 16);
 
-        var r = ModelSelector.RecommendFromCatalog(assessment, ModelCatalog.Default);
+        var qwenSevenB = ModelCatalog.Default
+            .Where(candidate => candidate.Name == "qwen2.5-coder:7b")
+            .ToList();
+        var r = ModelSelector.RecommendFromCatalog(assessment, qwenSevenB);
 
         Assert.NotNull(r.Desired);
         Assert.Equal("qwen2.5-coder:7b", r.Desired.PullName);
@@ -105,7 +170,10 @@ public class ModelSelectorTests
         // y se sugiere cerrar procesos de alto consumo (Condor no los cierra).
         var assessment = AssessmentConModelo("sin-instalar", ramFreeGb: 10, ramTotalGb: 14);
 
-        var r = ModelSelector.RecommendFromCatalog(assessment, ModelCatalog.Default);
+        var qwenSevenB = ModelCatalog.Default
+            .Where(candidate => candidate.Name == "qwen2.5-coder:7b")
+            .ToList();
+        var r = ModelSelector.RecommendFromCatalog(assessment, qwenSevenB);
 
         Assert.NotNull(r.Desired);
         Assert.Equal("qwen2.5-coder:7b", r.Desired.PullName);
@@ -162,7 +230,16 @@ public class ModelSelectorTests
                     ServerRunning = true,
                     Models = new List<ModelInfo>
                     {
-                        new() { Name = installedName, SizeBytes = 1024 * 1024 * 1024, Capabilities = new List<string> { "completion" } }
+                        new()
+                        {
+                            Name = installedName,
+                            SizeBytes = ModelCatalog.Default.FirstOrDefault(candidate =>
+                                candidate.Name.Equals(installedName, System.StringComparison.OrdinalIgnoreCase))?.SizeBytes
+                                ?? 1024L * 1024 * 1024,
+                            Capabilities = installedName.Contains("coder", System.StringComparison.OrdinalIgnoreCase)
+                                ? new List<string> { "completion", "tools" }
+                                : new List<string> { "completion" }
+                        }
                     }
                 }
             }
@@ -193,7 +270,7 @@ public class ModelSelectorTests
         var r = ModelSelector.RecommendFromCatalog(assessment, ModelCatalog.Default);
 
         Assert.NotNull(r.Desired);
-        Assert.Equal("qwen2.5-coder:3b", r.Desired.PullName);
+        Assert.Equal("granite4.2:3b", r.Desired.PullName);
         Assert.False(r.BlockedByResources);
     }
 

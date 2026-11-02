@@ -18,6 +18,27 @@ public static class ModelCatalog
     {
         new()
         {
+            // Perfil generalista de agente con razonamiento y herramientas.
+            // El selector lo compara con todo el inventario local; no es una
+            // familia predeterminada ni desplaza modelos con mejor ajuste.
+            Name = "granite4.2:3b",
+            PullName = "granite4.2:3b",
+            SizeBytes = 2200L * 1024 * 1024,
+            WeightGb = 2.2,
+            Family = "granite",
+            ParameterSize = "3B",
+            Quantization = "Q4_K_M",
+            ContextWindow = 32768,
+            CodingLevel = 2,
+            MultiFileLevel = 1,
+            StructuredOutput = true,
+            ToolUse = true,
+            Stability = true,
+            Purpose = "agente",
+            Capabilities = new List<string> { "completion", "tool-use", "thinking", "structured-output", "coding" }
+        },
+        new()
+        {
             Name = "qwen2.5-coder:3b",
             PullName = "qwen2.5-coder:3b",
             SizeBytes = 1848L * 1024 * 1024,

@@ -36,11 +36,11 @@ public class BudgetStrictTest
                     ServerRunning = true,
                     Models = new List<ModelInfo>
                     {
-                        new() { Name = "qwen2.5-coder:0.5b", SizeBytes = 397L * 1024 * 1024, Capabilities = new List<string> { "completion" } },
+                        new() { Name = "qwen2.5-coder:0.5b", SizeBytes = 397L * 1024 * 1024, Capabilities = new List<string> { "completion", "tools" } },
                         new() { Name = "gemma3:1b", SizeBytes = 815L * 1024 * 1024, Capabilities = new List<string> { "completion" } },
-                        new() { Name = "qwen2.5-coder:1.5b", SizeBytes = 986L * 1024 * 1024, Capabilities = new List<string> { "completion" } },
-                        new() { Name = "qwen2.5-coder:3b", SizeBytes = 1848L * 1024 * 1024, Capabilities = new List<string> { "completion" } },
-                        new() { Name = "qwen2.5-coder:7b", SizeBytes = 4706L * 1024 * 1024, Capabilities = new List<string> { "completion" } }
+                        new() { Name = "qwen2.5-coder:1.5b", SizeBytes = 986L * 1024 * 1024, Capabilities = new List<string> { "completion", "tools" } },
+                        new() { Name = "qwen2.5-coder:3b", SizeBytes = 1848L * 1024 * 1024, Capabilities = new List<string> { "completion", "tools" } },
+                        new() { Name = "qwen2.5-coder:7b", SizeBytes = 4706L * 1024 * 1024, Capabilities = new List<string> { "completion", "tools" } }
                     }
                 }
             }
@@ -67,8 +67,7 @@ public class BudgetStrictTest
     public void Budget_StrictHeadroom_Only_0_5B_Available_Selects_Best_Fit()
     {
         // 6GB libre -> headroom 1.5GB
-        // Solo 0.5B instalado, pero 1.5B (peak 1.1) cabe y es mas capaz
-        // El selector prefiere el mas capaz que cabe -> 1.5B (para descargar)
+        // Solo 0.5B esta instalado y es suficiente; no se descarga otro modelo.
         var memory = new MemoryInfo
         {
             Status = DetectionStatus.Detected,
@@ -87,7 +86,7 @@ public class BudgetStrictTest
                     ServerRunning = true,
                     Models = new List<ModelInfo>
                     {
-                        new() { Name = "qwen2.5-coder:0.5b", SizeBytes = 397L * 1024 * 1024, Capabilities = new List<string> { "completion" } }
+                        new() { Name = "qwen2.5-coder:0.5b", SizeBytes = 397L * 1024 * 1024, Capabilities = new List<string> { "completion", "tools" } }
                     }
                 }
             }
@@ -96,9 +95,8 @@ public class BudgetStrictTest
         var r = ModelSelector.RecommendFromCatalog(assessment, ModelCatalog.Default, "agente");
 
         Assert.NotNull(r.Desired);
-        // Selecciona 1.5B (mas capaz que cabe) en lugar de reutilizar 0.5B (menos capaz)
-        Assert.Equal("qwen2.5-coder:1.5b", r.Desired.PullName);
-        Assert.False(r.AlreadyInstalled); // Requiere descarga
+        Assert.Equal("qwen2.5-coder:0.5b", r.Desired.PullName);
+        Assert.True(r.AlreadyInstalled); // Reutiliza el modelo local viable
     }
 
     [Fact]

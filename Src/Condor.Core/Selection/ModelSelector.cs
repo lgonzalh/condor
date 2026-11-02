@@ -35,15 +35,21 @@ public static class ModelSelector
         result.Budget = budget;
         result.Resources = ModelMemoryBudget.Snapshot(memory, candidatePeakGb: null);
 
-        var installed = (assessment.Tools?.Ollama?.Models ?? new List<ModelInfo>())
+        var installedModels = assessment.Tools?.Ollama?.Models ?? new List<ModelInfo>();
+        var installed = installedModels
             .Select(m => m.Name)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         List<ModelCandidate> ordered;
+        var effectiveCatalog = IncludeInstalledModels(catalog, installedModels);
 
         try
         {
-            ordered = OrderByCompatibility(catalog, memory, freeDiskBytes, purpose ?? "agente", budget);
+            ordered = OrderByCompatibility(effectiveCatalog, memory, freeDiskBytes, purpose ?? "agente", budget);
+            if (string.Equals(purpose ?? "agente", "agente", StringComparison.OrdinalIgnoreCase))
+            {
+                ordered = ordered.Where(candidate => candidate.ToolUse).ToList();
+            }
         }
         catch
         {
@@ -51,14 +57,20 @@ public static class ModelSelector
             return result;
         }
 
-        var desired = ordered.FirstOrDefault();
+        // Primero se aprovecha el mejor modelo instalado que realmente cabe.
+        // Solo se propone una descarga cuando el inventario local no ofrece un
+        // candidato viable para el propósito solicitado.
+        var installedViable = ordered
+            .Where(candidate => installed.Contains(candidate.Name) || installed.Contains(candidate.PullName))
+            .FirstOrDefault();
+        var desired = installedViable ?? ordered.FirstOrDefault();
 
         if (desired is null)
         {
-            var hasCandidates = catalog.Count > 0;
+            var hasCandidates = effectiveCatalog.Count > 0;
             if (hasCandidates)
             {
-                var smallestPeak = catalog
+                var smallestPeak = effectiveCatalog
                     .Where(c => c.WeightGb > 0)
                     .Select(c => ModelMemoryBudget.EstimatePeakGb(c.WeightGb, EstimateContextKbGb(c)))
                     .DefaultIfEmpty(1.0)
@@ -86,41 +98,18 @@ public static class ModelSelector
         }
 
         // Clasificar la presion respecto al candidato elegido (para alertas honestas).
-        var candidatePeak = (double)catalog
-            .Where(c => c.Name.Equals(desired.Name, StringComparison.OrdinalIgnoreCase) ||
-                        c.PullName.Equals(desired.PullName, StringComparison.OrdinalIgnoreCase))
-            .Select(c => ModelMemoryBudget.EstimatePeakGb(c.WeightGb, EstimateContextKbGb(c)))
-            .FirstOrDefault();
+        var candidatePeak = ModelMemoryBudget.EstimatePeakGb(desired.WeightGb, EstimateContextKbGb(desired));
         result.Resources = ModelMemoryBudget.Snapshot(memory, candidatePeak);
 
         AddPressureGuidance(result, desired);
 
-        // Instalado: buscar el deseado primero (reutilizar sin descargar).
+        // Instalado: reutilizarlo antes de considerar cualquier descarga.
         if (installed.Contains(desired.Name) || installed.Contains(desired.PullName))
         {
             result.Desired = desired;
             result.AlreadyInstalled = true;
             result.InstalledName = desired.PullName;
             result.Reason = "El modelo deseado ya existe en Ollama; se reutiliza sin descargar.";
-            return result;
-        }
-
-        // El deseado no esta instalado. Reutilizar una alternativa instalada SOLO
-        // si es tan capaz como el deseado. Si el deseado cabe y es mas capaz
-        // (p. ej. familia coder frente a un general), es preferible obtenerlo:
-        // la seleccion debe buscar la maxima capacidad de ingenieria viable.
-        var installedViable = ordered
-            .Where(c => installed.Contains(c.Name) || installed.Contains(c.PullName))
-            .FirstOrDefault();
-
-        if (installedViable is not null &&
-            IsAtLeastAsCapable(installedViable, desired))
-        {
-            result.Desired = installedViable;
-            result.AlreadyInstalled = true;
-            result.InstalledName = installedViable.PullName;
-            result.Alternatives.Add(desired.PullName);
-            result.Reason = "Modelo alternativo ya instalado con capacidad equivalente; se reutiliza.";
             return result;
         }
 
@@ -244,7 +233,8 @@ public static class ModelSelector
         // No "el mas pequeno que cabe" ni "el mas potente": mejor capacidad real
         // ejecutable de forma estable. Desempates por menor peso (mas estable).
         return viable
-            .OrderByDescending(c => c.MultiFileLevel)
+            .OrderByDescending(c => HasCapability(c.Capabilities, "thinking"))
+            .ThenByDescending(c => c.MultiFileLevel)
             .ThenByDescending(c => c.CodingLevel)
             .ThenByDescending(c => c.ToolUse ? 1 : 0)
             .ThenByDescending(c => StructuredOutputBonus(c))
@@ -290,15 +280,17 @@ public static class ModelSelector
         BudgetAssessment budget = result.Budget ?? BudgetAssessment.NoData();
         result.Resources = ModelMemoryBudget.Snapshot(memory, candidatePeakGb: null);
 
-        var installed = (assessment.Tools?.Ollama?.Models ?? new List<ModelInfo>())
+        var installedModels = assessment.Tools?.Ollama?.Models ?? new List<ModelInfo>();
+        var installed = installedModels
             .Select(m => m.Name)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var effectiveCatalog = IncludeInstalledModels(catalog, installedModels);
 
         // La sesion no salta niveles cuando mejora la memoria: la promocion
         // siempre avanza al siguiente modelo de la misma familia. Por ejemplo,
         // qwen2.5-coder:0.5b solo puede promocionar primero a 1.5b, nunca a 3b.
-        var current = FindCatalogModel(catalog, currentModelName);
-        var immediateUpgrade = FindImmediateUpgrade(catalog, current);
+        var current = FindCatalogModel(effectiveCatalog, currentModelName);
+        var immediateUpgrade = FindImmediateUpgrade(effectiveCatalog, current);
 
         // Check if active model is sufficient and installed
         // Rule: ActiveModel stays stable while sufficient AND conditions haven't improved
@@ -357,7 +349,7 @@ public static class ModelSelector
 
         // Candidatos del catalogo suficientes para la tarea y dentro del presupuesto.
         var candidates = new List<(ModelCandidate c, double peak, bool installed)>();
-        foreach (var c in catalog)
+        foreach (var c in effectiveCatalog)
         {
             if (c.WeightGb <= 0) continue;
             var isInstalled = installed.Contains(c.Name) || installed.Contains(c.PullName);
@@ -371,13 +363,29 @@ public static class ModelSelector
             candidates.Add((c, ModelEfficiencyEvaluator.PeakGb(c), isInstalled));
         }
 
-        // Ordenar por eficiencia: menor coste primero; desempate por menor peso.
-        // El menor suficiente y viable es el 1- por defecto (eficiencia > tamano).
-        var viable = candidates
+        // Primero se aplican los limites de RAM y margen seguro. Para consultas
+        // directas gana el menor pico; para tareas de agente, gana el perfil
+        // funcional mas fuerte que cabe, con menor pico como desempate de rapidez.
+        var budgetedCandidates = candidates
             .Where(x => budget!.IsBudgeted && budget!.Admits(x.peak) && ModelEfficiencyEvaluator.LeavesMargin(x.c, budget!))
-            .OrderBy(x => x.peak)
-            .ThenBy(x => x.c.WeightGb)
             .ToList();
+        var viable = requirement.PreferSmallestSufficient
+            ? budgetedCandidates
+                .OrderBy(x => x.peak)
+                .ThenBy(x => x.c.WeightGb)
+                .ThenBy(x => x.c.Name, StringComparer.Ordinal)
+                .ToList()
+            : budgetedCandidates
+                .OrderByDescending(x => HasCapability(x.c.Capabilities, "thinking"))
+                .ThenByDescending(x => x.c.MultiFileLevel)
+                .ThenByDescending(x => x.c.CodingLevel)
+                .ThenByDescending(x => x.c.ToolUse)
+                .ThenByDescending(x => x.c.StructuredOutput)
+                .ThenByDescending(x => x.c.Stability)
+                .ThenBy(x => x.peak)
+                .ThenBy(x => x.c.WeightGb)
+                .ThenBy(x => x.c.Name, StringComparer.Ordinal)
+                .ToList();
 
         // Una consulta de texto no requiere el protocolo de herramientas. Si
         // la politica completa no deja presupuesto positivo (por ejemplo, por
@@ -412,17 +420,35 @@ public static class ModelSelector
 
         // 1+ : siguiente candidato razonable (aun viable pero no elegido por ser
         // el mas eficiente; o insuficiente hoy por margen) para cuando aumente el presupuesto.
-        var next = candidates
+        var nextCandidates = candidates
             .Where(x => budget!.IsBudgeted && x.peak < budget!.BudgetGb * 1.6)
             .Where(x => x.c.Name != node.c?.Name)
-            .OrderBy(x => x.peak)
-            .FirstOrDefault();
+            .ToList();
+        var next = requirement.PreferSmallestSufficient
+            ? nextCandidates.OrderBy(x => x.peak).ThenBy(x => x.c.WeightGb).FirstOrDefault()
+            : nextCandidates
+                .OrderByDescending(x => HasCapability(x.c.Capabilities, "thinking"))
+                .ThenByDescending(x => x.c.MultiFileLevel)
+                .ThenByDescending(x => x.c.CodingLevel)
+                .ThenByDescending(x => x.c.ToolUse)
+                .ThenByDescending(x => x.c.StructuredOutput)
+                .ThenByDescending(x => x.c.Stability)
+                .ThenBy(x => x.peak)
+                .ThenBy(x => x.c.WeightGb)
+                .FirstOrDefault();
         if (next.c is not null)
         {
-            result.NextCandidate = next.c;
+                result.NextCandidate = next.c;
             if (next.c.Name != node.c?.Name && node.c is not null)
             {
                 result.Alternatives.Add(next.c.PullName);
+                var nextPeak = ModelEfficiencyEvaluator.PeakGb(next.c);
+                if (!budget!.Admits(nextPeak) || !ModelEfficiencyEvaluator.LeavesMargin(next.c, budget))
+                {
+                    result.Reason += " La alternativa de mayor capacidad " + next.c.PullName +
+                        " requiere un pico estimado de " + nextPeak.ToString("0.00") +
+                        " GB y excede el presupuesto seguro actual de " + budget.BudgetGb.ToString("0.00") + " GB.";
+                }
             }
         }
 
@@ -512,8 +538,12 @@ public static class ModelSelector
     private static string ResultReason(TaskModelRequirement req, ModelCandidate c, BudgetAssessment? budget, string tag)
     {
         var b = budget is null ? "-" : budget.BudgetGb.ToString("0.0") + " GB de presupuesto";
+        var strategy = req.PreferSmallestSufficient
+            ? "menor pico entre los modelos suficientes"
+            : "mayor perfil de agente viable (razonamiento, herramientas y programacion), con rapidez como desempate";
+        var peak = ModelEfficiencyEvaluator.PeakGb(c).ToString("0.00") + " GB de pico estimado";
         return "Modelo " + tag + " (" + c.PullName + "): suficiente para '" +
-               (req.Label ?? req.IntentKind) + "' y eficiente dentro de " + b + ".";
+               (req.Label ?? req.IntentKind) + "'; seleccionado por " + strategy + ", " + peak + " dentro de " + b + ".";
     }
 
     /// <summary>
@@ -536,29 +566,11 @@ public static class ModelSelector
 
         foreach (var m in installedModels)
         {
-            if (!SufficientFromCapabilities(m, req))
+            var candidate = BuildInstalledCandidate(m, template: null);
+            if (!ModelEfficiencyEvaluator.IsSufficient(candidate, req))
             {
                 continue;
             }
-
-            var weightGb = EstimateWeightFromSizeBytes(m.SizeBytes);
-            var candidate = new ModelCandidate
-            {
-                Name = m.Name,
-                PullName = m.Name,
-                Family = m.Family,
-                ParameterSize = m.ParameterSize,
-                Quantization = m.Quantization,
-                ContextWindow = m.ContextLength is { } ctx ? (int)ctx : 8192,
-                SizeBytes = m.SizeBytes,
-                WeightGb = weightGb,
-                CodingLevel = req.RequiredCodingLevel,
-                MultiFileLevel = req.RequiredMultiFileLevel,
-                StructuredOutput = m.Capabilities.Contains("structured-output") || req.RequiresStructuredOutput,
-                ToolUse = m.Capabilities.Contains("tool-use") || req.RequiresToolUse,
-                Stability = true,
-                Capabilities = new List<string>(m.Capabilities)
-            };
 
             var peak = ModelEfficiencyEvaluator.PeakGb(candidate);
             if (budget.Admits(peak) && ModelEfficiencyEvaluator.LeavesMargin(candidate, budget))
@@ -567,25 +579,127 @@ public static class ModelSelector
             }
         }
 
-        // El inventario puede venir en un orden arbitrario (por ejemplo, el
-        // orden de descarga). Elegir por coste real garantiza que Condor use el
-        // modelo instalado mas pequeno que sigue siendo suficiente, en lugar
-        // de conservar accidentalmente uno mas grande por aparecer primero.
-        return candidates
-            .OrderBy(x => x.Peak)
-            .ThenBy(x => x.Candidate.WeightGb)
-            .ThenBy(x => x.Candidate.Name, StringComparer.Ordinal)
+        // El inventario puede venir en un orden arbitrario. Las consultas
+        // favorecen rapidez; las tareas de agente, el perfil funcional mas
+        // fuerte que cabe en el presupuesto seguro.
+        var ordered = req.PreferSmallestSufficient
+            ? candidates.OrderBy(x => x.Peak).ThenBy(x => x.Candidate.WeightGb)
+            : candidates
+                .OrderByDescending(x => HasCapability(x.Candidate.Capabilities, "thinking"))
+                .ThenByDescending(x => x.Candidate.MultiFileLevel)
+                .ThenByDescending(x => x.Candidate.CodingLevel)
+                .ThenByDescending(x => x.Candidate.ToolUse)
+                .ThenByDescending(x => x.Candidate.StructuredOutput)
+                .ThenByDescending(x => x.Candidate.Stability)
+                .ThenBy(x => x.Peak)
+                .ThenBy(x => x.Candidate.WeightGb);
+
+        return ordered
             .Select(x => x.Candidate)
             .FirstOrDefault();
     }
 
+    private static List<ModelCandidate> IncludeInstalledModels(
+        IReadOnlyList<ModelCandidate> catalog,
+        IReadOnlyList<ModelInfo> installedModels)
+    {
+        var candidates = catalog.ToList();
+        foreach (var model in installedModels)
+        {
+            if (string.IsNullOrWhiteSpace(model.Name))
+            {
+                continue;
+            }
+
+            var index = candidates.FindIndex(candidate =>
+                candidate.Name.Equals(model.Name, StringComparison.OrdinalIgnoreCase) ||
+                candidate.PullName.Equals(model.Name, StringComparison.OrdinalIgnoreCase));
+
+            if (index >= 0)
+            {
+                candidates[index] = BuildInstalledCandidate(model, candidates[index]);
+            }
+            else if (HasToolUse(model.Capabilities))
+            {
+                // Los modelos fuera del catálogo se consideran con los datos
+                // reales que expone Ollama, sin inventar niveles de código,
+                // JSON ni uso de herramientas.
+                candidates.Add(BuildInstalledCandidate(model, template: null));
+            }
+        }
+
+        return candidates;
+    }
+
+    private static ModelCandidate BuildInstalledCandidate(ModelInfo model, ModelCandidate? template)
+    {
+        var capabilities = model.Capabilities ?? new List<string>();
+        var hasReportedCapabilities = capabilities.Count > 0;
+        var codingLevel = template?.CodingLevel ?? EstimateCodingLevel(model);
+        var weightGb = model.SizeBytes > 0
+            ? EstimateWeightFromSizeBytes(model.SizeBytes)
+            : template?.WeightGb ?? 1.0;
+
+        return new ModelCandidate
+        {
+            Name = model.Name,
+            PullName = model.Name,
+            SizeBytes = model.SizeBytes > 0 ? model.SizeBytes : template?.SizeBytes ?? 0,
+            Family = model.Family ?? template?.Family ?? FamilyKey(model.Name),
+            ParameterSize = model.ParameterSize ?? template?.ParameterSize,
+            Quantization = model.Quantization ?? template?.Quantization,
+            Capabilities = hasReportedCapabilities
+                ? new List<string>(capabilities)
+                : new List<string>(template?.Capabilities ?? new List<string>()),
+            WeightGb = weightGb,
+            ContextWindow = model.ContextLength is { } context
+                ? (int)System.Math.Clamp(context, 1, int.MaxValue)
+                : template?.ContextWindow ?? 8192,
+            CodingLevel = codingLevel,
+            MultiFileLevel = template?.MultiFileLevel ?? (codingLevel >= 3 ? 2 : codingLevel > 0 ? 1 : 0),
+            // Ollama reporta capabilities conocidas, pero no suele reportar
+            // JSON. Se conserva el perfil verificado del catálogo cuando exista.
+            StructuredOutput = HasCapability(capabilities, "structured-output") ||
+                               HasCapability(capabilities, "json") ||
+                               (template?.StructuredOutput ?? false),
+            ToolUse = hasReportedCapabilities ? HasToolUse(capabilities) : template?.ToolUse ?? false,
+            Stability = template?.Stability ?? true,
+            Purpose = template?.Purpose
+        };
+    }
+
+    private static int EstimateCodingLevel(ModelInfo model)
+    {
+        var identity = (model.Name + " " + model.Family).ToLowerInvariant();
+        if (!identity.Contains("coder", StringComparison.Ordinal) &&
+            !identity.Contains("code", StringComparison.Ordinal))
+        {
+            return 0;
+        }
+
+        var parameterSize = (model.ParameterSize ?? "").Trim().TrimEnd('B', 'b');
+        if (!double.TryParse(parameterSize, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var parameters))
+        {
+            return 1;
+        }
+
+        if (parameters >= 7) return 4;
+        if (parameters >= 3) return 3;
+        if (parameters >= 1.5) return 2;
+        return 1;
+    }
+
+    private static bool HasToolUse(IEnumerable<string>? capabilities)
+        => HasCapability(capabilities, "tool-use") || HasCapability(capabilities, "tools");
+
+    private static bool HasCapability(IEnumerable<string>? capabilities, string capability)
+        => capabilities?.Any(value => value.Equals(capability, StringComparison.OrdinalIgnoreCase)) == true;
+
     private static bool SufficientFromCapabilities(ModelInfo m, TaskModelRequirement req)
     {
-        var caps = m.Capabilities ?? new List<string>();
-        if (req.RequiresToolUse && !caps.Any(c =>
-                c.Equals("tool-use", StringComparison.OrdinalIgnoreCase) ||
-                c.Equals("tools", StringComparison.OrdinalIgnoreCase))) return false;
-        return true;
+        var candidate = BuildInstalledCandidate(m, template: null);
+        return ModelEfficiencyEvaluator.IsSufficient(candidate, req);
     }
 
     private static double EstimateWeightFromSizeBytes(long sizeBytes)

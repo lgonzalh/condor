@@ -187,7 +187,12 @@ public class ModelSelectorReproTests
                     ServerRunning = true,
                     Models = new List<ModelInfo>
                     {
-                        new() { Name = installedName, SizeBytes = 1848L * 1024 * 1024, Capabilities = new List<string> { "completion" } }
+                        new()
+                        {
+                            Name = installedName,
+                            SizeBytes = GetModelSizeBytes(installedName),
+                            Capabilities = new List<string> { "completion", "tools" }
+                        }
                     }
                 }
             }

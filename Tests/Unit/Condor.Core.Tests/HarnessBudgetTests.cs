@@ -74,20 +74,32 @@ public class HarnessBudgetTests
     }
     #endregion
 
-    #region 4. Modelo menor seleccionado por eficiencia
+    #region 4. Mejor perfil de agente dentro del presupuesto
     [Fact]
-    public void Seleccion_PreFiereElMenorSuficiente_Eficiencia()
+    public void Seleccion_PriorizaCapacidadDeAgenteDentroDelPresupuesto()
     {
-        // RAM abundante: aun asi, para tarea de agente, el harness prefiere el menor
-        // suficiente (eficiencia) sobre el mayor que quepa, conservando presupuesto.
+        // RAM abundante: prioriza el modelo con mayor perfil de agente y conserva
+        // la restriccion de RAM segura; el pico mas bajo solo desempata.
         var assessment = AssessmentConModelo("sin-instalar", ramFreeGb: 14, ramTotalGb: 16);
         var req = AgentRequirement();
 
         var r = ModelSelector.SelectForTask(assessment, ModelCatalog.Default, req, BudgetPolicy.Default);
 
         Assert.NotNull(r.NodeInCurrent);
-        // Menor peso que el 7B (el receptor elige el menor suficiente viable).
-        Assert.True(r.NodeInCurrent!.WeightGb < 4.36);
+        Assert.Equal("qwen2.5-coder:7b", r.NodeInCurrent!.PullName);
+        Assert.Contains("mayor perfil de agente viable", r.Reason, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void SeleccionDeAgente_NoFijaQwen_SiOtroPerfilEsMejor()
+    {
+        var assessment = AssessmentConModelo("sin-instalar", ramFreeGb: 8, ramTotalGb: 16);
+        var requirement = TaskIntentClassifier.Classify("Crea una pagina web estatica sencilla en index.html");
+
+        var result = ModelSelector.SelectForTask(assessment, ModelCatalog.Default, requirement, BudgetPolicy.Default);
+
+        Assert.Equal("granite4.2:3b", result.Desired?.PullName);
+        Assert.Contains("mayor perfil de agente viable", result.Reason, StringComparison.OrdinalIgnoreCase);
     }
     #endregion
 
@@ -300,7 +312,7 @@ public class HarnessBudgetTests
         RequiredMultiFileLevel = 2,
         RequiresToolUse = true,
         RequiresStructuredOutput = true,
-        PreferSmallestSufficient = true,
+        PreferSmallestSufficient = false,
         Label = "agente de ingenieria (harness)"
     };
 
