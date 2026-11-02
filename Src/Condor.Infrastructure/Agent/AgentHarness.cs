@@ -71,6 +71,91 @@ public sealed class AgentHarness
         return new(true, "El harness confirmo build y pruebas externamente.", "build ok; test ok");
     }
 
+    public async Task<string?> TryRepairMissingRequiredHtmlLinkAsync(string? failureReason, CancellationToken ct)
+    {
+        const string missingLinkFailure = "no contiene el enlace relativo exacto requerido";
+        if (string.IsNullOrWhiteSpace(failureReason) ||
+            !failureReason.Contains(missingLinkFailure, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var requiredLink = FindRequiredRelativeHtmlLink(_intention);
+        if (requiredLink is null) return null;
+
+        var root = Path.GetFullPath(_workingDir);
+        var rootPrefix = Path.EndsInDirectorySeparator(root) ? root : root + Path.DirectorySeparatorChar;
+        foreach (var step in _steps)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (!step.Success || string.IsNullOrWhiteSpace(step.Path) ||
+                step.Action is not (AgentAction.ActionCreateFile or AgentAction.ActionEditFile or AgentAction.ActionPatch))
+            {
+                continue;
+            }
+
+            var extension = Path.GetExtension(step.Path);
+            if (!extension.Equals(".html", StringComparison.OrdinalIgnoreCase) &&
+                !extension.Equals(".htm", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var fullPath = Path.GetFullPath(Path.Combine(root, step.Path));
+            if (!fullPath.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase) || !File.Exists(fullPath))
+            {
+                continue;
+            }
+
+            string content;
+            try
+            {
+                if ((File.GetAttributes(fullPath) & FileAttributes.ReparsePoint) != 0)
+                    continue;
+                content = await File.ReadAllTextAsync(fullPath, new UTF8Encoding(false, true), ct).ConfigureAwait(false);
+            }
+            catch (DecoderFallbackException)
+            {
+                continue;
+            }
+            catch (IOException)
+            {
+                continue;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                continue;
+            }
+
+            if (!ContainsHtmlMarkup(content) || ContainsHtmlLink(content, requiredLink)) continue;
+
+            var anchor = BuildRequestedHtmlAnchor(_intention, requiredLink);
+            var repaired = RemoveHtmlDocumentStylesheetLinks(content);
+            var closingBody = Regex.Match(repaired, @"(?i)</body\s*>", RegexOptions.RightToLeft);
+            if (!closingBody.Success) continue;
+
+            repaired = repaired.Insert(closingBody.Index, Environment.NewLine + "    " + anchor + Environment.NewLine + "  ");
+            if (!ContainsHtmlLink(repaired, requiredLink)) continue;
+
+            try
+            {
+                await File.WriteAllTextAsync(fullPath, repaired, new UTF8Encoding(false), ct).ConfigureAwait(false);
+            }
+            catch (IOException)
+            {
+                continue;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                continue;
+            }
+
+            return Path.GetRelativePath(root, fullPath).Replace(Path.DirectorySeparatorChar, '/');
+        }
+
+        return null;
+    }
+
     private HarnessVerifyResult? VerifyChangedHtmlFiles()
     {
         var root = Path.GetFullPath(_workingDir);
@@ -164,8 +249,32 @@ public sealed class AgentHarness
 
     private static bool ContainsHtmlLink(string content, string relativePath)
     {
-        var pattern = @"(?is)\bhref\s*=\s*(['""])" + Regex.Escape(relativePath) + @"\1";
+        var pattern = @"(?is)<a\b[^>]*\bhref\s*=\s*(['""])" + Regex.Escape(relativePath) + @"\1[^>]*>.*?</a\s*>";
         return Regex.IsMatch(content, pattern);
+    }
+
+    private static string BuildRequestedHtmlAnchor(string? intention, string relativePath)
+    {
+        var label = "Documentacion generada";
+        var pattern = @"(?is)<a\b[^>]*\bhref\s*=\s*(['""])" + Regex.Escape(relativePath) + @"\1[^>]*>(?<label>[^<]{1,120})</a>";
+        var match = Regex.Match(intention ?? string.Empty, pattern);
+        if (match.Success && !string.IsNullOrWhiteSpace(match.Groups["label"].Value))
+            label = match.Groups["label"].Value.Trim();
+
+        var href = System.Net.WebUtility.HtmlEncode(relativePath);
+        var text = System.Net.WebUtility.HtmlEncode(label);
+        return "<p><a href=\"" + href + "\">" + text + "</a></p>";
+    }
+
+    private static string RemoveHtmlDocumentStylesheetLinks(string content)
+    {
+        return Regex.Replace(content, @"(?is)<link\b[^>]*>", match =>
+        {
+            var tag = match.Value;
+            var stylesheet = Regex.IsMatch(tag, @"(?i)\brel\s*=\s*(['""])stylesheet\1");
+            var htmlDocument = Regex.IsMatch(tag, @"(?i)\bhref\s*=\s*(['""])[^'""]+\.html\1");
+            return stylesheet && htmlDocument ? string.Empty : tag;
+        });
     }
 
     private async Task<(bool, AgentStep)> MaybeRestoreAndReRunAsync(AgentToolset toolset, AgentStep failed, CancellationToken ct)

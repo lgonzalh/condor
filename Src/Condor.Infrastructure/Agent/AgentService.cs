@@ -553,6 +553,33 @@ public sealed class AgentService : IAgentService
                 {
                     progress?.Report(AgentProgress.Of(AgentPhase.Verifying, action: "build/test", iteration: iteration + 1));
                     var result = await harness.VerifyAsync(timeoutCts.Token);
+                    var repairedHtmlPath = planBUsed
+                        ? await harness.TryRepairMissingRequiredHtmlLinkAsync(result.Reason, timeoutCts.Token)
+                        : null;
+                    if (repairedHtmlPath is not null)
+                    {
+                        planBUsed = true;
+                        planBInitialFailure ??= result.Reason;
+                        awaitingPlanBAction = false;
+                        checkpoint.LastDecision = "plan_b_html_link_repaired";
+                        checkpoint.LastAction = AgentAction.ActionEditFile + " " + repairedHtmlPath;
+                        checkpoint.LastResult = "Plan B inserto el enlace HTML exacto solicitado; el harness repetira la verificacion.";
+                        steps.Add(new AgentStep
+                        {
+                            Action = AgentAction.ActionEditFile,
+                            Path = repairedHtmlPath,
+                            Success = true,
+                            ResultPreview = checkpoint.LastResult
+                        });
+                        progress?.Report(AgentProgress.Of(
+                            AgentPhase.Verifying,
+                            message: checkpoint.LastResult,
+                            action: AgentAction.ActionEditFile,
+                            path: repairedHtmlPath,
+                            iteration: iteration + 1));
+                        result = await harness.VerifyAsync(timeoutCts.Token);
+                    }
+
                     checkpoint.HarnessState = !result.ChecksApplicable
                         ? "no_aplicable"
                         : result.Done ? "exito" : result.Reason;
@@ -658,6 +685,33 @@ public sealed class AgentService : IAgentService
 
                     progress?.Report(AgentProgress.Of(AgentPhase.Verifying, action: "build/test", iteration: iteration + 1));
                     var r = await harness.VerifyAsync(timeoutCts.Token);
+                    var repairedHtmlPath = planBUsed
+                        ? await harness.TryRepairMissingRequiredHtmlLinkAsync(r.Reason, timeoutCts.Token)
+                        : null;
+                    if (repairedHtmlPath is not null)
+                    {
+                        planBUsed = true;
+                        planBInitialFailure ??= r.Reason;
+                        awaitingPlanBAction = false;
+                        checkpoint.LastDecision = "plan_b_html_link_repaired";
+                        checkpoint.LastAction = AgentAction.ActionEditFile + " " + repairedHtmlPath;
+                        checkpoint.LastResult = "Plan B inserto el enlace HTML exacto solicitado; el harness repetira la verificacion.";
+                        steps.Add(new AgentStep
+                        {
+                            Action = AgentAction.ActionEditFile,
+                            Path = repairedHtmlPath,
+                            Success = true,
+                            ResultPreview = checkpoint.LastResult
+                        });
+                        progress?.Report(AgentProgress.Of(
+                            AgentPhase.Verifying,
+                            message: checkpoint.LastResult,
+                            action: AgentAction.ActionEditFile,
+                            path: repairedHtmlPath,
+                            iteration: iteration + 1));
+                        r = await harness.VerifyAsync(timeoutCts.Token);
+                    }
+
                     checkpoint.HarnessState = !r.ChecksApplicable
                         ? "no_aplicable"
                         : r.Done ? "exito" : r.Reason;

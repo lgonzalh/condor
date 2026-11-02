@@ -497,6 +497,48 @@ public class AgentServiceResourceBlockTests
     }
 
     [Fact]
+    public async Task RunAsync_EnlaceExplicitoFaltante_HarnessReparaConPlanBDeterminista()
+    {
+        var projectRoot = TempDir();
+        Directory.CreateDirectory(projectRoot);
+        var withoutAnchor = "<!doctype html><html lang=\"es\"><head><link rel=\"stylesheet\" href=\"docs/indice-condor.html\"></head><body><h1>Condor</h1></body></html>";
+        await File.WriteAllTextAsync(Path.Combine(projectRoot, "index.html"), withoutAnchor);
+        var store = new LocalStateStore(Path.Combine(TempDir(), "state-" + Guid.NewGuid().ToString("N")));
+        var assessment = new StubAssessmentService(ramTotalGb: 16, ramFreeGb: 8, installedModels: new[] { "qwen2.5-coder:3b" });
+        using var http = new HttpClient(new StubOllamaHandler());
+        using var session = new LocalModelSession(http);
+        await session.EnsureAvailableAsync("qwen2.5-coder:3b", CancellationToken.None);
+
+        var llm = new SequenceLlmClient(
+            "{\"action\":\"invalid\"}",
+            "{\"action\":\"edit_file\",\"path\":\"index.html\",\"content\":\"" + withoutAnchor.Replace("\"", "\\\"", StringComparison.Ordinal) + "\"}");
+        var service = new AgentService(
+            store,
+            assessment,
+            new AgentLimits { MaxIterations = 1, MaxPlanBIterations = 2 },
+            llm,
+            new StubLlmDiagnostics(),
+            session,
+            () => projectRoot,
+            CreateModelAutoSetup(store, assessment, "qwen2.5-coder:3b"));
+
+        var result = await service.RunAsync(
+            "Actualiza index.html. Conserva el enlace relativo exacto docs/indice-condor.html con esta etiqueta: <a href=\"docs/indice-condor.html\">Documentacion generada</a>.",
+            cancellationToken: CancellationToken.None);
+
+        var updated = await File.ReadAllTextAsync(Path.Combine(projectRoot, "index.html"));
+        Assert.True(result.Success, result.Reason);
+        Assert.Contains("<a href=\"docs/indice-condor.html\">Documentacion generada</a>", updated);
+        Assert.DoesNotContain("<link rel=\"stylesheet\"", updated, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("plan_b_corregido", result.Checkpoint?.LastDecision);
+        Assert.Equal(2, llm.CallCount);
+        Assert.Contains(result.Steps, step =>
+            step.Action == AgentAction.ActionEditFile &&
+            step.Success &&
+            step.ResultPreview?.Contains("Plan B inserto el enlace HTML exacto", StringComparison.OrdinalIgnoreCase) == true);
+    }
+
+    [Fact]
     public async Task RunAsync_AccionCompuestaPatchEdit_CondorLaNormalizaConservandoElProyecto()
     {
         var projectRoot = TempDir();
