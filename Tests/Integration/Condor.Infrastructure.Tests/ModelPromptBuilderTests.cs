@@ -56,7 +56,17 @@ public class ModelPromptBuilderTests
         var p = ModelPromptBuilder.BuildSystemPrompt("/dev", null, model);
 
         Assert.Contains("JSON valido", p, System.StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("patch/edit_file/create_file", p);
+        Assert.Contains("create_file", p);
+        Assert.Contains("edit_file", p);
+        Assert.Contains("patch", p);
+        Assert.Contains("build ->", p);
+        Assert.Contains("test ->", p);
+        Assert.Contains("restore ->", p);
+        Assert.Contains("nunca combines acciones con '/'", p, System.StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("rutas exactas escritas por el usuario", p, System.StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("read_file sobre esa ruta", p, System.StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("patch/edit_file/create_file", p);
+        Assert.DoesNotContain("build/test/restore", p);
     }
 
     [Fact]

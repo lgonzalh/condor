@@ -152,6 +152,8 @@ public class AgentEngineTests
     [InlineData("hay un error en el descuento, corrigelo", IntentFlavor.Diagnostic)]
     [InlineData("revisa y cuentame que tenemos aqui", IntentFlavor.Descriptive)]
     [InlineData("crea una web sencilla para este proyecto", IntentFlavor.Build)]
+    [InlineData("actualiza index.html para que sea adaptable", IntentFlavor.Build)]
+    [InlineData("modifica el texto existente", IntentFlavor.Build)]
     public void ClassifyIntent_DetectaMatizDeLaIntencion(string intention, IntentFlavor expected)
     {
         Assert.Equal(expected, AgentEngine.ClassifyIntent(intention));
@@ -301,6 +303,20 @@ public class AgentEngineTests
         };
 
         var (sufficient, _) = AgentEngine.HasSufficientEvidenceForDone("crea una web para este proyecto", steps);
+
+        Assert.False(sufficient);
+    }
+
+    [Fact]
+    public void HasSufficientEvidence_ActualizaConUnaLecturaSinCambios_EsInsuficiente()
+    {
+        var steps = new List<AgentStep>
+        {
+            new() { Action = AgentAction.ActionListDir, Path = ".", Success = true, ResultPreview = "index.html" },
+            new() { Action = AgentAction.ActionReadFile, Path = "index.html", Success = true, ResultPreview = "<html>anterior</html>" },
+        };
+
+        var (sufficient, _) = AgentEngine.HasSufficientEvidenceForDone("actualiza index.html para que sea adaptable", steps);
 
         Assert.False(sufficient);
     }

@@ -27,6 +27,7 @@ public class AgentCheckpoint
     public string? HarnessState { get; set; }
     public string? LastError { get; set; }
     public string? NextAction { get; set; }
+    public int PlanBIterationsUsed { get; set; }
 
     /// <summary>Estado de presion de recursos en el ultimo punto evaluado (informativo).</summary>
     public string? ResourcesPressure { get; set; }
@@ -100,8 +101,8 @@ public sealed class AgentLimits
     public int MaxModifications { get; init; } = 8;
     public int MaxRepeatedAction { get; init; } = 3;
     public int MaxRepeatedFailedAction { get; init; } = 2;
-    public int MaxPlanBIterations { get; init; } = 1;
-    public int MaxRedundantObservations { get; init; } = 2;
+    public int MaxPlanBIterations { get; init; } = 4;
+    public int MaxRedundantObservations { get; init; } = 0;
     public int MaxInvalidOutputs { get; init; } = 8;
     public int MaxContentLength { get; init; } = 200_000;
 

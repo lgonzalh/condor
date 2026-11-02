@@ -23,6 +23,7 @@ public sealed class AgentService : IAgentService
     private readonly AgentLimits _limits;
     private readonly LocalModelSession? _session;
     private readonly Func<string> _workingDirectoryProvider;
+    private readonly ModelAutoSetupService? _modelAutoSetup;
 
     public AgentService(
         IStateStore stateStore,
@@ -31,12 +32,14 @@ public sealed class AgentService : IAgentService
         ILlmClient? llm = null,
         ILlmProviderDiagnostics? provider = null,
         LocalModelSession? session = null,
-        Func<string>? workingDirectoryProvider = null)
+        Func<string>? workingDirectoryProvider = null,
+        ModelAutoSetupService? modelAutoSetup = null)
     {
         _stateStore = stateStore;
         _assessmentService = assessmentService;
         _session = session;
         _workingDirectoryProvider = workingDirectoryProvider ?? (() => Environment.CurrentDirectory);
+        _modelAutoSetup = modelAutoSetup;
         if (session is not null)
         {
             // Sesion compartida: un unico proveedor/HttpClient para toda la ejecucion.
@@ -56,7 +59,7 @@ public sealed class AgentService : IAgentService
     /// compartida cuando existe, para no duplicar conectores por tarea.
     /// </summary>
     private ModelAutoSetupService CreateModelSetup()
-        => new(_stateStore, _assessmentService, httpClient: _session?.SharedHttpClient);
+        => _modelAutoSetup ?? new(_stateStore, _assessmentService, httpClient: _session?.SharedHttpClient);
 
     public async Task<AgentResult> RunAsync(string intention, IAgentProgressObserver? progress = null, CancellationToken cancellationToken = default)
     {
@@ -176,7 +179,7 @@ public sealed class AgentService : IAgentService
         var inventory = await BuildInventoryAsync(selection, cancellationToken);
 
         var toolset = new AgentToolset(workingDir, maxContent: _limits.MaxContentLength);
-        var harness = new AgentHarness(workingDir, _limits, steps);
+        var harness = new AgentHarness(workingDir, _limits, steps, intention);
         var originalSnapshot = RepoSnapshot.Capture(workingDir);
 
         // Observar el directorio real primero. El manifest .NET es OPCIONAL:
@@ -217,6 +220,27 @@ public sealed class AgentService : IAgentService
             for (var iteration = 0; iteration < effectiveMaxIterations; iteration++)
             {
                 checkpoint.Iteration = iteration + 1;
+                if (awaitingPlanBAction)
+                {
+                    var maxPlanBIterations = Math.Max(1, _limits.MaxPlanBIterations);
+                    if (checkpoint.PlanBIterationsUsed >= maxPlanBIterations)
+                    {
+                        var limitFailure = StartPlanB(
+                            null,
+                            null,
+                            "Plan B alcanzo el limite de " + maxPlanBIterations + " iteraciones sin completar una accion correctiva.",
+                            ref planBUsed,
+                            ref planBInitialFailure,
+                            ref awaitingPlanBAction,
+                            ref effectiveMaxIterations,
+                            iteration + 1,
+                            messages,
+                            progress,
+                            checkpoint);
+                        return Fail(limitFailure ?? "Plan B no pudo completar una accion correctiva.", model, intention, steps, checkpoint);
+                    }
+                    checkpoint.PlanBIterationsUsed++;
+                }
 
                 // Modelo bloqueado para toda la tarea: no se reevalua ni cambia durante la ejecucion.
                 // El modelo seleccionado al inicio (selection.Desired) permanece fijo.
@@ -324,6 +348,11 @@ public sealed class AgentService : IAgentService
 
                 // A partir de aqui hay una accion util; el caso nulo ya hizo continue.
                 var action = call.Action!;
+                var requestedActionName = action.Action;
+                var requestedActionPath = action.Path;
+                var normalizedRequestedRootHtmlPath = TryNormalizeRequestedRootHtmlPath(action, intention, workingDir);
+                var normalizedCombinedFileAction = awaitingPlanBAction &&
+                    TryNormalizeCombinedFileAction(action, workingDir);
 
                 // 2. Valida la accion.
                 var validation = AgentEngine.ValidateAction(action);
@@ -381,7 +410,9 @@ public sealed class AgentService : IAgentService
                         messages,
                         progress,
                         checkpoint);
-                    return Fail(planBFailure ?? "Plan B no pudo completar una accion correctiva.", model, intention, steps, checkpoint);
+                    if (planBFailure is not null)
+                        return Fail(planBFailure, model, intention, steps, checkpoint);
+                    continue;
                 }
 
                 // 3. Notifica la accion que esta por ejecutar.
@@ -393,6 +424,26 @@ public sealed class AgentService : IAgentService
 
                 // 4. Ejecuta la herramienta real.
                 var step = await toolset.ExecuteAsync(action, iteration + 1, timeoutCts.Token);
+                if (normalizedCombinedFileAction || normalizedRequestedRootHtmlPath)
+                {
+                    var normalization = normalizedRequestedRootHtmlPath
+                        ? "Condor corrigio la ruta '" + (requestedActionPath ?? "") + "' a la ruta raiz exacta '" + action.Path + "' solicitada. "
+                        : "Condor interpreto la accion compuesta '" + requestedActionName + "' como '" + action.Action + "'. ";
+                    step.ResultPreview = normalization + (step.ResultPreview ?? "");
+                }
+                else if (!step.Success && awaitingPlanBAction)
+                {
+                    var completeHtmlFallback = TryCreateCompleteHtmlEditFallback(action, workingDir, step.ResultPreview);
+                    if (completeHtmlFallback is not null)
+                    {
+                        steps.Add(step);
+                        var fallbackStep = await toolset.ExecuteAsync(completeHtmlFallback, iteration + 1, timeoutCts.Token);
+                        fallbackStep.ResultPreview = "Plan B detecto que el original de patch no coincidia; como replacement contenia un documento HTML completo y la ruta era un archivo HTML de la raiz, aplico edit_file. " +
+                                                     (fallbackStep.ResultPreview ?? "");
+                        action = completeHtmlFallback;
+                        step = fallbackStep;
+                    }
+                }
                 steps.Add(step);
                 checkpoint.LastAction = action.Action + " " + (action.Path ?? "");
                 checkpoint.LastResult = Truncate(step.ResultPreview ?? "");
@@ -423,7 +474,7 @@ public sealed class AgentService : IAgentService
                     if (planBFailure is not null)
                         return Fail(planBFailure, model, intention, steps, checkpoint);
                 }
-                else if (awaitingPlanBAction)
+                else if (awaitingPlanBAction && IsPlanBCorrectionAction(action.Action))
                 {
                     awaitingPlanBAction = false;
                 }
@@ -469,8 +520,8 @@ public sealed class AgentService : IAgentService
 
                             checkpoint.LastError = "Observaciones redundantes sin informacion nueva y sin un cambio de codigo verificado.";
                             var planBFailure = StartPlanB(
-                                null,
-                                null,
+                                action.Action,
+                                action.Path,
                                 checkpoint.LastError,
                                 ref planBUsed,
                                 ref planBInitialFailure,
@@ -485,7 +536,11 @@ public sealed class AgentService : IAgentService
                             continue;
                         }
 
-                        messages.Add(new LlmMessage { Role = "user", Content = "Ya observaste esto exactamente antes y el resultado no cambio; repetir la misma observacion no aporta informacion nueva. Si la solicitud es de comprension/analisis, sintetiza lo visto y responde con done. Si la tarea requiere un cambio de codigo, edita con patch/edit_file y verifica con build/test." });
+                        messages.Add(new LlmMessage
+                        {
+                            Role = "user",
+                            Content = "Ya observaste esto exactamente antes y el resultado no cambio; repetir la misma observacion no aporta informacion nueva. Si la solicitud es de comprension/analisis, sintetiza lo visto y responde con done. Si la tarea requiere un cambio, usa exactamente create_file para crear, edit_file para reemplazar un archivo existente o patch con original/replacement para un cambio quirurgico. No combines nombres con '/'; verifica con build o test cuando aplique."
+                        });
                     }
                     else
                     {
@@ -508,9 +563,24 @@ public sealed class AgentService : IAgentService
                         var integrity = VerifyTestIntegrity(workingDir, originalSnapshot);
                         if (integrity is not null)
                         {
-                            checkpoint.NextAction = "detener";
-                            checkpoint.LastDecision = "revisar";
-                            return Fail(integrity, model, intention, steps, checkpoint);
+                            checkpoint.LastError = integrity;
+                            var integrityPlanBFailure = StartPlanB(
+                                "integridad_harness",
+                                null,
+                                integrity,
+                                ref planBUsed,
+                                ref planBInitialFailure,
+                                ref awaitingPlanBAction,
+                                ref effectiveMaxIterations,
+                                iteration + 1,
+                                messages,
+                                progress,
+                                checkpoint);
+                            if (integrityPlanBFailure is not null)
+                            {
+                                return Fail(integrityPlanBFailure, model, intention, steps, checkpoint);
+                            }
+                            continue;
                         }
 
                         checkpoint.NextAction = "entregar";
@@ -901,21 +971,126 @@ var modelSetup = CreateModelSetup();
     }
 
     private static bool IsInformationalRequest(string intention)
+        => TaskIntentClassifier.IsInformational(intention);
+
+    private static bool IsPlanBCorrectionAction(string action)
+        => action is AgentAction.ActionPatch or
+            AgentAction.ActionEditFile or
+            AgentAction.ActionCreateFile or
+            AgentAction.ActionUndoFile or
+            AgentAction.ActionBuild or
+            AgentAction.ActionTest;
+
+    private static bool TryNormalizeCombinedFileAction(AgentAction action, string workingDir)
     {
-        if (string.IsNullOrWhiteSpace(intention)) return true;
-        var t = intention.ToLowerInvariant();
-        return t.Contains("revisa") ||
-               t.Contains("cuentame") ||
-               t.Contains("describe") ||
-               t.Contains("explime") ||
-               t.Contains("explica") ||
-               t.Contains("que es") ||
-               t.Contains("que contiene") ||
-               t.Contains("analiza") ||
-               t.Contains("resumen") ||
-               t.Contains("contenido") ||
-               t.Contains("what is") ||
-               t.Contains("tell me");
+        if (!string.Equals(action.Action, "patch/edit_file", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var relativePath = action.Path?.Trim();
+        if (string.IsNullOrWhiteSpace(relativePath) ||
+            Path.IsPathRooted(relativePath) ||
+            !string.Equals(Path.GetFileName(relativePath), relativePath, StringComparison.Ordinal) ||
+            relativePath is "." or "..")
+        {
+            return false;
+        }
+
+        var target = Path.Combine(workingDir, relativePath);
+        var exists = File.Exists(target);
+        if (exists && !string.IsNullOrEmpty(action.Original) && action.Replacement is not null)
+        {
+            action.Action = AgentAction.ActionPatch;
+            return true;
+        }
+
+        if (string.IsNullOrWhiteSpace(action.Content))
+            return false;
+
+        action.Action = exists ? AgentAction.ActionEditFile : AgentAction.ActionCreateFile;
+        return true;
+    }
+
+    private static bool TryNormalizeRequestedRootHtmlPath(AgentAction action, string intention, string workingDir)
+    {
+        if (action.Action is not (AgentAction.ActionReadFile or AgentAction.ActionEditFile or
+            AgentAction.ActionCreateFile or AgentAction.ActionPatch or "patch/edit_file"))
+        {
+            return false;
+        }
+
+        var match = System.Text.RegularExpressions.Regex.Match(
+            intention ?? "",
+            @"\bruta\s+exacta\s+(?<file>[A-Za-z0-9_.-]+\.html)\s*\(\s*ra[ií]z\b",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (!match.Success) return false;
+
+        var requestedFile = match.Groups["file"].Value;
+        if (!string.Equals(Path.GetFileName(requestedFile), requestedFile, StringComparison.Ordinal))
+            return false;
+
+        var actionPath = NormalizeRel(action.Path?.Trim());
+        while (actionPath.StartsWith("./", StringComparison.Ordinal)) actionPath = actionPath[2..];
+        if (!string.Equals(actionPath, "docs/" + requestedFile, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var root = Path.GetFullPath(workingDir);
+        var target = Path.GetFullPath(Path.Combine(root, requestedFile));
+        var rootPrefix = Path.EndsInDirectorySeparator(root) ? root : root + Path.DirectorySeparatorChar;
+        if (!target.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase) || !File.Exists(target))
+            return false;
+
+        action.Path = requestedFile;
+        return true;
+    }
+
+    private static AgentAction? TryCreateCompleteHtmlEditFallback(
+        AgentAction action,
+        string workingDir,
+        string? failureDetail)
+    {
+        if (!string.Equals(action.Action, AgentAction.ActionPatch, StringComparison.Ordinal) ||
+            string.IsNullOrWhiteSpace(failureDetail) ||
+            !failureDetail.Contains("No se encontro el texto a reemplazar", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var relativePath = action.Path?.Trim();
+        if (string.IsNullOrWhiteSpace(relativePath) ||
+            Path.IsPathRooted(relativePath) ||
+            !string.Equals(Path.GetFileName(relativePath), relativePath, StringComparison.Ordinal) ||
+            !string.Equals(Path.GetExtension(relativePath), ".html", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var document = action.Replacement ?? action.Content;
+        if (string.IsNullOrWhiteSpace(document) ||
+            !document.Contains("<!doctype html", StringComparison.OrdinalIgnoreCase) ||
+            !document.Contains("<html", StringComparison.OrdinalIgnoreCase) ||
+            !document.Contains("</html>", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var target = Path.Combine(workingDir, relativePath);
+        try
+        {
+            if (!File.Exists(target) || (File.GetAttributes(target) & FileAttributes.ReparsePoint) != 0)
+                return null;
+        }
+        catch
+        {
+            return null;
+        }
+
+        return new AgentAction
+        {
+            Action = AgentAction.ActionEditFile,
+            Path = relativePath,
+            Content = document,
+            Reason = "Aplicar replacement como documento HTML completo despues de que patch.original no coincidio."
+        };
     }
 
     private static async Task<string?> GroundInformationalAsync(AgentToolset toolset, string workingDir, List<AgentStep> steps, CancellationToken ct)
@@ -1128,13 +1303,46 @@ var modelSetup = CreateModelSetup();
     {
         var detail = Truncate(string.IsNullOrWhiteSpace(failureDetail) ? "sin detalle" : failureDetail);
         var location = string.IsNullOrWhiteSpace(failedPath) ? "" : " en '" + failedPath + "'";
+        var redundantObservation = detail.Contains("observaciones redundantes", StringComparison.OrdinalIgnoreCase);
         var failureContext = string.IsNullOrWhiteSpace(failedAction)
             ? "Bloqueo detectado: " + detail
-            : "Accion fallida: " + failedAction + location + ". Resultado real: " + detail;
-        var failureLabel = string.IsNullOrWhiteSpace(failedAction) ? "falta de progreso" : failedAction + location;
+            : redundantObservation
+                ? "Observacion repetida sin informacion nueva: " + failedAction + location + ". Resultado real: " + detail
+                : "Accion fallida: " + failedAction + location + ". Resultado real: " + detail;
+        var failureLabel = redundantObservation
+            ? "observacion redundante (" + failedAction + location + ")"
+            : string.IsNullOrWhiteSpace(failedAction) ? "falta de progreso" : failedAction + location;
+        var redundantObservationGuidance = redundantObservation
+            ? " Esta observacion ya produjo el mismo resultado; no la repitas. Si la tarea requiere un cambio, usa el contenido ya leido para corregir el archivo nombrado; leelo solo si aun no lo has leido."
+            : "";
 
         if (planBUsed)
         {
+            var maxPlanBIterations = Math.Max(1, _limits.MaxPlanBIterations);
+            if (awaitingPlanBAction && checkpoint.PlanBIterationsUsed < maxPlanBIterations)
+            {
+                var allowedActions = string.Join(", ", AgentEngine.SupportedActions);
+                var remainingIterations = maxPlanBIterations - checkpoint.PlanBIterationsUsed;
+                effectiveMaxIterations = Math.Max(effectiveMaxIterations, failedIteration + remainingIterations);
+                checkpoint.LastDecision = "plan_b_reintento";
+                checkpoint.LastError = detail;
+                checkpoint.NextAction = "analizar_y_corregir";
+                messages.Add(new LlmMessage
+                {
+                    Role = "user",
+                    Content = "La correccion de Plan B no paso la validacion. Resultado real: " + failureContext + redundantObservationGuidance +
+                              "\nReanaliza y emite una nueva accion JSON usando exactamente uno de estos nombres permitidos: " + allowedActions +
+                              ". Respeta la ruta exacta de la solicitud o una observada y resuelvela desde la raiz; no anadas prefijos no solicitados. Para crear un archivo nuevo usa create_file; para reemplazar el contenido de uno existente usa edit_file; usa patch solo con original y replacement. No inventes acciones combinadas ni repitas la accion rechazada. Quedan " + remainingIterations + " iteracion(es) de Plan B. Si no puedes corregirlo de forma segura, detente con el motivo en reason."
+                });
+                progress?.Report(AgentProgress.Of(
+                    AgentPhase.Analyzing,
+                    action: "Plan B",
+                    iteration: failedIteration,
+                    message: "La correccion de Plan B no paso; Condor analiza el error y prepara otra accion valida (" +
+                             checkpoint.PlanBIterationsUsed + "/" + maxPlanBIterations + ")."));
+                return null;
+            }
+
             awaitingPlanBAction = false;
             checkpoint.LastDecision = "plan_b_fallido";
             checkpoint.LastError = detail;
@@ -1152,6 +1360,7 @@ var modelSetup = CreateModelSetup();
         planBUsed = true;
         planBInitialFailure = detail;
         awaitingPlanBAction = true;
+        checkpoint.PlanBIterationsUsed = 0;
         effectiveMaxIterations = Math.Max(
             effectiveMaxIterations,
             failedIteration + Math.Max(1, _limits.MaxPlanBIterations));
@@ -1164,8 +1373,10 @@ var modelSetup = CreateModelSetup();
             Role = "user",
             Content = "PLAN B ACTIVADO tras el fallo de la iteracion " + failedIteration +
                       ". " + failureContext +
-                      "\nAnaliza ese resultado y corrige la causa antes de continuar. No repitas la misma accion con los mismos datos si ya fallo; observa el archivo/ruta o adapta la accion usando la evidencia disponible. " +
-                      "Emite exactamente una accion JSON permitida por el system. Si la correccion tiene exito, continua la tarea y verifica el resultado. No declares done antes de ejecutar una accion de recuperacion exitosa; si no existe una correccion segura, detente con el motivo en reason."
+                      "\nAnaliza ese resultado y corrige la causa antes de continuar. No repitas la misma accion con los mismos datos si ya fallo; observa la ruta o adapta la accion usando la evidencia disponible. " + redundantObservationGuidance +
+                      "Emite exactamente una accion JSON con un solo nombre tomado de esta lista: " + string.Join(", ", AgentEngine.SupportedActions) +
+                      ". Usa la ruta exacta de la solicitud o una observada, siempre relativa a la raiz; no anadas prefijos ni subdirectorios no solicitados. Para archivo nuevo usa create_file; para existente usa edit_file o patch con original/replacement. Nunca combines nombres con '/'. " +
+                      "Si la correccion tiene exito, continua la tarea y verifica el resultado. No declares done antes de ejecutar una accion de recuperacion exitosa; si no existe una correccion segura, detente con el motivo en reason."
         });
 
         progress?.Report(AgentProgress.Of(

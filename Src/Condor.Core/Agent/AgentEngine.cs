@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Condor.Core.Evaluation;
 using Condor.Core.Models;
 
 namespace Condor.Core.Agent;
@@ -24,7 +25,7 @@ public enum IntentFlavor
 
 public static class AgentEngine
 {
-    private static readonly HashSet<string> AllowedActions = new()
+    private static readonly string[] CanonicalActions =
     {
         AgentAction.ActionListDir, AgentAction.ActionReadFile,
         AgentAction.ActionPatch, AgentAction.ActionEditFile,
@@ -33,6 +34,10 @@ public static class AgentEngine
         AgentAction.ActionRestore, AgentAction.ActionGitStatus,
         AgentAction.ActionSearch, AgentAction.ActionUndoFile, AgentAction.ActionDone
     };
+    private static readonly HashSet<string> AllowedActions = new(CanonicalActions, System.StringComparer.Ordinal);
+
+    /// <summary>Nombres exactos que el modelo puede usar en acciones JSON.</summary>
+    public static IReadOnlyList<string> SupportedActions => System.Array.AsReadOnly(CanonicalActions);
 
     public static ActionValidation ValidateAction(AgentAction action)
     {
@@ -112,18 +117,20 @@ public static class AgentEngine
         if (string.IsNullOrWhiteSpace(intention)) return IntentFlavor.Unknown;
         var t = intention.ToLowerInvariant();
 
-        bool hasBuild = t.Contains("crea") || t.Contains("agrega") || t.Contains("implementa")
-            || t.Contains("constru") || t.Contains("escribe");
+        bool hasBuild = TaskIntentClassifier.RequiresModification(t);
         bool hasError = t.Contains("error") || t.Contains("falla") || t.Contains("fallo")
             || t.Contains("bug") || t.Contains("no funciona") || t.Contains("corrige")
             || t.Contains("arregla") || t.Contains("roto") || t.Contains("revisa si");
         bool hasDescribe = t.Contains("que tenemos") || t.Contains("describe") || t.Contains("cuentame")
             || t.Contains("que es") || t.Contains("que contiene") || t.Contains("resumen");
 
-        if (hasError && !hasBuild) return IntentFlavor.Diagnostic;
-        if (hasBuild && !hasError) return IntentFlavor.Build;
-        if (hasDescribe && !hasError && !hasBuild) return IntentFlavor.Descriptive;
-        if (hasError && hasDescribe) return IntentFlavor.Diagnostic;
+        // Cuando la solicitud pide corregir un error, conserva el matiz
+        // diagnóstico aunque también incluya una acción de modificación.
+        // La validación de finalización acepta la corrección verificada como
+        // evidencia; clasificarla como Unknown permitiría cerrar tras solo leer.
+        if (hasError) return IntentFlavor.Diagnostic;
+        if (hasBuild) return IntentFlavor.Build;
+        if (hasDescribe) return IntentFlavor.Descriptive;
         return IntentFlavor.Unknown;
     }
 

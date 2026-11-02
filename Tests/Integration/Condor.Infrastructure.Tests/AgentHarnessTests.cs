@@ -54,6 +54,62 @@ public class AgentHarnessTests
     }
 
     [Fact]
+    public async Task VerifyAsync_SinManifiesto_RechazaMarkdownEnArchivoHtml()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "condor-harness-html-markdown-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        await File.WriteAllTextAsync(Path.Combine(root, "index.html"), "# Informe de tarea de Condor\n");
+        var steps = new List<AgentStep>
+        {
+            new() { Action = AgentAction.ActionEditFile, Path = "index.html", Success = true }
+        };
+        var harness = new AgentHarness(root, AgentLimits.Default, steps);
+
+        var result = await harness.VerifyAsync(CancellationToken.None);
+
+        Assert.False(result.Done);
+        Assert.Contains("no contiene marcado HTML", result.Reason, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task VerifyAsync_SinManifiesto_AceptaMarkupHtmlEnArchivoModificado()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "condor-harness-html-valid-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        await File.WriteAllTextAsync(Path.Combine(root, "index.html"), "<!doctype html><html lang=\"es\"><body><h1>Listo</h1><a href=\"docs/tareas/indice-condor.html\">Documentacion</a></body></html>");
+        var steps = new List<AgentStep>
+        {
+            new() { Action = AgentAction.ActionEditFile, Path = "index.html", Success = true }
+        };
+        var harness = new AgentHarness(root, AgentLimits.Default, steps,
+            "Conserva el enlace relativo exacto docs/tareas/indice-condor.html.");
+
+        var result = await harness.VerifyAsync(CancellationToken.None);
+
+        Assert.True(result.Done, result.Reason);
+        Assert.False(result.ChecksApplicable);
+    }
+
+    [Fact]
+    public async Task VerifyAsync_SinManifiesto_RechazaHtmlSinEnlaceRelativoSolicitado()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "condor-harness-html-link-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        await File.WriteAllTextAsync(Path.Combine(root, "index.html"), "<!doctype html><html lang=\"es\"><body><h1>Listo</h1></body></html>");
+        var steps = new List<AgentStep>
+        {
+            new() { Action = AgentAction.ActionEditFile, Path = "index.html", Success = true }
+        };
+        var harness = new AgentHarness(root, AgentLimits.Default, steps,
+            "Conserva el enlace relativo exacto docs/tareas/indice-condor.html.");
+
+        var result = await harness.VerifyAsync(CancellationToken.None);
+
+        Assert.False(result.Done);
+        Assert.Contains("docs/tareas/indice-condor.html", result.Reason, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void Restores_SeDetectaCuandoFaltaProjectAssets()
     {
         // Verifica el umbral de deteccion de fallo por restauracion.

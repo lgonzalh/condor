@@ -54,11 +54,16 @@ public static class ModelPromptBuilder
         sb.AppendLine("  read_file \"path\"  -> leer el contenido exacto de un archivo.");
         if (toolUse)
         {
-            sb.AppendLine("  patch/edit_file/create_file \"path\" -> editar/crear archivos reales.");
-            sb.AppendLine("  build/test/restore -> compila, prueba o restaura el proyecto.");
+            sb.AppendLine("  create_file \"path\" + \"content\" -> crear un archivo nuevo; no sobrescribe uno existente.");
+            sb.AppendLine("  edit_file \"path\" + \"content\" -> reemplazar el contenido de un archivo existente.");
+            sb.AppendLine("  patch \"path\" + \"original\" + \"replacement\" -> reemplazo quirurgico en un archivo existente.");
+            sb.AppendLine("  build -> compilar el proyecto cuando su ecosistema lo permita y la tarea lo requiera.");
+            sb.AppendLine("  test -> ejecutar las pruebas del proyecto cuando existan y la tarea lo requiera.");
+            sb.AppendLine("  restore -> restaurar dependencias cuando el build o test lo requieran.");
             sb.AppendLine("  git_status -> estado del repositorio.");
             sb.AppendLine("  search \"content\" -> buscar texto en el proyecto.");
             sb.AppendLine("  undo_file \"path\" -> revertir la ultima edicion sobre un archivo.");
+            sb.AppendLine("Usa exactamente un nombre de accion de esta lista por JSON; nunca combines acciones con '/' ni inventes variantes.");
         }
         else
         {
@@ -67,7 +72,7 @@ public static class ModelPromptBuilder
         sb.AppendLine("  done -> termina cuando creas que la tarea esta resuelta.");
         sb.AppendLine();
 
-        sb.AppendLine("FLUJO: primero observa con list_dir y read_file para conocer la estructura real y leer contenido exacto. No uses rutas inventadas: usa solo las que viste en list_dir/read_file.");
+        sb.AppendLine("FLUJO: respeta las rutas exactas escritas por el usuario y resuelvelas desde la raiz del proyecto; no anadas prefijos de carpeta. Si una tarea pide actualizar una ruta concreta, empieza con read_file sobre esa ruta. Si no se nombro una ruta, lista primero la raiz con list_dir y luego observa los archivos necesarios. No inventes rutas distintas a las solicitadas o a las que viste en list_dir/read_file.");
         sb.AppendLine();
 
         if (multiFile)
