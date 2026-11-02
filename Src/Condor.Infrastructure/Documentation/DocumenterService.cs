@@ -12,6 +12,7 @@ namespace Condor.Infrastructure.Documentation;
 
 public sealed class DocumenterService : IDocumenter
 {
+    private const string IndexMarker = "<!-- condor:generated-task-documentation-index -->";
     private const int MaxEntriesPerSection = 250;
     private const int MaxEntryLength = 1000;
     private static readonly UTF8Encoding Utf8WithoutBom = new(false);
@@ -46,7 +47,7 @@ public sealed class DocumenterService : IDocumenter
                 return Failure(generatedAtUtc, "El directorio de trabajo no existe.");
             }
 
-            var reportDirectory = Path.GetFullPath(Path.Combine(root, "docs", "condor", "tareas"));
+            var reportDirectory = Path.GetFullPath(Path.Combine(root, "docs", "tareas"));
             var rootPrefix = root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
                 + Path.DirectorySeparatorChar;
             if (!reportDirectory.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase))
@@ -54,14 +55,14 @@ public sealed class DocumenterService : IDocumenter
                 return Failure(generatedAtUtc, "La ruta del informe queda fuera del directorio de trabajo.");
             }
 
-            if (ContainsReparsePoint(root, "docs", "condor", "tareas"))
+            if (ContainsReparsePoint(root, "docs", "tareas"))
             {
                 return Failure(generatedAtUtc, "La ruta del informe contiene un enlace a otro directorio.");
             }
 
             Directory.CreateDirectory(reportDirectory);
 
-            if (ContainsReparsePoint(root, "docs", "condor", "tareas"))
+            if (ContainsReparsePoint(root, "docs", "tareas"))
             {
                 return Failure(generatedAtUtc, "La ruta del informe contiene un enlace a otro directorio.");
             }
@@ -82,6 +83,38 @@ public sealed class DocumenterService : IDocumenter
             {
                 await writer.WriteAsync(content.AsMemory(), cancellationToken).ConfigureAwait(false);
             }
+
+            var indexPath = Path.Combine(reportDirectory, "indice-condor.html");
+            if (File.Exists(indexPath))
+            {
+                if ((File.GetAttributes(indexPath) & FileAttributes.ReparsePoint) != 0)
+                {
+                    return Failure(generatedAtUtc, "El indice de informes es un enlace a otro archivo.");
+                }
+
+                var indexInfo = new FileInfo(indexPath);
+                if (indexInfo.Length > 16 * 1024)
+                {
+                    return Failure(generatedAtUtc, "El indice de informes existente supera el limite permitido.");
+                }
+
+                var existingIndex = await File.ReadAllTextAsync(indexPath, cancellationToken).ConfigureAwait(false);
+                if (!existingIndex.Contains(IndexMarker, StringComparison.Ordinal))
+                {
+                    return Failure(generatedAtUtc, "Se conserva indice-condor.html porque no fue generado por Condor.");
+                }
+            }
+
+            var reportNames = Directory.EnumerateFiles(reportDirectory, "*.md", SearchOption.TopDirectoryOnly)
+                .Select(path => Path.GetFileName(path) ?? string.Empty)
+                .Where(name => name.Length > 0)
+                .OrderByDescending(name => name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            await File.WriteAllTextAsync(
+                indexPath,
+                BuildIndex(reportNames),
+                Utf8WithoutBom,
+                cancellationToken).ConfigureAwait(false);
 
             return new DocumentationResult
             {
@@ -121,6 +154,36 @@ public sealed class DocumenterService : IDocumenter
             AppendEntries(builder, new[] { request.Reason });
         }
 
+        return builder.ToString();
+    }
+
+    private static string BuildIndex(System.Collections.Generic.IEnumerable<string> reportNames)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("<!doctype html>");
+        builder.AppendLine("<html lang=\"es\">");
+        builder.AppendLine("<head>");
+        builder.AppendLine("  <meta charset=\"utf-8\">");
+        builder.AppendLine("  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
+        builder.AppendLine("  <title>Informes de tareas · Condor</title>");
+        builder.AppendLine("</head>");
+        builder.AppendLine("<body>");
+        builder.AppendLine("  " + IndexMarker);
+        builder.AppendLine("  <main>");
+        builder.AppendLine("    <h1>Informes de tareas</h1>");
+        builder.AppendLine("    <p>Documentación generada por Condor en este proyecto.</p>");
+        builder.AppendLine("    <ul>");
+        foreach (var reportName in reportNames)
+        {
+            var href = Uri.EscapeDataString(reportName);
+            var label = System.Net.WebUtility.HtmlEncode(reportName);
+            builder.Append("      <li><a href=\"./").Append(href).Append("\">")
+                .Append(label).AppendLine("</a></li>");
+        }
+        builder.AppendLine("    </ul>");
+        builder.AppendLine("  </main>");
+        builder.AppendLine("</body>");
+        builder.AppendLine("</html>");
         return builder.ToString();
     }
 
