@@ -86,12 +86,54 @@ public sealed class ModelAutoSetupService : IModelAutoSetupService
                 return selection; // reutilizar, no descargar
             }
 
-            var fresh = await _stateStore.LoadAssessmentAsync(cancellationToken);
-            selection = ModelSelector.RecommendFromCatalog(fresh, ModelCatalog.Default);
+            var fresh = await AssessNowAsync(cancellationToken);
+            if (fresh is null && _assessmentService is not null)
+            {
+                selection.Limitations.Add("No se pudo volver a consultar el inventario de Ollama; se cancela la obtencion por seguridad.");
+                selection.Reason = "Inventario local no verificable justo antes de continuar.";
+                return selection;
+            }
+
+            authoritativeAssessment = fresh ?? await _stateStore.LoadAssessmentAsync(cancellationToken);
+            selection = ModelSelector.RecommendFromCatalog(authoritativeAssessment, ModelCatalog.Default);
             if (selection.Desired is null)
             {
                 await RefreshAssessmentAsync(cancellationToken);
                 return selection;
+            }
+        }
+
+        // La evaluacion de arranque puede quedar obsoleta mientras Condor pinta
+        // la TUI. Antes de cualquier descarga se vuelve a leer RAM e inventario
+        // y se repite la seleccion con ese estado actual.
+        if (!selection.AlreadyInstalled)
+        {
+            var fresh = await AssessNowAsync(cancellationToken);
+            if (fresh is null && _assessmentService is not null)
+            {
+                selection.Limitations.Add("No se pudo reevaluar RAM e inventario justo antes de obtener el modelo; no se descarga.");
+                selection.Reason = "La comprobacion de seguridad del equipo no esta disponible.";
+                return selection;
+            }
+
+            authoritativeAssessment = fresh ?? await _stateStore.LoadAssessmentAsync(cancellationToken);
+            selection = ModelSelector.RecommendFromCatalog(authoritativeAssessment, ModelCatalog.Default);
+            if (selection.Desired is null)
+            {
+                return selection;
+            }
+
+            if (selection.AlreadyInstalled && await _operator.IsInstalledAsync(
+                    selection.InstalledName ?? selection.Desired.PullName, cancellationToken))
+            {
+                selection.Reason = "El inventario actualizado contiene un modelo local viable; se reutiliza sin descargar.";
+                return selection;
+            }
+
+            if (selection.AlreadyInstalled)
+            {
+                selection.AlreadyInstalled = false;
+                selection.InstalledName = null;
             }
         }
 
@@ -194,6 +236,51 @@ public sealed class ModelAutoSetupService : IModelAutoSetupService
                 await RefreshAssessmentAsync(cancellationToken);
                 return selection; // reutilizar, no descargar
             }
+
+            selection.AlreadyInstalled = false;
+            selection.InstalledName = null;
+        }
+
+        if (!selection.AlreadyInstalled)
+        {
+            // Revalidacion de seguridad inmediatamente antes de descargar: si
+            // cambio la RAM o aparecio un modelo local suficiente, se vuelve a
+            // decidir sin asumir el dato del inicio.
+            var fresh = await AssessNowAsync(cancellationToken);
+            if (fresh is null && _assessmentService is not null)
+            {
+                selection.Limitations.Add("No se pudo reevaluar RAM e inventario justo antes de obtener el modelo; no se descarga.");
+                selection.Reason = "La comprobacion de seguridad del equipo no esta disponible.";
+                return selection;
+            }
+
+            assessment = fresh ?? await _stateStore.LoadAssessmentAsync(cancellationToken);
+            selection = ModelSelector.SelectForTask(
+                assessment,
+                ModelCatalog.Default,
+                requirement,
+                BudgetPolicy.Default,
+                currentModelName,
+                lastSelectionBudgetGb,
+                lastSelectionFreeRamGb);
+
+            if (selection.Desired is null)
+            {
+                return selection;
+            }
+
+            if (selection.AlreadyInstalled && await _operator.IsInstalledAsync(
+                    selection.InstalledName ?? selection.Desired.PullName, cancellationToken))
+            {
+                selection.Reason = "El inventario actualizado contiene un modelo local viable; se reutiliza sin descargar.";
+                return selection;
+            }
+
+            if (selection.AlreadyInstalled)
+            {
+                selection.AlreadyInstalled = false;
+                selection.InstalledName = null;
+            }
         }
 
         var desired = selection.Desired;
@@ -261,7 +348,7 @@ public sealed class ModelAutoSetupService : IModelAutoSetupService
             RequiredMultiFileLevel = 2,
             RequiresToolUse = true,
             RequiresStructuredOutput = true,
-            PreferSmallestSufficient = true,
+            PreferSmallestSufficient = false,
             Label = "agente de ingenieria"
         };
     }
@@ -289,6 +376,26 @@ public sealed class ModelAutoSetupService : IModelAutoSetupService
         {
             // Si Ollama no responde, se conserva el estado persistido como sugerencia.
             return persisted;
+        }
+    }
+
+    private async Task<AssessmentResult?> AssessNowAsync(CancellationToken cancellationToken)
+    {
+        if (_assessmentService is null)
+        {
+            return await _stateStore.LoadAssessmentAsync(cancellationToken);
+        }
+
+        try
+        {
+            var live = await _assessmentService.ExecuteAsync(new AssessmentRequest(), cancellationToken);
+            await _stateStore.SaveAssessmentAsync(live, cancellationToken);
+            return live;
+        }
+        catch
+        {
+            // No se reutiliza una medicion antigua para autorizar descargas.
+            return null;
         }
     }
 

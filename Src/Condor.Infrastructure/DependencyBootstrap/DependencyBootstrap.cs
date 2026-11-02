@@ -2,6 +2,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Condor.Core.Contracts;
 using Condor.Core.Models;
+using Condor.Infrastructure.Detection;
 
 namespace Condor.Infrastructure.DependencyBootstrap;
 
@@ -60,6 +61,21 @@ public sealed class DependencyBootstrapper
             {
                 // Si falla, los componentes posteriores manejan su propio fallback.
             }
+        }
+
+        if (assessment?.Tools?.Ollama is { Installed: true } ollamaStatus)
+        {
+            using var releaseChecker = new OllamaReleaseChecker();
+            var release = await releaseChecker.CheckAsync(ollamaStatus.ServerVersion, cancellationToken)
+                .ConfigureAwait(false);
+            ollamaStatus.LatestVersion = release.LatestVersion;
+            ollamaStatus.UpdateAvailable = release.UpdateAvailable;
+            var updateMessage = release.CheckSucceeded
+                ? release.UpdateAvailable
+                    ? "Ollama " + ollamaStatus.ServerVersion + " instalado; disponible " + release.LatestVersion + ". Actualiza con winget upgrade --id Ollama.Ollama --exact."
+                    : "Ollama verificado: " + ollamaStatus.ServerVersion + " es la ultima version estable."
+                : "No se pudo consultar la ultima version de Ollama; se conserva la instalacion actual.";
+            Step(progress, StartupStage.BootstrappingDependencies, updateMessage, isCompleted: true);
         }
 
         return new DependencyBootstrapResult

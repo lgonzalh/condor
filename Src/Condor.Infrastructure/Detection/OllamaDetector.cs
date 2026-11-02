@@ -1,4 +1,6 @@
 using System.Net.Http.Json;
+using System.Globalization;
+using System.Text.RegularExpressions;
 using System.Text.Json;
 using Condor.Core.Models;
 using Condor.Infrastructure.Probing;
@@ -24,6 +26,7 @@ public class OllamaDetector
         }
         else if (status.Installed)
         {
+            status.ServerVersion = await TryGetCliVersionAsync(cancellationToken);
             status.Note = "El servidor de Ollama no responde en 127.0.0.1:11434";
             await TryGetModelsViaCliAsync(status, cancellationToken);
         }
@@ -66,6 +69,7 @@ public class OllamaDetector
         {
             var json = await http.GetStringAsync(ApiBase + "/api/tags", cancellationToken);
             var models = OllamaTagsParser.Parse(json);
+            await EnrichCapabilitiesAsync(http, models, cancellationToken);
             if (models.Count > 0)
             {
                 status.Models = models;
@@ -77,11 +81,61 @@ public class OllamaDetector
         }
     }
 
+    private static async Task EnrichCapabilitiesAsync(
+        HttpClient http,
+        IReadOnlyList<ModelInfo> models,
+        CancellationToken cancellationToken)
+    {
+        using var concurrency = new SemaphoreSlim(4, 4);
+        var probes = models.Select(async model =>
+        {
+            if (model.Capabilities.Count > 0)
+            {
+                return;
+            }
+
+            await concurrency.WaitAsync(cancellationToken);
+            try
+            {
+                using var response = await http.PostAsJsonAsync(
+                    ApiBase + "/api/show",
+                    new { model = model.Name },
+                    cancellationToken);
+                if (!response.IsSuccessStatusCode)
+                {
+                    return;
+                }
+
+                var json = await response.Content.ReadAsStringAsync(cancellationToken);
+                var capabilities = OllamaTagsParser.ParseCapabilities(json);
+                if (capabilities.Count > 0)
+                {
+                    model.Capabilities = capabilities;
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch
+            {
+                // La disponibilidad del inventario no depende de que cada
+                // modelo responda a su consulta de capacidades.
+            }
+            finally
+            {
+                concurrency.Release();
+            }
+        });
+
+        await Task.WhenAll(probes);
+    }
+
     private static async Task TryGetModelsViaCliAsync(OllamaStatus status, CancellationToken cancellationToken)
     {
         var output = await ProcessProbe.RunAsync(
             "ollama.exe",
-            "list --format json",
+            "list",
             10000,
             cancellationToken);
 
@@ -90,13 +144,24 @@ public class OllamaDetector
             return;
         }
 
-        var models = OllamaTagsParser.Parse(output);
+        var models = OllamaTagsParser.ParseCliList(output);
         if (models.Count > 0)
         {
             status.Models = models;
-            status.ServerRunning = true;
             status.Note = "Modelos detectados mediante el ejecutable local de Ollama";
         }
+    }
+
+    private static async Task<string?> TryGetCliVersionAsync(CancellationToken cancellationToken)
+    {
+        var output = await ProcessProbe.RunAsync("ollama.exe", "--version", 10000, cancellationToken);
+        if (string.IsNullOrWhiteSpace(output))
+        {
+            return null;
+        }
+
+        var match = Regex.Match(output, @"\b\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?\b");
+        return match.Success ? match.Value : null;
     }
 }
 
@@ -144,6 +209,55 @@ internal static class OllamaTagsParser
         catch
         {
             // El formato de la respuesta pudo variar entre versiones.
+        }
+
+        return models;
+    }
+
+    public static List<string> ParseCapabilities(string json)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            return ReadStringList(document.RootElement, "capabilities");
+        }
+        catch
+        {
+            return new List<string>();
+        }
+    }
+
+    public static List<ModelInfo> ParseCliList(string output)
+    {
+        var models = new List<ModelInfo>();
+        foreach (var line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+        {
+            var match = Regex.Match(line.Trim(),
+                @"^(?<name>\S+)\s+\S+\s+(?<size>\d+(?:\.\d+)?)\s*(?<unit>TB|GB|MB|KB|B)\b",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            if (!match.Success || match.Groups["name"].Value.Equals("NAME", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (!double.TryParse(match.Groups["size"].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var size))
+            {
+                continue;
+            }
+
+            var multiplier = match.Groups["unit"].Value.ToUpperInvariant() switch
+            {
+                "TB" => 1024d * 1024 * 1024 * 1024,
+                "GB" => 1024d * 1024 * 1024,
+                "MB" => 1024d * 1024,
+                "KB" => 1024d,
+                _ => 1d
+            };
+            models.Add(new ModelInfo
+            {
+                Name = match.Groups["name"].Value,
+                SizeBytes = (long)(size * multiplier)
+            });
         }
 
         return models;
