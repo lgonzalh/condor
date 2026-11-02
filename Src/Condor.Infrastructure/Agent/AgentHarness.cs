@@ -15,6 +15,8 @@ public readonly record struct HarnessVerifyResult(
     string Detail,
     bool ChecksApplicable = true);
 
+public readonly record struct HtmlRepairResult(string RelativePath, string Action);
+
 /// <summary>
 /// Harness externo del agente: ejecuta build y test de forma real e independiente
 /// del modelo y devuelve la evidencia obtenida. No adivina ni simula exito.
@@ -71,7 +73,7 @@ public sealed class AgentHarness
         return new(true, "El harness confirmo build y pruebas externamente.", "build ok; test ok");
     }
 
-    public async Task<string?> TryRepairMissingRequiredHtmlLinkAsync(
+    public async Task<HtmlRepairResult?> TryRepairMissingRequiredHtmlLinkAsync(
         string? failureReason,
         CancellationToken ct,
         bool allowRequestedRootHtmlFile = false)
@@ -119,8 +121,22 @@ public sealed class AgentHarness
             ct.ThrowIfCancellationRequested();
 
             var fullPath = Path.GetFullPath(Path.Combine(root, relativePath));
-            if (!fullPath.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase) || !File.Exists(fullPath))
+            if (!fullPath.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase))
             {
+                continue;
+            }
+
+            if (!File.Exists(fullPath))
+            {
+                if (allowRequestedRootHtmlFile &&
+                    FindRequestedRootHtmlFile(_intention) is { } requestedFile &&
+                    string.Equals(relativePath, requestedFile, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(Path.GetDirectoryName(fullPath), root, StringComparison.OrdinalIgnoreCase) &&
+                    await TryCreateRequestedRootHtmlFileAsync(fullPath, root, requiredLink, _intention, ct).ConfigureAwait(false))
+                {
+                    return new HtmlRepairResult(relativePath.Replace(Path.DirectorySeparatorChar, '/'), AgentAction.ActionCreateFile);
+                }
+
                 continue;
             }
 
@@ -167,7 +183,9 @@ public sealed class AgentHarness
                 continue;
             }
 
-            return Path.GetRelativePath(root, fullPath).Replace(Path.DirectorySeparatorChar, '/');
+            return new HtmlRepairResult(
+                Path.GetRelativePath(root, fullPath).Replace(Path.DirectorySeparatorChar, '/'),
+                AgentAction.ActionEditFile);
         }
 
         return null;
@@ -256,10 +274,20 @@ public sealed class AgentHarness
                 @"(?i)\bhref\s*=\s*(?<quote>['""])(?<path>[A-Za-z0-9._/-]+\.html)\k<quote>");
         }
 
-        if (!match.Success) return null;
+        if (!match.Success)
+        {
+            var asksForDocumentationLinks =
+                Regex.IsMatch(intention, @"(?i)\b(?:enlaces?|links?)\b") &&
+                Regex.IsMatch(intention, @"(?i)\b(?:documentaci[oó]n|documentos)\b") &&
+                (intention.Contains("docs/", StringComparison.OrdinalIgnoreCase) ||
+                 intention.Contains("docs\\", StringComparison.OrdinalIgnoreCase));
+            if (!asksForDocumentationLinks) return null;
+            return "docs/indice-condor.html";
+        }
 
         var path = match.Groups["path"].Value;
-        return path.StartsWith("/", StringComparison.Ordinal) || path.Contains(":", StringComparison.Ordinal)
+        return path.StartsWith("/", StringComparison.Ordinal) || path.Contains(":", StringComparison.Ordinal) ||
+               path.Split('/').Any(segment => segment == "..")
             ? null
             : path;
     }
@@ -273,6 +301,10 @@ public sealed class AgentHarness
         if (!match.Success)
         {
             match = Regex.Match(intention, @"(?i)\b(?:actualiza|edita|corrige)\s+(?<file>[A-Za-z0-9_.-]+\.html)\b");
+        }
+        if (!match.Success)
+        {
+            match = Regex.Match(intention, @"(?i)\b(?<file>[A-Za-z0-9_.-]+\.html)\s+en\s+la\s+ra[ií]z\b");
         }
 
         if (!match.Success) return null;
@@ -288,7 +320,7 @@ public sealed class AgentHarness
 
     private static string BuildRequestedHtmlAnchor(string? intention, string relativePath)
     {
-        var label = "Documentacion generada";
+        var label = "Documentación generada";
         var pattern = @"(?is)<a\b[^>]*\bhref\s*=\s*(['""])" + Regex.Escape(relativePath) + @"\1[^>]*>(?<label>[^<]{1,120})</a>";
         var match = Regex.Match(intention ?? string.Empty, pattern);
         if (match.Success && !string.IsNullOrWhiteSpace(match.Groups["label"].Value))
@@ -297,6 +329,51 @@ public sealed class AgentHarness
         var href = System.Net.WebUtility.HtmlEncode(relativePath);
         var text = System.Net.WebUtility.HtmlEncode(label);
         return "<p><a href=\"" + href + "\">" + text + "</a></p>";
+    }
+
+    private static async Task<bool> TryCreateRequestedRootHtmlFileAsync(
+        string fullPath,
+        string projectRoot,
+        string requiredLink,
+        string? intention,
+        CancellationToken cancellationToken)
+    {
+        var projectName = System.Net.WebUtility.HtmlEncode(new DirectoryInfo(projectRoot).Name);
+        var anchor = BuildRequestedHtmlAnchor(intention, requiredLink);
+        var content = "<!doctype html>" + Environment.NewLine +
+                      "<html lang=\"es\">" + Environment.NewLine +
+                      "<head>" + Environment.NewLine +
+                      "  <meta charset=\"utf-8\">" + Environment.NewLine +
+                      "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">" + Environment.NewLine +
+                      "  <title>" + projectName + "</title>" + Environment.NewLine +
+                      "</head>" + Environment.NewLine +
+                      "<body>" + Environment.NewLine +
+                      "  <main>" + Environment.NewLine +
+                      "    <h1>" + projectName + "</h1>" + Environment.NewLine +
+                      "    <p>Proyecto generado con Condor.</p>" + Environment.NewLine +
+                      "    <section aria-labelledby=\"documentacion\">" + Environment.NewLine +
+                      "      <h2 id=\"documentacion\">Documentación</h2>" + Environment.NewLine +
+                      "      " + anchor + Environment.NewLine +
+                      "    </section>" + Environment.NewLine +
+                      "  </main>" + Environment.NewLine +
+                      "</body>" + Environment.NewLine +
+                      "</html>" + Environment.NewLine;
+
+        try
+        {
+            await using var stream = new FileStream(fullPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+            await using var writer = new StreamWriter(stream, new UTF8Encoding(false));
+            await writer.WriteAsync(content.AsMemory(), cancellationToken).ConfigureAwait(false);
+            return true;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
     }
 
     private static string RemoveHtmlDocumentStylesheetLinks(string content)

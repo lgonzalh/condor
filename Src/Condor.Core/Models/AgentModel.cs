@@ -101,7 +101,8 @@ public sealed class AgentLimits
     public int MaxModifications { get; init; } = 8;
     public int MaxRepeatedAction { get; init; } = 3;
     public int MaxRepeatedFailedAction { get; init; } = 2;
-    public int MaxPlanBIterations { get; init; } = 4;
+    /// <summary>Máximo de acciones correctivas que Plan B puede analizar y emitir.</summary>
+    public int MaxPlanBIterations { get; init; } = 1;
     public int MaxRedundantObservations { get; init; } = 0;
     public int MaxInvalidOutputs { get; init; } = 8;
     public int MaxContentLength { get; init; } = 200_000;

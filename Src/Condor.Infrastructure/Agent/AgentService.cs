@@ -212,21 +212,25 @@ public sealed class AgentService : IAgentService
 
             async Task<AgentResult?> TryPlanBHtmlLinkRepairAsync(string? failureReason, int currentIteration)
             {
-                var repairedPath = await harness.TryRepairMissingRequiredHtmlLinkAsync(
+                var repair = await harness.TryRepairMissingRequiredHtmlLinkAsync(
                     failureReason,
                     timeoutCts.Token,
                     allowRequestedRootHtmlFile: true);
-                if (repairedPath is null) return null;
+                if (repair is null) return null;
+                var repairedPath = repair.Value.RelativePath;
+                var repairAction = repair.Value.Action;
 
                 planBUsed = true;
                 planBInitialFailure ??= failureReason;
                 awaitingPlanBAction = false;
                 modifications++;
-                var repairReason = "Plan B inserto el enlace HTML exacto solicitado y el harness verificara el resultado.";
+                var repairReason = repairAction == AgentAction.ActionCreateFile
+                    ? "Plan B creó el archivo HTML raíz solicitado con el enlace a documentación; el harness verificará el resultado."
+                    : "Plan B insertó el enlace HTML solicitado y el harness verificará el resultado.";
                 var repairStep = new AgentStep
                 {
                     Iteration = currentIteration,
-                    Action = AgentAction.ActionEditFile,
+                    Action = repairAction,
                     Path = repairedPath,
                     Success = true,
                     ResultPreview = repairReason,
@@ -239,7 +243,7 @@ public sealed class AgentService : IAgentService
                 progress?.Report(AgentProgress.Of(
                     AgentPhase.Verifying,
                     message: repairReason,
-                    action: AgentAction.ActionEditFile,
+                    action: repairAction,
                     path: repairedPath,
                     iteration: currentIteration));
 
@@ -661,20 +665,24 @@ public sealed class AgentService : IAgentService
                 {
                     progress?.Report(AgentProgress.Of(AgentPhase.Verifying, action: "build/test", iteration: iteration + 1));
                     var result = await harness.VerifyAsync(timeoutCts.Token);
-                    var repairedHtmlPath = planBUsed
+                    var htmlRepair = planBUsed
                         ? await harness.TryRepairMissingRequiredHtmlLinkAsync(result.Reason, timeoutCts.Token)
                         : null;
-                    if (repairedHtmlPath is not null)
+                    if (htmlRepair is not null)
                     {
+                        var repairedHtmlPath = htmlRepair.Value.RelativePath;
+                        var repairAction = htmlRepair.Value.Action;
                         planBUsed = true;
                         planBInitialFailure ??= result.Reason;
                         awaitingPlanBAction = false;
                         checkpoint.LastDecision = "plan_b_html_link_repaired";
-                        checkpoint.LastAction = AgentAction.ActionEditFile + " " + repairedHtmlPath;
-                        checkpoint.LastResult = "Plan B inserto el enlace HTML exacto solicitado; el harness repetira la verificacion.";
+                        checkpoint.LastAction = repairAction + " " + repairedHtmlPath;
+                        checkpoint.LastResult = repairAction == AgentAction.ActionCreateFile
+                            ? "Plan B creó el archivo HTML solicitado; el harness repetirá la verificación."
+                            : "Plan B insertó el enlace HTML solicitado; el harness repetirá la verificación.";
                         steps.Add(new AgentStep
                         {
-                            Action = AgentAction.ActionEditFile,
+                            Action = repairAction,
                             Path = repairedHtmlPath,
                             Success = true,
                             ResultPreview = checkpoint.LastResult
@@ -682,7 +690,7 @@ public sealed class AgentService : IAgentService
                         progress?.Report(AgentProgress.Of(
                             AgentPhase.Verifying,
                             message: checkpoint.LastResult,
-                            action: AgentAction.ActionEditFile,
+                            action: repairAction,
                             path: repairedHtmlPath,
                             iteration: iteration + 1));
                         result = await harness.VerifyAsync(timeoutCts.Token);
@@ -797,20 +805,24 @@ public sealed class AgentService : IAgentService
 
                     progress?.Report(AgentProgress.Of(AgentPhase.Verifying, action: "build/test", iteration: iteration + 1));
                     var r = await harness.VerifyAsync(timeoutCts.Token);
-                    var repairedHtmlPath = planBUsed
+                    var htmlRepair = planBUsed
                         ? await harness.TryRepairMissingRequiredHtmlLinkAsync(r.Reason, timeoutCts.Token)
                         : null;
-                    if (repairedHtmlPath is not null)
+                    if (htmlRepair is not null)
                     {
+                        var repairedHtmlPath = htmlRepair.Value.RelativePath;
+                        var repairAction = htmlRepair.Value.Action;
                         planBUsed = true;
                         planBInitialFailure ??= r.Reason;
                         awaitingPlanBAction = false;
                         checkpoint.LastDecision = "plan_b_html_link_repaired";
-                        checkpoint.LastAction = AgentAction.ActionEditFile + " " + repairedHtmlPath;
-                        checkpoint.LastResult = "Plan B inserto el enlace HTML exacto solicitado; el harness repetira la verificacion.";
+                        checkpoint.LastAction = repairAction + " " + repairedHtmlPath;
+                        checkpoint.LastResult = repairAction == AgentAction.ActionCreateFile
+                            ? "Plan B creó el archivo HTML solicitado; el harness repetirá la verificación."
+                            : "Plan B insertó el enlace HTML solicitado; el harness repetirá la verificación.";
                         steps.Add(new AgentStep
                         {
-                            Action = AgentAction.ActionEditFile,
+                            Action = repairAction,
                             Path = repairedHtmlPath,
                             Success = true,
                             ResultPreview = checkpoint.LastResult
@@ -818,7 +830,7 @@ public sealed class AgentService : IAgentService
                         progress?.Report(AgentProgress.Of(
                             AgentPhase.Verifying,
                             message: checkpoint.LastResult,
-                            action: AgentAction.ActionEditFile,
+                            action: repairAction,
                             path: repairedHtmlPath,
                             iteration: iteration + 1));
                         r = await harness.VerifyAsync(timeoutCts.Token);

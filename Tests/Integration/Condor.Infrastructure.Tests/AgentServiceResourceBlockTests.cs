@@ -487,7 +487,7 @@ public class AgentServiceResourceBlockTests
 
         var updated = await File.ReadAllTextAsync(Path.Combine(projectRoot, "index.html"));
         Assert.True(result.Success, result.Reason);
-        Assert.Contains("<a href=\"docs/indice-condor.html\">Documentacion generada</a>", updated);
+        Assert.Contains("<a href=\"docs/indice-condor.html\">", updated);
         Assert.Equal("plan_b_corregido", result.Checkpoint?.LastDecision);
         Assert.Equal(1, llm.CallCount);
     }
@@ -529,7 +529,7 @@ public class AgentServiceResourceBlockTests
         Assert.Contains(result.Steps, step =>
             step.Action == AgentAction.ActionEditFile &&
             step.Success &&
-            step.ResultPreview?.Contains("Plan B inserto el enlace HTML exacto", StringComparison.OrdinalIgnoreCase) == true);
+            step.ResultPreview?.Contains("Plan B insertó el enlace HTML solicitado", StringComparison.OrdinalIgnoreCase) == true);
     }
 
     [Fact]
@@ -678,6 +678,52 @@ public class AgentServiceResourceBlockTests
         Assert.Equal(2, llm.CallCount);
         Assert.Contains("Plan B no pudo corregir", result.Reason, StringComparison.OrdinalIgnoreCase);
         Assert.Equal("plan_b_fallido", result.Checkpoint?.LastDecision);
+    }
+
+    [Fact]
+    public async Task RunAsync_ObservacionRepetida_PlanBCreaPaginaRaizConEnlaceALaDocumentacion()
+    {
+        var projectRoot = TempDir();
+        var docsRoot = Path.Combine(projectRoot, "docs");
+        Directory.CreateDirectory(docsRoot);
+        await File.WriteAllTextAsync(
+            Path.Combine(docsRoot, "indice-condor.html"),
+            "<!doctype html><html lang=\"es\"><body><h1>Documentación</h1></body></html>");
+
+        var store = new LocalStateStore(Path.Combine(TempDir(), "state-" + Guid.NewGuid().ToString("N")));
+        var assessment = new StubAssessmentService(ramTotalGb: 16, ramFreeGb: 8, installedModels: new[] { "qwen2.5-coder:3b" });
+        using var http = new HttpClient(new StubOllamaHandler());
+        using var session = new LocalModelSession(http);
+        await session.EnsureAvailableAsync("qwen2.5-coder:3b", CancellationToken.None);
+
+        var llm = new SequenceLlmClient(
+            "{\"action\":\"list_dir\",\"path\":\".\"}",
+            "{\"action\":\"list_dir\",\"path\":\".\"}");
+        var service = new AgentService(
+            store,
+            assessment,
+            new AgentLimits { MaxIterations = 8, MaxPlanBIterations = 1 },
+            llm,
+            new StubLlmDiagnostics(),
+            session,
+            () => projectRoot,
+            CreateModelAutoSetup(store, assessment, "qwen2.5-coder:3b"));
+
+        var result = await service.RunAsync(
+            "Crea una página web sencilla en index.html en la raíz de este proyecto. " +
+            "Debe mostrar enlaces relativos a los documentos generados. Guarda la documentación directamente en docs/.",
+            cancellationToken: CancellationToken.None);
+
+        var rootHtml = Path.Combine(projectRoot, "index.html");
+        Assert.True(result.Success, result.Reason);
+        Assert.True(File.Exists(rootHtml));
+        Assert.Contains("<a href=\"docs/indice-condor.html\">Documentación generada</a>",
+            System.Net.WebUtility.HtmlDecode(await File.ReadAllTextAsync(rootHtml)));
+        Assert.DoesNotContain(result.Steps, step => step.Path == "docs/index.html");
+        Assert.Contains(result.Steps, step =>
+            step.Action == AgentAction.ActionCreateFile && step.Success && step.Path == "index.html");
+        Assert.Equal(2, llm.CallCount);
+        Assert.Equal("plan_b_corregido", result.Checkpoint?.LastDecision);
     }
 
     private static string TempDir()
