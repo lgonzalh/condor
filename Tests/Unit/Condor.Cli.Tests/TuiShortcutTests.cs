@@ -6,14 +6,16 @@ namespace Condor.Cli.Tests;
 public class TuiShortcutTests
 {
     [Fact]
-    public void TabEnEntradaVacia_AbrePanelDeAgentes()
+    public void TabAbreAgentesAunqueLaEntradaTengaTexto()
     {
         using var host = new TuiHost(forceInteractive: true);
         var input = new TuiInput(host);
+        input.SetText("crear una página");
 
         var action = input.Handle(new ConsoleKeyInfo('\t', ConsoleKey.Tab, false, false, false));
 
         Assert.Equal(InputAction.OpenAgents, action);
+        Assert.Equal("crear una página", input.Buffer);
     }
 
     [Fact]
@@ -27,11 +29,26 @@ public class TuiShortcutTests
         input.BeginCommandPalette();
         var first = input.Buffer;
 
-        input.Handle(new ConsoleKeyInfo('\t', ConsoleKey.Tab, false, false, false));
+        input.Handle(new ConsoleKeyInfo((char)0, ConsoleKey.DownArrow, false, false, false));
 
         Assert.NotEqual(first, input.Buffer);
         Assert.Equal(InputAction.Submit,
             input.Handle(new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false)));
+    }
+
+    [Fact]
+    public void TabDesdeLaPaletaCierraLaPaletaYAbreAgentes()
+    {
+        using var host = new TuiHost(forceInteractive: true);
+        var input = new TuiInput(host);
+        input.BeginCommandPalette();
+
+        var action = input.Handle(new ConsoleKeyInfo('\t', ConsoleKey.Tab, false, false, false));
+
+        Assert.Equal(InputAction.OpenAgents, action);
+        Assert.Equal("", input.Buffer);
+        Assert.Equal(InputAction.None,
+            input.Handle(new ConsoleKeyInfo((char)0, ConsoleKey.DownArrow, false, false, false)));
     }
 
     [Fact]
@@ -46,7 +63,7 @@ public class TuiShortcutTests
         });
 
         var initial = input.SelectedModel;
-        input.Handle(new ConsoleKeyInfo('\t', ConsoleKey.Tab, false, false, false));
+        input.Handle(new ConsoleKeyInfo((char)0, ConsoleKey.DownArrow, false, false, false));
 
         Assert.NotEqual(initial, input.SelectedModel);
         Assert.Equal(InputAction.ModelSelected,
@@ -66,8 +83,14 @@ public class TuiShortcutTests
 
         Assert.Contains("Agente", labels);
         Assert.Contains("Herramientas", labels);
-        Assert.Contains("Desarrollo", labels);
-        Assert.Contains("Imagen", labels);
-        Assert.Contains("Rápido", labels);
+        Assert.Contains("Código", labels);
+        Assert.Contains("Visión", labels);
+        Assert.DoesNotContain("Rápido", labels);
+    }
+
+    [Fact]
+    public void VersionVisible_IdentificaBuildGamma()
+    {
+        Assert.Equal("v1.0.0-gamma (Build Gamma)", Condor.Cli.VersionInfo.DisplayName);
     }
 }

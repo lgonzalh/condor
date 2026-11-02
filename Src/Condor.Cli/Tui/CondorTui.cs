@@ -310,6 +310,14 @@ public static class CondorTui
                         runningCts?.Cancel();
                         continue;
                     }
+                    if (interruptAction == InputAction.OpenAgents)
+                    {
+                        host.AddActivity("Agentes · ejecución en curso", ActivityKind.System);
+                        host.AddActivity("Condor · agente principal · modelo activo: " +
+                            (string.IsNullOrWhiteSpace(session.ActiveModel) ? "sin modelo" : session.ActiveModel),
+                            ActivityKind.Analysis);
+                        host.Repaint();
+                    }
                     continue; // teclado reservado mientras Condor trabaja
                 }
 
@@ -341,7 +349,7 @@ public static class CondorTui
                 if (submitAction == InputAction.OpenCommands)
                 {
                     var commands = TuiInput.CommandPaletteCommands;
-                    host.AddActivity("Comandos · ↑/↓ o Tab cambia · Enter ejecuta · Esc cancela", ActivityKind.System);
+                    host.AddActivity("Comandos · ↑/↓ cambia · Enter ejecuta · Esc cancela · Tab abre Agentes", ActivityKind.System);
                     host.AddActivity(string.Join("  ·  ", commands), ActivityKind.Analysis);
                     input.BeginCommandPalette();
                     host.SetEstado("Paleta de comandos", ActivityKind.System);
@@ -400,7 +408,7 @@ public static class CondorTui
                         }
                         else
                         {
-                            host.AddActivity("Modelos locales · ↑/↓ o Tab cambia · Enter selecciona · Esc cancela", ActivityKind.System);
+                            host.AddActivity("Modelos locales · ↑/↓ cambia · Enter selecciona · Esc cancela · Tab abre Agentes", ActivityKind.System);
                             foreach (var model in models)
                             {
                                 host.AddActivity(model.Name + " · " + DescribeModelCapabilities(model), ActivityKind.Analysis);
@@ -620,10 +628,9 @@ public static class CondorTui
         if (hasTools && hasThinking) labels.Add("Agente");
         if (hasTools) labels.Add("Herramientas");
         if (identity.Contains("coder", StringComparison.Ordinal) || identity.Contains("code", StringComparison.Ordinal) ||
-            (catalogProfile?.CodingLevel ?? 0) > 0) labels.Add("Desarrollo");
-        if (capabilities.Any(value => value.Equals("vision", StringComparison.OrdinalIgnoreCase))) labels.Add("Imagen");
+            (catalogProfile?.CodingLevel ?? 0) > 0) labels.Add("Código");
+        if (capabilities.Any(value => value.Equals("vision", StringComparison.OrdinalIgnoreCase))) labels.Add("Visión");
         if (capabilities.Any(value => value.Equals("audio", StringComparison.OrdinalIgnoreCase))) labels.Add("Audio");
-        if (model.SizeBytes > 0 && model.SizeBytes <= 2L * 1024 * 1024 * 1024) labels.Add("Rápido");
         if (labels.Count == 0) labels.Add("Chat");
         return string.Join(" · ", labels);
     }

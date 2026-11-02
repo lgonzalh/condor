@@ -2,8 +2,8 @@ namespace Condor.Cli;
 
 /// <summary>
 /// UNICO ORIGEN DE VERDAD de la version de Condor.
-/// La version publica permanece 1.0; el build interno actual es Gamma.
-/// y NO altera la version publica. Este archivo es la unica fuente para ambos.
+/// El build visible se identifica como v1.0.0-gamma (Build Gamma).
+/// Este archivo es la unica fuente para las cadenas de version.
 /// </summary>
 public static class VersionInfo
 {
@@ -13,8 +13,8 @@ public static class VersionInfo
     /// <summary>Build interno actual.</summary>
     public const string InternalBuild = "Gamma";
 
-    /// <summary>Forma visible: "v1.0 · build interno Gamma".</summary>
-    public const string DisplayName = "v" + PublicVersion + " · build interno " + InternalBuild;
+    /// <summary>Forma visible solicitada para Build Gamma.</summary>
+    public const string DisplayName = "v1.0.0-gamma (Build " + InternalBuild + ")";
 
     /// <summary>Version larga (retrocompatible con usos previos).</summary>
     public const string Version = "1.0.0";

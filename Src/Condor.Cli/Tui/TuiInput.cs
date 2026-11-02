@@ -33,7 +33,7 @@ public enum InputAction
 /// <summary>
 /// Editor de linea de la zona de entrada de la TUI: escritura con acentos,
 /// cursor de movimiento (flechas/Inicio/Fin), historial con ↑↓, borrado,
-/// limpiar con Esc y autocompletado de comandos "/" con Tab.
+/// limpiar con Esc, agentes con Tab y autocompletado con Ctrl+Space.
 /// </summary>
 public sealed class TuiInput
 {
@@ -108,6 +108,25 @@ public sealed class TuiInput
         if ((key.Modifiers & ConsoleModifiers.Control) != 0 && key.Key == ConsoleKey.P)
         {
             return InputAction.OpenCommands;
+        }
+
+        if (key.Key == ConsoleKey.Tab)
+        {
+            if (_modelPickerActive || _commandPaletteActive)
+            {
+                _modelPickerActive = false;
+                _commandPaletteActive = false;
+                _modelChoices.Clear();
+                SetTextInternal("");
+            }
+
+            return InputAction.OpenAgents;
+        }
+
+        if ((key.Modifiers & ConsoleModifiers.Control) != 0 && key.Key == ConsoleKey.Spacebar)
+        {
+            Complete();
+            return InputAction.None;
         }
 
         if (_modelPickerActive)
@@ -216,15 +235,6 @@ public sealed class TuiInput
                 HistoryNext();
                 return InputAction.None;
 
-            case ConsoleKey.Tab:
-                if (_buffer.Length == 0)
-                {
-                    return InputAction.OpenAgents;
-                }
-
-                Complete();
-                return InputAction.None;
-
             default:
                 if (!char.IsControl(key.KeyChar))
                 {
@@ -272,7 +282,6 @@ public sealed class TuiInput
                 MoveModelChoice(-1);
                 return InputAction.None;
             case ConsoleKey.DownArrow:
-            case ConsoleKey.Tab:
                 MoveModelChoice(1);
                 return InputAction.None;
             case ConsoleKey.Escape:
@@ -296,7 +305,6 @@ public sealed class TuiInput
                 MoveCommandChoice(-1);
                 return InputAction.None;
             case ConsoleKey.DownArrow:
-            case ConsoleKey.Tab:
                 MoveCommandChoice(1);
                 return InputAction.None;
             case ConsoleKey.Escape:
@@ -369,7 +377,7 @@ public sealed class TuiInput
         Render();
     }
 
-    /// <summary>Autocompletado sobrio del primer token "/" con Tab.</summary>
+    /// <summary>Autocompletado sobrio del primer token "/" con Ctrl+Space.</summary>
     private void Complete()
     {
         var trimmed = _buffer.TrimStart();
