@@ -71,11 +71,15 @@ public sealed class AgentHarness
         return new(true, "El harness confirmo build y pruebas externamente.", "build ok; test ok");
     }
 
-    public async Task<string?> TryRepairMissingRequiredHtmlLinkAsync(string? failureReason, CancellationToken ct)
+    public async Task<string?> TryRepairMissingRequiredHtmlLinkAsync(
+        string? failureReason,
+        CancellationToken ct,
+        bool allowRequestedRootHtmlFile = false)
     {
         const string missingLinkFailure = "no contiene el enlace relativo exacto requerido";
-        if (string.IsNullOrWhiteSpace(failureReason) ||
-            !failureReason.Contains(missingLinkFailure, StringComparison.OrdinalIgnoreCase))
+        var isMissingLinkFailure = !string.IsNullOrWhiteSpace(failureReason) &&
+            failureReason.Contains(missingLinkFailure, StringComparison.OrdinalIgnoreCase);
+        if (!isMissingLinkFailure && !allowRequestedRootHtmlFile)
         {
             return null;
         }
@@ -85,9 +89,9 @@ public sealed class AgentHarness
 
         var root = Path.GetFullPath(_workingDir);
         var rootPrefix = Path.EndsInDirectorySeparator(root) ? root : root + Path.DirectorySeparatorChar;
+        var candidatePaths = new List<string>();
         foreach (var step in _steps)
         {
-            ct.ThrowIfCancellationRequested();
             if (!step.Success || string.IsNullOrWhiteSpace(step.Path) ||
                 step.Action is not (AgentAction.ActionCreateFile or AgentAction.ActionEditFile or AgentAction.ActionPatch))
             {
@@ -101,7 +105,20 @@ public sealed class AgentHarness
                 continue;
             }
 
-            var fullPath = Path.GetFullPath(Path.Combine(root, step.Path));
+            candidatePaths.Add(step.Path);
+        }
+
+        if (allowRequestedRootHtmlFile && FindRequestedRootHtmlFile(_intention) is { } requestedRootHtml &&
+            !candidatePaths.Exists(path => string.Equals(path, requestedRootHtml, StringComparison.OrdinalIgnoreCase)))
+        {
+            candidatePaths.Insert(0, requestedRootHtml);
+        }
+
+        foreach (var relativePath in candidatePaths)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            var fullPath = Path.GetFullPath(Path.Combine(root, relativePath));
             if (!fullPath.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase) || !File.Exists(fullPath))
             {
                 continue;
@@ -245,6 +262,22 @@ public sealed class AgentHarness
         return path.StartsWith("/", StringComparison.Ordinal) || path.Contains(":", StringComparison.Ordinal)
             ? null
             : path;
+    }
+
+    private static string? FindRequestedRootHtmlFile(string? intention)
+    {
+        if (string.IsNullOrWhiteSpace(intention)) return null;
+        var match = Regex.Match(
+            intention,
+            @"(?i)\bruta\s+exacta\s+(?<file>[A-Za-z0-9_.-]+\.html)\s*\(\s*ra[ií]z\b");
+        if (!match.Success)
+        {
+            match = Regex.Match(intention, @"(?i)\b(?:actualiza|edita|corrige)\s+(?<file>[A-Za-z0-9_.-]+\.html)\b");
+        }
+
+        if (!match.Success) return null;
+        var file = match.Groups["file"].Value;
+        return string.Equals(Path.GetFileName(file), file, StringComparison.Ordinal) ? file : null;
     }
 
     private static bool ContainsHtmlLink(string content, string relativePath)

@@ -210,6 +210,76 @@ public sealed class AgentService : IAgentService
             var redundantObservations = 0;
             var resourcesWarned = false;
 
+            async Task<AgentResult?> TryPlanBHtmlLinkRepairAsync(string? failureReason, int currentIteration)
+            {
+                var repairedPath = await harness.TryRepairMissingRequiredHtmlLinkAsync(
+                    failureReason,
+                    timeoutCts.Token,
+                    allowRequestedRootHtmlFile: true);
+                if (repairedPath is null) return null;
+
+                planBUsed = true;
+                planBInitialFailure ??= failureReason;
+                awaitingPlanBAction = false;
+                modifications++;
+                var repairReason = "Plan B inserto el enlace HTML exacto solicitado y el harness verificara el resultado.";
+                var repairStep = new AgentStep
+                {
+                    Iteration = currentIteration,
+                    Action = AgentAction.ActionEditFile,
+                    Path = repairedPath,
+                    Success = true,
+                    ResultPreview = repairReason,
+                    AtUtc = DateTime.UtcNow
+                };
+                steps.Add(repairStep);
+                checkpoint.LastDecision = "plan_b_html_link_repaired";
+                checkpoint.LastAction = AgentAction.ActionEditFile + " " + repairedPath;
+                checkpoint.LastResult = repairReason;
+                progress?.Report(AgentProgress.Of(
+                    AgentPhase.Verifying,
+                    message: repairReason,
+                    action: AgentAction.ActionEditFile,
+                    path: repairedPath,
+                    iteration: currentIteration));
+
+                var verification = await harness.VerifyAsync(timeoutCts.Token);
+                checkpoint.HarnessState = !verification.ChecksApplicable
+                    ? "no_aplicable"
+                    : verification.Done ? "exito" : verification.Reason;
+                checkpoint.LastError = verification.Done ? null : verification.Reason;
+                messages.Add(new LlmMessage
+                {
+                    Role = "user",
+                    Content = repairReason + " Resultado del harness: " +
+                              (verification.Done ? (verification.Detail ?? "verificado") : (verification.Reason ?? "fallo sin detalle"))
+                });
+
+                if (!verification.Done) return null;
+
+                var integrity = VerifyTestIntegrity(workingDir, originalSnapshot);
+                if (integrity is not null)
+                {
+                    checkpoint.LastDecision = "revisar";
+                    checkpoint.LastError = integrity;
+                    return Fail(integrity, model, intention, steps, checkpoint);
+                }
+
+                checkpoint.NextAction = "entregar";
+                checkpoint.LastDecision = "plan_b_corregido";
+                var completionReason = HarnessCompletionReason(verification, planBUsed);
+                progress?.Report(AgentProgress.Of(AgentPhase.Finalizing, message: completionReason));
+                return new AgentResult
+                {
+                    Success = true,
+                    Reason = completionReason,
+                    Model = model,
+                    Objective = intention,
+                    Steps = steps,
+                    Checkpoint = checkpoint
+                };
+            }
+
             var initialResources = EvaluateResources();
             progress?.Report(AgentProgress.Of(AgentPhase.Understanding,
                 message: "Comprendiendo la solicitud",
@@ -343,6 +413,8 @@ public sealed class AgentService : IAgentService
                     {
                         return Fail(planBFailure, model, intention, steps, checkpoint);
                     }
+                    var htmlRecovery = await TryPlanBHtmlLinkRepairAsync(protocolFailure, iteration + 1);
+                    if (htmlRecovery is not null) return htmlRecovery;
                     continue;
                 }
 
@@ -382,6 +454,8 @@ public sealed class AgentService : IAgentService
                         checkpoint);
                     if (planBFailure is not null)
                         return Fail(planBFailure, model, intention, steps, checkpoint);
+                    var htmlRecovery = await TryPlanBHtmlLinkRepairAsync(validationFailure, iteration + 1);
+                    if (htmlRecovery is not null) return htmlRecovery;
                     continue;
                 }
 
@@ -412,6 +486,8 @@ public sealed class AgentService : IAgentService
                         checkpoint);
                     if (planBFailure is not null)
                         return Fail(planBFailure, model, intention, steps, checkpoint);
+                    var htmlRecovery = await TryPlanBHtmlLinkRepairAsync(earlyDoneFailure, iteration + 1);
+                    if (htmlRecovery is not null) return htmlRecovery;
                     continue;
                 }
 
@@ -473,6 +549,10 @@ public sealed class AgentService : IAgentService
                         checkpoint);
                     if (planBFailure is not null)
                         return Fail(planBFailure, model, intention, steps, checkpoint);
+                    var htmlRecovery = await TryPlanBHtmlLinkRepairAsync(
+                        step.ResultPreview ?? "La herramienta fallo al ejecutar la accion.",
+                        iteration + 1);
+                    if (htmlRecovery is not null) return htmlRecovery;
                 }
                 else if (awaitingPlanBAction && IsPlanBCorrectionAction(action.Action))
                 {
@@ -533,6 +613,8 @@ public sealed class AgentService : IAgentService
                                 checkpoint);
                             if (planBFailure is not null)
                                 return Fail(planBFailure, model, intention, steps, checkpoint);
+                            var htmlRecovery = await TryPlanBHtmlLinkRepairAsync(checkpoint.LastError, iteration + 1);
+                            if (htmlRecovery is not null) return htmlRecovery;
                             continue;
                         }
 
@@ -637,6 +719,10 @@ public sealed class AgentService : IAgentService
                         checkpoint);
                     if (planBFailure is not null)
                         return Fail(planBFailure, model, intention, steps, checkpoint);
+                    var htmlRecovery = await TryPlanBHtmlLinkRepairAsync(
+                        (result.Reason ?? "Build/test fallo.") + " " + result.Detail,
+                        iteration + 1);
+                    if (htmlRecovery is not null) return htmlRecovery;
                 }
 
                 // 6. Si el modelo dice 'done', decidir la entrega:
@@ -754,6 +840,10 @@ public sealed class AgentService : IAgentService
                         checkpoint);
                     if (planBFailure is not null)
                         return Fail(planBFailure, model, intention, steps, checkpoint);
+                    var htmlRecovery = await TryPlanBHtmlLinkRepairAsync(
+                        (r.Reason ?? "Build/test fallo.") + " " + r.Detail,
+                        iteration + 1);
+                    if (htmlRecovery is not null) return htmlRecovery;
                     continue;
                 }
 
@@ -790,6 +880,8 @@ public sealed class AgentService : IAgentService
                         checkpoint);
                     if (planBFailure is not null)
                         return Fail(planBFailure, model, intention, steps, checkpoint);
+                    var htmlRecovery = await TryPlanBHtmlLinkRepairAsync(progressReason, iteration + 1);
+                    if (htmlRecovery is not null) return htmlRecovery;
                     continue;
                 }
 

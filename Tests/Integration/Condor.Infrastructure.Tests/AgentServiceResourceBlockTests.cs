@@ -460,12 +460,11 @@ public class AgentServiceResourceBlockTests
     }
 
     [Fact]
-    public async Task RunAsync_FaltaEnlaceSolicitado_HarnessActivaPlanBYValidaLaCorreccion()
+    public async Task RunAsync_FaltaEnlaceSolicitado_HarnessReparaConPlanB()
     {
         var projectRoot = TempDir();
         Directory.CreateDirectory(projectRoot);
         var withoutLink = "<!doctype html><html lang=\"es\"><body><h1>Condor</h1></body></html>";
-        var withLink = "<!doctype html><html lang=\"es\"><body><h1>Condor</h1><a href=\"docs/indice-condor.html\">Documentacion generada</a></body></html>";
         await File.WriteAllTextAsync(Path.Combine(projectRoot, "index.html"), withoutLink);
         var store = new LocalStateStore(Path.Combine(TempDir(), "state-" + Guid.NewGuid().ToString("N")));
         var assessment = new StubAssessmentService(ramTotalGb: 16, ramFreeGb: 8, installedModels: new[] { "qwen2.5-coder:3b" });
@@ -474,8 +473,7 @@ public class AgentServiceResourceBlockTests
         await session.EnsureAvailableAsync("qwen2.5-coder:3b", CancellationToken.None);
 
         var llm = new SequenceLlmClient(
-            "{\"action\":\"edit_file\",\"path\":\"index.html\",\"content\":\"" + withoutLink.Replace("\"", "\\\"", StringComparison.Ordinal) + "\"}",
-            "{\"action\":\"edit_file\",\"path\":\"index.html\",\"content\":\"" + withLink.Replace("\"", "\\\"", StringComparison.Ordinal) + "\"}");
+            "{\"action\":\"edit_file\",\"path\":\"index.html\",\"content\":\"" + withoutLink.Replace("\"", "\\\"", StringComparison.Ordinal) + "\"}");
         var service = new AgentService(
             store,
             assessment,
@@ -490,10 +488,11 @@ public class AgentServiceResourceBlockTests
             "Actualiza la pagina existente en la ruta exacta index.html (raiz del proyecto, no docs/index.html). Conserva el enlace relativo exacto docs/indice-condor.html.",
             cancellationToken: CancellationToken.None);
 
+        var updated = await File.ReadAllTextAsync(Path.Combine(projectRoot, "index.html"));
         Assert.True(result.Success, result.Reason);
-        Assert.Equal(withLink, await File.ReadAllTextAsync(Path.Combine(projectRoot, "index.html")));
+        Assert.Contains("<a href=\"docs/indice-condor.html\">Documentacion generada</a>", updated);
         Assert.Equal("plan_b_corregido", result.Checkpoint?.LastDecision);
-        Assert.Equal(2, llm.CallCount);
+        Assert.Equal(1, llm.CallCount);
     }
 
     [Fact]
@@ -509,9 +508,7 @@ public class AgentServiceResourceBlockTests
         using var session = new LocalModelSession(http);
         await session.EnsureAvailableAsync("qwen2.5-coder:3b", CancellationToken.None);
 
-        var llm = new SequenceLlmClient(
-            "{\"action\":\"invalid\"}",
-            "{\"action\":\"edit_file\",\"path\":\"index.html\",\"content\":\"" + withoutAnchor.Replace("\"", "\\\"", StringComparison.Ordinal) + "\"}");
+        var llm = new SequenceLlmClient("{\"action\":\"invalid\"}");
         var service = new AgentService(
             store,
             assessment,
@@ -531,7 +528,7 @@ public class AgentServiceResourceBlockTests
         Assert.Contains("<a href=\"docs/indice-condor.html\">Documentacion generada</a>", updated);
         Assert.DoesNotContain("<link rel=\"stylesheet\"", updated, StringComparison.OrdinalIgnoreCase);
         Assert.Equal("plan_b_corregido", result.Checkpoint?.LastDecision);
-        Assert.Equal(2, llm.CallCount);
+        Assert.Equal(1, llm.CallCount);
         Assert.Contains(result.Steps, step =>
             step.Action == AgentAction.ActionEditFile &&
             step.Success &&
