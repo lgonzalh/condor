@@ -2,7 +2,9 @@ using System.Text;
 using Condor.Cli.Commands;
 using Condor.Cli.Presentation;
 using Condor.Cli.Routing;
+using Condor.Core.Catalog;
 using Condor.Core.Contracts;
+using Condor.Core.Evaluation;
 using Condor.Core.Models;
 using Condor.Infrastructure;
 using Condor.Infrastructure.Agent;
@@ -163,6 +165,26 @@ public static class CondorTui
         host.SetProgreso("—");
 
         host.AddActivity("Entorno listo. Modo Local 100% activo.", ActivityKind.System);
+        var ollamaStatus = bootstrap.Assessment?.Tools?.Ollama;
+        if (ollamaStatus?.Installed == true)
+        {
+            if (ollamaStatus.LatestVersion is null)
+            {
+                host.AddActivity("No se pudo comprobar la ultima version de Ollama en este arranque.", ActivityKind.Warning);
+            }
+            else if (ollamaStatus.UpdateAvailable)
+            {
+                host.AddActivity(
+                    "Ollama " + ollamaStatus.ServerVersion + " · nueva version " + ollamaStatus.LatestVersion +
+                    " · winget upgrade --id Ollama.Ollama --exact",
+                    ActivityKind.Warning);
+            }
+            else
+            {
+                host.AddActivity("Ollama actualizado · " + ollamaStatus.ServerVersion, ActivityKind.Success);
+            }
+        }
+
         if (!string.IsNullOrWhiteSpace(prep.Model))
         {
             host.AddActivity("Modelo local listo: " + prep.Model, ActivityKind.System);
@@ -201,10 +223,12 @@ public static class CondorTui
             }
             else if (lastHeaderModel is not null)
             {
-                // Tarea terminada: restaurar modelo de inicio si es diferente.
-                if (!string.IsNullOrWhiteSpace(prep.Model) && prep.Model != lastHeaderModel)
+                // Conservar el modelo activo real, incluso si el usuario lo
+                // cambio desde el selector despues del arranque.
+                var activeModel = session.ActiveModel;
+                if (!string.IsNullOrWhiteSpace(activeModel) && activeModel != lastHeaderModel)
                 {
-                    host.SetModel(prep.Model);
+                    host.SetModel(activeModel);
                 }
                 lastHeaderModel = null;
             }
@@ -290,6 +314,52 @@ public static class CondorTui
                 }
 
                 var submitAction = input.Handle(key);
+                if (submitAction == InputAction.OpenAgents)
+                {
+                    host.AddActivity("Agentes · estado de la ejecución local", ActivityKind.System);
+                    host.AddActivity("Condor · agente principal", ActivityKind.Analysis);
+                    if (string.IsNullOrWhiteSpace(session.ActiveModel))
+                    {
+                        host.AddActivity("Sin modelo activo · usa /modelo para seleccionar uno ya instalado.", ActivityKind.Warning);
+                        host.AddActivity("Abrir comandos: Ctrl+P", ActivityKind.System);
+                        host.SetEstado("Agente sin modelo activo", ActivityKind.Warning);
+                    }
+                    else
+                    {
+                        var assessment = await ReadAssessmentAsync(assessmentService, shutdownToken).ConfigureAwait(true);
+                        var activeModel = FindInstalledModel(assessment, session.ActiveModel);
+                        var capabilities = activeModel is null
+                            ? "capacidades sin verificar"
+                            : DescribeModelCapabilities(activeModel);
+                        host.AddActivity("Modelo activo · " + session.ActiveModel + " · " + capabilities, ActivityKind.Success);
+                        host.AddActivity("Cambiar modelo: /modelo · abrir comandos: Ctrl+P", ActivityKind.System);
+                        host.SetEstado("Panel de agentes", ActivityKind.System);
+                    }
+                    continue;
+                }
+
+                if (submitAction == InputAction.OpenCommands)
+                {
+                    var commands = TuiInput.CommandPaletteCommands;
+                    host.AddActivity("Comandos · ↑/↓ o Tab cambia · Enter ejecuta · Esc cancela", ActivityKind.System);
+                    host.AddActivity(string.Join("  ·  ", commands), ActivityKind.Analysis);
+                    input.BeginCommandPalette();
+                    host.SetEstado("Paleta de comandos", ActivityKind.System);
+                    continue;
+                }
+
+                if (submitAction == InputAction.ModelSelected)
+                {
+                    var selectedModel = input.SelectedModel;
+                    input.Clear();
+                    if (!string.IsNullOrWhiteSpace(selectedModel))
+                    {
+                        await SwitchModelAsync(selectedModel, assessmentService, session, host, shutdownToken)
+                            .ConfigureAwait(true);
+                    }
+                    continue;
+                }
+
                 if (submitAction == InputAction.Exit)
                 {
                     break;
@@ -317,6 +387,38 @@ public static class CondorTui
                         host.SetEstado("Comentario registrado", ActivityKind.System);
                         host.SetProgreso("—");
                         input.Render();
+                        continue;
+                    }
+
+                    if (text.Equals("/modelo", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var models = await LoadInstalledModelsAsync(assessmentService, shutdownToken).ConfigureAwait(true);
+                        if (models.Count == 0)
+                        {
+                            host.AddActivity("Ollama no reporta modelos locales instalados.", ActivityKind.Warning);
+                            host.SetEstado("Sin modelos locales", ActivityKind.Warning);
+                        }
+                        else
+                        {
+                            host.AddActivity("Modelos locales · ↑/↓ o Tab cambia · Enter selecciona · Esc cancela", ActivityKind.System);
+                            foreach (var model in models)
+                            {
+                                host.AddActivity(model.Name + " · " + DescribeModelCapabilities(model), ActivityKind.Analysis);
+                            }
+                            input.BeginModelPicker(models);
+                            host.SetEstado("Selecciona un modelo local", ActivityKind.System);
+                        }
+                        continue;
+                    }
+
+                    if (text.StartsWith("/modelo ", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var selectedModel = text[8..].Trim();
+                        if (!string.IsNullOrWhiteSpace(selectedModel))
+                        {
+                            await SwitchModelAsync(selectedModel, assessmentService, session, host, shutdownToken)
+                                .ConfigureAwait(true);
+                        }
                         continue;
                     }
 
@@ -369,6 +471,161 @@ public static class CondorTui
         host.Dispose();
         Console.WriteLine("Hasta pronto.");
         return exitCode;
+    }
+
+    private static async Task<IReadOnlyList<ModelInfo>> LoadInstalledModelsAsync(
+        IAssessmentService assessmentService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var assessment = await assessmentService.ExecuteAsync(
+                new AssessmentRequest { WorkingDirectory = Environment.CurrentDirectory },
+                cancellationToken).ConfigureAwait(true);
+            return (assessment.Tools?.Ollama?.Models ?? new List<ModelInfo>())
+                .OrderBy(model => model.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+        catch
+        {
+            return Array.Empty<ModelInfo>();
+        }
+    }
+
+    private static async Task<bool> SwitchModelAsync(
+        string modelName,
+        IAssessmentService assessmentService,
+        LocalModelSession session,
+        TuiHost host,
+        CancellationToken cancellationToken)
+    {
+        var firstAssessment = await ReadAssessmentAsync(assessmentService, cancellationToken).ConfigureAwait(true);
+        var model = FindInstalledModel(firstAssessment, modelName);
+        if (model is null)
+        {
+            host.AddActivity("El modelo ya no aparece en Ollama; se cancelo el cambio.", ActivityKind.Warning);
+            host.SetEstado("Modelo no disponible", ActivityKind.Warning);
+            return false;
+        }
+
+        if (!ModelFitsCurrentMemory(model, firstAssessment?.Environment?.Memory, out var reason))
+        {
+            host.AddActivity("No se cambio el modelo: " + reason, ActivityKind.Warning);
+            host.SetEstado("RAM insuficiente para ese modelo", ActivityKind.Warning);
+            return false;
+        }
+
+        var previousModel = session.ActiveModel;
+        if (!string.IsNullOrWhiteSpace(previousModel) &&
+            !previousModel.Equals(model.Name, StringComparison.OrdinalIgnoreCase))
+        {
+            await session.ReleaseAsync(cancellationToken).ConfigureAwait(true);
+        }
+
+        // La liberacion del modelo anterior puede cambiar la RAM libre. Se
+        // vuelve a medir justo antes de cambiar el modelo activo.
+        var freshAssessment = await ReadAssessmentAsync(assessmentService, cancellationToken).ConfigureAwait(true);
+        model = FindInstalledModel(freshAssessment, model.Name);
+        if (model is null || !ModelFitsCurrentMemory(model, freshAssessment?.Environment?.Memory, out reason))
+        {
+            if (!string.IsNullOrWhiteSpace(previousModel))
+            {
+                await session.EnsureAvailableAsync(previousModel, cancellationToken).ConfigureAwait(true);
+            }
+            host.AddActivity("No se cambio el modelo: " + (reason ?? "el inventario local cambio durante la seleccion."), ActivityKind.Warning);
+            host.SetEstado("Cambio de modelo cancelado", ActivityKind.Warning);
+            return false;
+        }
+
+        if (!await session.EnsureAvailableAsync(model.Name, cancellationToken).ConfigureAwait(true))
+        {
+            if (!string.IsNullOrWhiteSpace(previousModel))
+            {
+                await session.EnsureAvailableAsync(previousModel, cancellationToken).ConfigureAwait(true);
+            }
+            host.AddActivity("Ollama no responde; se conserva el modelo anterior.", ActivityKind.Warning);
+            host.SetEstado("Ollama no disponible", ActivityKind.Warning);
+            return false;
+        }
+
+        var budget = BudgetPolicy.Default.Assess(freshAssessment?.Environment?.Memory);
+        session.LastSelectionBudgetGb = budget.BudgetGb;
+        session.LastSelectionFreeRamGb = freshAssessment?.Environment?.Memory is { } memory
+            ? memory.FreeBytes / ModelMemoryBudget.BytesPerGb
+            : 0;
+        host.SetModel(model.Name);
+        host.AddActivity("Modelo seleccionado: " + model.Name + " · " + DescribeModelCapabilities(model), ActivityKind.Success);
+        host.SetEstado("Modelo seleccionado", ActivityKind.Success);
+        host.SetProgreso("—");
+        return true;
+    }
+
+    private static async Task<AssessmentResult?> ReadAssessmentAsync(
+        IAssessmentService assessmentService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await assessmentService.ExecuteAsync(
+                new AssessmentRequest { WorkingDirectory = Environment.CurrentDirectory },
+                cancellationToken).ConfigureAwait(true);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static ModelInfo? FindInstalledModel(AssessmentResult? assessment, string name)
+        => assessment?.Tools?.Ollama?.Models.FirstOrDefault(model =>
+            model.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+
+    private static bool ModelFitsCurrentMemory(ModelInfo model, MemoryInfo? memory, out string? reason)
+    {
+        reason = null;
+        if (memory is null || memory.Status != DetectionStatus.Detected || memory.TotalBytes <= 0 || model.SizeBytes <= 0)
+        {
+            reason = "RAM o tamaño real del modelo no verificable.";
+            return false;
+        }
+
+        var weightGb = model.SizeBytes / ModelMemoryBudget.BytesPerGb;
+        const double contextEstimateGb = 8192 * 0.125 / ModelMemoryBudget.BytesPerGb;
+        var peakGb = ModelMemoryBudget.EstimatePeakGb(weightGb, contextEstimateGb);
+        var totalGb = memory.TotalBytes / ModelMemoryBudget.BytesPerGb;
+        var budget = BudgetPolicy.Default.Assess(memory);
+        if (ModelMemoryBudget.ClassifyByRatio(peakGb, totalGb) == ResourcePressure.Insufficient ||
+            !budget.IsBudgeted || !budget.Admits(peakGb))
+        {
+            reason = "la RAM libre real no deja el margen operativo requerido para cargarlo.";
+            return false;
+        }
+
+        return true;
+    }
+
+    internal static string DescribeModelCapabilities(ModelInfo model)
+    {
+        var labels = new List<string>();
+        var capabilities = model.Capabilities ?? new List<string>();
+        var hasTools = capabilities.Any(value =>
+            value.Equals("tools", StringComparison.OrdinalIgnoreCase) ||
+            value.Equals("tool-use", StringComparison.OrdinalIgnoreCase));
+        var hasThinking = capabilities.Any(value => value.Equals("thinking", StringComparison.OrdinalIgnoreCase));
+        var identity = (model.Name + " " + model.Family).ToLowerInvariant();
+        var catalogProfile = ModelCatalog.Default.FirstOrDefault(candidate =>
+            candidate.Name.Equals(model.Name, StringComparison.OrdinalIgnoreCase) ||
+            candidate.PullName.Equals(model.Name, StringComparison.OrdinalIgnoreCase));
+
+        if (hasTools && hasThinking) labels.Add("Agente");
+        if (hasTools) labels.Add("Herramientas");
+        if (identity.Contains("coder", StringComparison.Ordinal) || identity.Contains("code", StringComparison.Ordinal) ||
+            (catalogProfile?.CodingLevel ?? 0) > 0) labels.Add("Desarrollo");
+        if (capabilities.Any(value => value.Equals("vision", StringComparison.OrdinalIgnoreCase))) labels.Add("Imagen");
+        if (capabilities.Any(value => value.Equals("audio", StringComparison.OrdinalIgnoreCase))) labels.Add("Audio");
+        if (model.SizeBytes > 0 && model.SizeBytes <= 2L * 1024 * 1024 * 1024) labels.Add("Rápido");
+        if (labels.Count == 0) labels.Add("Chat");
+        return string.Join(" · ", labels);
     }
 
     private static async Task<int> FatalExitAsync(TuiHost host, string headline, string[] details)

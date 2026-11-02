@@ -636,8 +636,9 @@ public sealed class TuiHost : IDisposable
         sb.Append(Ansi.At(3, Math.Max(1, (_width - IdentityLine.Length) / 2)));
         sb.Append(Ansi.FgDorado + IdentityLine + Ansi.Reset);
 
-        sb.Append(Ansi.At(4, Math.Max(1, (_width - VersionInfo.DisplayName.Length) / 2)));
-        sb.Append(Ansi.FgGris + VersionInfo.DisplayName + " · " + CopyrightLine + Ansi.Reset);
+        var versionLine = VersionInfo.DisplayName + " · " + CopyrightLine;
+        sb.Append(Ansi.At(4, Math.Max(1, (_width - versionLine.Length) / 2)));
+        sb.Append(Ansi.FgGris + versionLine + Ansi.Reset);
 
         var artLeft = Math.Max(1, (_width - CondorArt.GrandeWidth) / 2);
         for (var i = 0; i < CondorArt.Grande.Length && 5 + i <= 18; i++)
@@ -759,7 +760,8 @@ public sealed class TuiHost : IDisposable
         sb.Append(Ansi.At(18, 3));
         sb.Append(Ansi.ClearLine);
         var frame = _busy ? SpinnerFrames[_spin % SpinnerFrames.Length] + " " : "";
-        sb.Append(EstadoColor(_estadoKind) + Clip(frame + "Iniciando ...", _width - 6) + Ansi.Reset);
+        var message = string.IsNullOrWhiteSpace(_progreso) || _progreso == "—" ? _estado : _progreso;
+        sb.Append(EstadoColor(_estadoKind) + Clip(frame + message, _width - 6) + Ansi.Reset);
 
         sb.Append(Ansi.At(19, 3));
         sb.Append(Ansi.ClearLine);

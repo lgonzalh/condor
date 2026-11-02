@@ -195,7 +195,7 @@ public class FotogramasTuiTests
         // linea de identidad, fuera del area del arte.
         var titulo = grid[0];
         Assert.Contains("CONDOR", titulo);
-        Assert.Contains("v1.0 · build interno beta", titulo);
+        Assert.Contains("v1.0 · build interno Gamma", titulo);
         Assert.Single(Regex.Matches(titulo, "build interno"));
 
         var cabecera = string.Join("\n", grid.Take(4));
@@ -333,6 +333,7 @@ public class FotogramasTuiTests
         Assert.Contains("CONDOR", frame);
         Assert.Contains("Observa · Comprende · Planifica · Construye · Verifica", frame);
         Assert.Contains("Hecho en Colombia · Modo Local 100%", frame);
+        Assert.Contains("v1.0 · build interno Gamma · ©Condor 2026", frame);
     }
 
     [Fact]
@@ -348,7 +349,8 @@ public class FotogramasTuiTests
         // La comunicacion es directa, sin titulares artificiales.
         Assert.DoesNotContain("Estado:", frame);
         Assert.DoesNotContain("Progreso:", frame);
-        Assert.Contains("Iniciando ...", frame);
+        Assert.Contains("etapa 1/5", frame);
+        Assert.DoesNotContain("Iniciando ...", frame);
     }
 }
 

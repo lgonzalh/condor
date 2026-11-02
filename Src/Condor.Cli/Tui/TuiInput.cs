@@ -1,3 +1,5 @@
+using Condor.Core.Models;
+
 namespace Condor.Cli.Tui;
 
 /// <summary>Resultado de una tecla procesada por el editor de la TUI.</summary>
@@ -15,6 +17,15 @@ public enum InputAction
     /// <summary>El usuario interrumpio la tarea activa (Esc + Esc).</summary>
     Interrupt,
 
+    /// <summary>Abre el panel del agente activo (Tab).</summary>
+    OpenAgents,
+
+    /// <summary>Abre la paleta de comandos (Ctrl+P).</summary>
+    OpenCommands,
+
+    /// <summary>Confirma el modelo elegido en el selector.</summary>
+    ModelSelected,
+
     /// <summary>Tecla ignorada (no aplica en el estado actual).</summary>
     Ignored
 }
@@ -30,7 +41,7 @@ public sealed class TuiInput
     {
         "/analizar", "/contexto", "/planear", "/construir", "/verificar",
         "/verificar-semantico", "/avanzar", "/examinar", "/recomendar",
-        "/consultar", "/preparar", "/ayuda", "/version", "/salir"
+        "/consultar", "/preparar", "/modelo", "/ayuda", "/version", "/salir"
     };
 
     private readonly TuiHost _host;
@@ -42,6 +53,11 @@ public sealed class TuiInput
     private int _historyIndex;   // == _history.Count cuando se esta escribiendo nuevo texto
     private string _draft = "";
     private bool _escapePressed; // Para detectar Esc + Esc
+    private List<ModelInfo> _modelChoices = new();
+    private int _modelChoiceIndex;
+    private bool _modelPickerActive;
+    private int _commandChoiceIndex;
+    private bool _commandPaletteActive;
 
     public TuiInput(TuiHost host, IEnumerable<string>? extraCompletions = null)
     {
@@ -51,6 +67,11 @@ public sealed class TuiInput
     }
 
     public string Buffer => _buffer;
+    public string? SelectedModel => _modelPickerActive || _modelChoices.Count > 0
+        ? _modelChoices.ElementAtOrDefault(_modelChoiceIndex)?.Name
+        : null;
+
+    public static IReadOnlyList<string> CommandPaletteCommands => KnownCommands;
 
     /// <summary>Dibuja la linea de entrada en su region.</summary>
     public void Render()
@@ -61,6 +82,9 @@ public sealed class TuiInput
     /// <summary>Limpia el editor y redibuja.</summary>
     public void Clear()
     {
+        _modelPickerActive = false;
+        _commandPaletteActive = false;
+        _modelChoices.Clear();
         _buffer = "";
         _caret = 0;
         _historyIndex = _history.Count;
@@ -71,6 +95,9 @@ public sealed class TuiInput
     /// <summary>Fuerza un texto en el editor (p. ej. reencolar una tarea).</summary>
     public void SetText(string text)
     {
+        _modelPickerActive = false;
+        _commandPaletteActive = false;
+        _modelChoices.Clear();
         _buffer = text ?? "";
         _caret = _buffer.Length;
         Render();
@@ -78,6 +105,21 @@ public sealed class TuiInput
 
     public InputAction Handle(ConsoleKeyInfo key)
     {
+        if ((key.Modifiers & ConsoleModifiers.Control) != 0 && key.Key == ConsoleKey.P)
+        {
+            return InputAction.OpenCommands;
+        }
+
+        if (_modelPickerActive)
+        {
+            return HandleModelPicker(key);
+        }
+
+        if (_commandPaletteActive)
+        {
+            return HandleCommandPalette(key);
+        }
+
         switch (key.Key)
         {
             case ConsoleKey.Enter:
@@ -175,6 +217,11 @@ public sealed class TuiInput
                 return InputAction.None;
 
             case ConsoleKey.Tab:
+                if (_buffer.Length == 0)
+                {
+                    return InputAction.OpenAgents;
+                }
+
                 Complete();
                 return InputAction.None;
 
@@ -186,6 +233,98 @@ public sealed class TuiInput
 
                 return InputAction.None;
         }
+    }
+
+    public void BeginModelPicker(IEnumerable<ModelInfo> models)
+    {
+        _modelChoices = models
+            .Where(model => !string.IsNullOrWhiteSpace(model.Name))
+            .GroupBy(model => model.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .OrderBy(model => model.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        _modelChoiceIndex = 0;
+        _modelPickerActive = _modelChoices.Count > 0;
+        _commandPaletteActive = false;
+        if (_modelPickerActive)
+        {
+            SetTextInternal(_modelChoices[0].Name);
+        }
+    }
+
+    public void BeginCommandPalette()
+    {
+        _modelPickerActive = false;
+        _modelChoices.Clear();
+        _commandPaletteActive = true;
+        _commandChoiceIndex = 0;
+        SetTextInternal(KnownCommands[_commandChoiceIndex]);
+    }
+
+    private InputAction HandleModelPicker(ConsoleKeyInfo key)
+    {
+        switch (key.Key)
+        {
+            case ConsoleKey.Enter:
+                _modelPickerActive = false;
+                return InputAction.ModelSelected;
+            case ConsoleKey.UpArrow:
+                MoveModelChoice(-1);
+                return InputAction.None;
+            case ConsoleKey.DownArrow:
+            case ConsoleKey.Tab:
+                MoveModelChoice(1);
+                return InputAction.None;
+            case ConsoleKey.Escape:
+                _modelPickerActive = false;
+                _modelChoices.Clear();
+                SetTextInternal("");
+                return InputAction.None;
+            default:
+                return InputAction.None;
+        }
+    }
+
+    private InputAction HandleCommandPalette(ConsoleKeyInfo key)
+    {
+        switch (key.Key)
+        {
+            case ConsoleKey.Enter:
+                _commandPaletteActive = false;
+                return InputAction.Submit;
+            case ConsoleKey.UpArrow:
+                MoveCommandChoice(-1);
+                return InputAction.None;
+            case ConsoleKey.DownArrow:
+            case ConsoleKey.Tab:
+                MoveCommandChoice(1);
+                return InputAction.None;
+            case ConsoleKey.Escape:
+                _commandPaletteActive = false;
+                SetTextInternal("");
+                return InputAction.None;
+            default:
+                _commandPaletteActive = false;
+                return InputAction.None;
+        }
+    }
+
+    private void MoveModelChoice(int delta)
+    {
+        if (_modelChoices.Count == 0)
+        {
+            _modelPickerActive = false;
+            return;
+        }
+
+        _modelChoiceIndex = (_modelChoiceIndex + delta + _modelChoices.Count) % _modelChoices.Count;
+        SetTextInternal(_modelChoices[_modelChoiceIndex].Name);
+    }
+
+    private void MoveCommandChoice(int delta)
+    {
+        _commandChoiceIndex = (_commandChoiceIndex + delta + KnownCommands.Length) % KnownCommands.Length;
+        SetTextInternal(KnownCommands[_commandChoiceIndex]);
     }
 
     private void Insert(string text)

@@ -10,12 +10,14 @@ public sealed class TuiPresentationChangeTests
         using var host = new TuiHost(forceInteractive: true);
         host.Enter();
         host.ShowWelcome();
+        host.SetEstado("Preparando dependencias");
+        host.SetProgreso("Verificando RAM y modelos locales");
         host.SetBusy(true);
 
         var frame = Ansi.StripSgr(host.SnapshotFullFrame());
 
-        Assert.Contains("Iniciando ...", frame);
-        Assert.DoesNotContain("_Iniciando", frame);
+        Assert.Contains("Verificando RAM y modelos locales", frame);
+        Assert.DoesNotContain("Iniciando ...", frame);
         Assert.Contains("©Condor 2026", frame);
     }
 
