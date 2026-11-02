@@ -191,12 +191,15 @@ public class FotogramasTuiTests
         host.AddActivity("Entorno listo. Modo Local 100% activo.", ActivityKind.Success);
         var grid = Grid(host.SnapshotFullFrame());
 
-        // Cabecera: marca + version a la izquierda (una vez) y modelo real en la
-        // linea de identidad, fuera del area del arte.
+        // Cabecera: marca + build Gamma centrados y modelo real en la linea de
+        // identidad, fuera del area del arte.
         var titulo = grid[0];
         Assert.Contains("CONDOR", titulo);
-        Assert.Contains("v1.0 · build interno Gamma", titulo);
-        Assert.Single(Regex.Matches(titulo, "build interno"));
+        Assert.Contains(VersionInfo.DisplayName, titulo);
+        Assert.Single(Regex.Matches(titulo, Regex.Escape(VersionInfo.DisplayName)));
+        var tituloEsperado = "CONDOR    " + VersionInfo.DisplayName;
+        Assert.InRange(Math.Abs(titulo.IndexOf(tituloEsperado, StringComparison.Ordinal) -
+                                (110 - tituloEsperado.Length) / 2), 0, 0);
 
         var cabecera = string.Join("\n", grid.Take(4));
         Assert.Contains("qwen2.5-coder:3b", cabecera);
@@ -366,7 +369,11 @@ public class FotogramasTuiTests
         Assert.Contains("CONDOR", frame);
         Assert.Contains("Observa · Comprende · Planifica · Construye · Verifica", frame);
         Assert.Contains("Hecho en Colombia · Modo Local 100%", frame);
-        Assert.Contains("v1.0 · build interno Gamma · ©Condor 2026", frame);
+        Assert.Contains("v1.0.0-gamma (Build Gamma) · ©Condor 2026", frame);
+        var versionLine = "v1.0.0-gamma (Build Gamma) · ©Condor 2026";
+        var versionRow = Grid(host.SnapshotFullFrame()).Single(line => line.Contains(versionLine));
+        Assert.InRange(Math.Abs(versionRow.IndexOf(versionLine, StringComparison.Ordinal) -
+                                (110 - versionLine.Length) / 2), 0, 0);
     }
 
     [Fact]

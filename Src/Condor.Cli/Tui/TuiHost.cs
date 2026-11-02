@@ -589,7 +589,9 @@ public sealed class TuiHost : IDisposable
             switch (row)
             {
                 case 1:
-                    PaintHeaderTextLocked(sb, row, textLeftCol, "CONDOR    v" + VersionInfo.PublicVersion + " · build interno " + VersionInfo.InternalBuild, Ansi.FgBlanco);
+                    var title = "CONDOR    " + VersionInfo.DisplayName;
+                    var titleCol = Math.Max(textLeftCol, (_width - title.Length) / 2 + 1);
+                    PaintHeaderTextLocked(sb, row, titleCol, title, Ansi.FgBlanco);
                     break;
                 case 2:
                     PaintHeaderTextLocked(sb, row, textLeftCol, Slogan, Ansi.FgTerracota);
@@ -663,7 +665,7 @@ public sealed class TuiHost : IDisposable
         sb.Append(Ansi.FgDorado + IdentityLine + Ansi.Reset);
 
         var versionLine = VersionInfo.DisplayName + " · " + CopyrightLine;
-        sb.Append(Ansi.At(4, Math.Max(1, (_width - versionLine.Length) / 2)));
+        sb.Append(Ansi.At(4, Math.Max(1, (_width - versionLine.Length) / 2 + 1)));
         sb.Append(Ansi.FgGris + versionLine + Ansi.Reset);
 
         var artLeft = Math.Max(1, (_width - CondorArt.GrandeWidth) / 2);
