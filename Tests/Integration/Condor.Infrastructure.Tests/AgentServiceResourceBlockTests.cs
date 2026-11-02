@@ -426,9 +426,7 @@ public class AgentServiceResourceBlockTests
         var projectRoot = TempDir();
         Directory.CreateDirectory(projectRoot);
         Directory.CreateDirectory(Path.Combine(projectRoot, "docs"));
-        var original = "<!doctype html><html><body>Anterior</body></html>";
         var replacement = "<!doctype html><html lang=\"es\"><meta charset=\"UTF-8\"><body><h1>Listo</h1></body></html>";
-        await File.WriteAllTextAsync(Path.Combine(projectRoot, "index.html"), original);
         var store = new LocalStateStore(Path.Combine(TempDir(), "state-" + Guid.NewGuid().ToString("N")));
         var assessment = new StubAssessmentService(ramTotalGb: 16, ramFreeGb: 8, installedModels: new[] { "qwen2.5-coder:3b" });
         using var http = new HttpClient(new StubOllamaHandler());
@@ -436,8 +434,7 @@ public class AgentServiceResourceBlockTests
         await session.EnsureAvailableAsync("qwen2.5-coder:3b", CancellationToken.None);
 
         var llm = new SequenceLlmClient(
-            "{\"action\":\"read_file\",\"path\":\"docs/index.html\"}",
-            "{\"action\":\"edit_file\",\"path\":\"docs/index.html\",\"content\":\"" + replacement.Replace("\"", "\\\"", StringComparison.Ordinal) + "\"}");
+            "{\"action\":\"create_file\",\"path\":\"docs/index.html\",\"content\":\"" + replacement.Replace("\"", "\\\"", StringComparison.Ordinal) + "\"}");
         var service = new AgentService(
             store,
             assessment,
@@ -449,7 +446,7 @@ public class AgentServiceResourceBlockTests
             CreateModelAutoSetup(store, assessment, "qwen2.5-coder:3b"));
 
         var result = await service.RunAsync(
-            "Actualiza la pagina existente en la ruta exacta index.html (raiz del proyecto, no docs/index.html) y conserva su enlace.",
+            "Crea la pagina en la ruta exacta index.html (raiz del proyecto, no docs/index.html).",
             cancellationToken: CancellationToken.None);
 
         Assert.True(result.Success, result.Reason);

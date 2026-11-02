@@ -1182,7 +1182,7 @@ var modelSetup = CreateModelSetup();
         var root = Path.GetFullPath(workingDir);
         var target = Path.GetFullPath(Path.Combine(root, requestedFile));
         var rootPrefix = Path.EndsInDirectorySeparator(root) ? root : root + Path.DirectorySeparatorChar;
-        if (!target.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase) || !File.Exists(target))
+        if (!target.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase))
             return false;
 
         action.Path = requestedFile;
