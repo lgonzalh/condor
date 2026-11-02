@@ -74,7 +74,7 @@ public sealed class TaskIntentClassifierTests
     [Fact]
     public void SolicitudRealDePaginaHtmlConInformeAutomatico_NoEsInformativa()
     {
-        const string intention = "Actualiza la pagina existente en la ruta exacta index.html (raiz del proyecto, no docs/index.html) para que sea estatica y adaptable a movil y escritorio. Primero lee index.html y luego actualiza esa misma ruta usando edit_file con el contenido completo. Conserva el enlace relativo exacto docs/tareas/indice-condor.html. Incluye doctype HTML, lang es, meta charset UTF-8, meta viewport y CSS en la pagina con contenedor centrado, ancho maximo, espaciado fluido, colores legibles y una regla @media para pantallas de hasta 600px. Sin dependencias ni recursos externos. No alteres docs/tareas; Condor guardara su informe automatico alli.";
+        const string intention = "Actualiza la pagina existente en la ruta exacta index.html (raiz del proyecto, no docs/index.html) para que sea estatica y adaptable a movil y escritorio. Primero lee index.html y luego actualiza esa misma ruta usando edit_file con el contenido completo. Conserva el enlace relativo exacto docs/indice-condor.html. Incluye doctype HTML, lang es, meta charset UTF-8, meta viewport y CSS en la pagina con contenedor centrado, ancho maximo, espaciado fluido, colores legibles y una regla @media para pantallas de hasta 600px. Sin dependencias ni recursos externos. No alteres docs; Condor guardara su informe automatico alli.";
 
         Assert.False(TaskIntentClassifier.IsInformational(intention));
     }

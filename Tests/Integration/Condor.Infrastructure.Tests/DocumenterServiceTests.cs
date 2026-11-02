@@ -37,12 +37,13 @@ public class DocumenterServiceTests
             Assert.DoesNotContain("sk-proj-123456789abcdef", content);
             Assert.DoesNotContain("api_key=valor-secreto", content);
 
-            var indexPath = Path.Combine(root, "docs", "tareas", "indice-condor.html");
+            var indexPath = Path.Combine(root, "docs", "indice-condor.html");
             Assert.True(File.Exists(indexPath));
             var indexContent = await File.ReadAllTextAsync(indexPath, new UTF8Encoding(false, true));
             Assert.Contains(Path.GetFileName(firstPath), indexContent);
             Assert.Contains(Path.GetFileName(Path.Combine(root, second.RelativePath!.Replace('/', Path.DirectorySeparatorChar))), indexContent);
-            Assert.Equal(3, Directory.GetFiles(Path.Combine(root, "docs", "tareas")).Length);
+            Assert.Equal(3, Directory.GetFiles(Path.Combine(root, "docs")).Length);
+            Assert.False(Directory.Exists(Path.Combine(root, "docs", "tareas")));
         }
         finally
         {

@@ -465,7 +465,7 @@ public class AgentServiceResourceBlockTests
         var projectRoot = TempDir();
         Directory.CreateDirectory(projectRoot);
         var withoutLink = "<!doctype html><html lang=\"es\"><body><h1>Condor</h1></body></html>";
-        var withLink = "<!doctype html><html lang=\"es\"><body><h1>Condor</h1><a href=\"docs/tareas/indice-condor.html\">Documentacion generada</a></body></html>";
+        var withLink = "<!doctype html><html lang=\"es\"><body><h1>Condor</h1><a href=\"docs/indice-condor.html\">Documentacion generada</a></body></html>";
         await File.WriteAllTextAsync(Path.Combine(projectRoot, "index.html"), withoutLink);
         var store = new LocalStateStore(Path.Combine(TempDir(), "state-" + Guid.NewGuid().ToString("N")));
         var assessment = new StubAssessmentService(ramTotalGb: 16, ramFreeGb: 8, installedModels: new[] { "qwen2.5-coder:3b" });
@@ -487,7 +487,7 @@ public class AgentServiceResourceBlockTests
             CreateModelAutoSetup(store, assessment, "qwen2.5-coder:3b"));
 
         var result = await service.RunAsync(
-            "Actualiza la pagina existente en la ruta exacta index.html (raiz del proyecto, no docs/index.html). Conserva el enlace relativo exacto docs/tareas/indice-condor.html.",
+            "Actualiza la pagina existente en la ruta exacta index.html (raiz del proyecto, no docs/index.html). Conserva el enlace relativo exacto docs/indice-condor.html.",
             cancellationToken: CancellationToken.None);
 
         Assert.True(result.Success, result.Reason);

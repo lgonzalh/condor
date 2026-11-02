@@ -25,6 +25,9 @@ public sealed class DocumenterService : IDocumenter
     private static readonly Regex BearerPattern = new(
         @"\bBearer\s+[A-Za-z0-9._~+/=-]+",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+    private static readonly Regex GeneratedReportNamePattern = new(
+        @"^\d{8}-\d{9}-.+-[0-9a-f]{32}\.md$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
     public async Task<DocumentationResult> WriteAsync(
         DocumentationRequest request,
@@ -47,7 +50,7 @@ public sealed class DocumenterService : IDocumenter
                 return Failure(generatedAtUtc, "El directorio de trabajo no existe.");
             }
 
-            var reportDirectory = Path.GetFullPath(Path.Combine(root, "docs", "tareas"));
+            var reportDirectory = Path.GetFullPath(Path.Combine(root, "docs"));
             var rootPrefix = root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
                 + Path.DirectorySeparatorChar;
             if (!reportDirectory.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase))
@@ -55,14 +58,14 @@ public sealed class DocumenterService : IDocumenter
                 return Failure(generatedAtUtc, "La ruta del informe queda fuera del directorio de trabajo.");
             }
 
-            if (ContainsReparsePoint(root, "docs", "tareas"))
+            if (ContainsReparsePoint(root, "docs"))
             {
                 return Failure(generatedAtUtc, "La ruta del informe contiene un enlace a otro directorio.");
             }
 
             Directory.CreateDirectory(reportDirectory);
 
-            if (ContainsReparsePoint(root, "docs", "tareas"))
+            if (ContainsReparsePoint(root, "docs"))
             {
                 return Failure(generatedAtUtc, "La ruta del informe contiene un enlace a otro directorio.");
             }
@@ -107,7 +110,7 @@ public sealed class DocumenterService : IDocumenter
 
             var reportNames = Directory.EnumerateFiles(reportDirectory, "*.md", SearchOption.TopDirectoryOnly)
                 .Select(path => Path.GetFileName(path) ?? string.Empty)
-                .Where(name => name.Length > 0)
+                .Where(name => GeneratedReportNamePattern.IsMatch(name))
                 .OrderByDescending(name => name, StringComparer.OrdinalIgnoreCase)
                 .ToList();
             await File.WriteAllTextAsync(
