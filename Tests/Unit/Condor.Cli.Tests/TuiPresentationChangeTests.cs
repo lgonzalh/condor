@@ -12,11 +12,13 @@ public sealed class TuiPresentationChangeTests
         host.ShowWelcome();
         host.SetEstado("Preparando dependencias");
         host.SetProgreso("Verificando RAM y modelos locales");
+        host.SetModelStatus("Ollama · Verificando RAM y modelos locales", working: true);
         host.SetBusy(true);
 
         var frame = Ansi.StripSgr(host.SnapshotFullFrame());
 
-        Assert.Contains("Verificando RAM y modelos locales", frame);
+        Assert.Contains("Condor · Preparando dependencias · Verificando RAM y modelos locales", frame);
+        Assert.Contains("Ollama · Verificando RAM y modelos locales", frame);
         Assert.DoesNotContain("Iniciando ...", frame);
         Assert.Contains("©Condor 2026", frame);
     }

@@ -319,7 +319,22 @@ public sealed class AgentService : IAgentService
                 //    fallo del proveedor (crash/caida/timeout) del protocolo del
                 //    modelo (respuesta no-JSON), para no consumir iteraciones
                 //    como si el modelo siguiera disponible cuando no lo esta.
+                progress?.Report(AgentProgress.Of(
+                    AgentPhase.Analyzing,
+                    iteration: iteration + 1,
+                    message: "Esperando propuesta",
+                    modelActivity: model + " · generando propuesta",
+                    modelWorking: true));
                 var call = await RequestActionAsync(model, messages, timeoutCts.Token);
+                var modelActivity = call.Action is { } proposedAction
+                    ? model + " · propuso " + proposedAction.Action + (string.IsNullOrWhiteSpace(proposedAction.Path) ? "" : " " + proposedAction.Path)
+                    : model + " · no produjo una acción válida";
+                progress?.Report(AgentProgress.Of(
+                    AgentPhase.Analyzing,
+                    iteration: iteration + 1,
+                    message: "Respuesta estructurada recibida",
+                    modelActivity: modelActivity,
+                    modelWorking: false));
 
                 // Una respuesta no estructurada es un fallo de protocolo, no una
                 // caida del proveedor. Se corrige en Plan B sin esperar al limite.
@@ -332,7 +347,9 @@ public sealed class AgentService : IAgentService
                     progress?.Report(AgentProgress.Of(
                         AgentPhase.Verifying,
                         message: "Modelo local · " + LlmOutcomeLabel(call.ProviderFailure.Value) + " · " + call.Error,
-                        flag: ProgressFlag.ProviderError));
+                        flag: ProgressFlag.ProviderError,
+                        modelActivity: model + " · " + LlmOutcomeLabel(call.ProviderFailure.Value),
+                        modelWorking: false));
 
                     var recovered = await TryRecoverProviderAsync(model, messages, progress, timeoutCts.Token);
                     if (recovered is not null)
@@ -355,6 +372,15 @@ public sealed class AgentService : IAgentService
                                 flag: ProgressFlag.ProviderError));
                             return Fail(checkpoint.LastError, model, intention, steps, checkpoint);
                         }
+
+                        progress?.Report(AgentProgress.Of(
+                            AgentPhase.Analyzing,
+                            iteration: iteration + 1,
+                            message: "Respuesta recuperada del proveedor",
+                            modelActivity: call.Action is { } recoveredAction
+                                ? model + " · propuso " + recoveredAction.Action + (string.IsNullOrWhiteSpace(recoveredAction.Path) ? "" : " " + recoveredAction.Path)
+                                : model + " · respuesta sin acción válida",
+                            modelWorking: false));
 
                     }
                     else
@@ -1019,7 +1045,9 @@ var modelSetup = CreateModelSetup();
             message: "Consultando el modelo local",
             resourceState: selection.Resources?.PressureLabel,
             availableGb: selection.Resources?.FreeGb,
-            safeBudgetGb: selection.Budget?.BudgetGb));
+            safeBudgetGb: selection.Budget?.BudgetGb,
+            modelActivity: model + " · redactando respuesta",
+            modelWorking: true));
 
         LlmResponse response;
         try
@@ -1038,6 +1066,12 @@ var modelSetup = CreateModelSetup();
         {
             return Fail("Tiempo total de la consulta agotado.", model, intention, steps, checkpoint);
         }
+
+        progress?.Report(AgentProgress.Of(
+            AgentPhase.Understanding,
+            message: "Condor recibió la respuesta del modelo",
+            modelActivity: model + " · respuesta recibida",
+            modelWorking: false));
 
         if (!response.Success || string.IsNullOrWhiteSpace(response.Content))
         {
@@ -1599,7 +1633,9 @@ var modelSetup = CreateModelSetup();
             progress?.Report(AgentProgress.Of(
                 AgentPhase.Verifying,
                 message: "Modelo local: intentando recuperacion (" + (attempt + 1) + "/" + maxProbes + ")",
-                flag: ProgressFlag.Recovering));
+                flag: ProgressFlag.Recovering,
+                modelActivity: model + " · reintentando conexión (" + (attempt + 1) + "/" + maxProbes + ")",
+                modelWorking: true));
 
             bool available;
             try

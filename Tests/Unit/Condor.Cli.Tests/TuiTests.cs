@@ -321,6 +321,39 @@ public class FotogramasTuiTests
     }
 
     [Fact]
+    public void Sesion_ActualizaEnSitioLasDosLineasDeEstado()
+    {
+        using var host = HostSesion();
+        var view = new TuiAgentProgressView(host);
+        view.Start("Crea index.html en la raiz del proyecto");
+        view.Report(AgentProgress.Of(
+            AgentPhase.Analyzing,
+            iteration: 1,
+            message: "Esperando propuesta",
+            modelActivity: "qwen2.5-coder:3b · generando propuesta",
+            modelWorking: true));
+
+        var first = Grid(host.SnapshotFullFrame());
+        Assert.Contains("Condor ·", first[32]);
+        Assert.Contains("Esperando propuesta", first[32]);
+        Assert.Contains("RAM", first[32]);
+        Assert.Contains("generando propuesta", first[33]);
+
+        view.Report(AgentProgress.Of(
+            AgentPhase.Analyzing,
+            iteration: 1,
+            message: "Condor recibió la respuesta estructurada",
+            modelActivity: "qwen2.5-coder:3b · propuso create_file index.html\r\nsegunda linea",
+            modelWorking: false));
+
+        var updated = Grid(host.SnapshotFullFrame());
+        Assert.Contains("Condor ·", updated[32]);
+        Assert.Contains("propuso create_file index.html segunda linea", updated[33]);
+        Assert.DoesNotContain("generando propuesta", updated[33]);
+        Assert.DoesNotContain('\n', host.SnapshotFullFrame());
+    }
+
+    [Fact]
     public void Bienvenida_PresentaMascotaGrande()
     {
         var host = new TuiHost(forceInteractive: true);
@@ -346,11 +379,11 @@ public class FotogramasTuiTests
         host.SetProgreso("etapa 1/5");
         var frame = Ansi.StripSgr(host.SnapshotFullFrame());
 
-        // La comunicacion es directa, sin titulares artificiales.
+        // La bienvenida conserva dos renglones: Condor y el estado secundario.
         Assert.DoesNotContain("Estado:", frame);
         Assert.DoesNotContain("Progreso:", frame);
-        Assert.Contains("etapa 1/5", frame);
-        Assert.DoesNotContain("Iniciando ...", frame);
+        Assert.Contains("Condor · Iniciando ... · etapa 1/5", frame);
+        Assert.Contains("Modelo local · esperando una tarea", frame);
     }
 }
 
@@ -490,14 +523,16 @@ public class ArquitecturaInteraccionesTests
         host.SetEstado("Listo", ActivityKind.Success);
         var grid = Grid(host.SnapshotFullFrame());
 
-        var statusBar = grid[grid.Length - 1];
-        // La barra inferior muestra el workspace real y el estado; el modelo y la
-        // version viven SOLO en la cabecera. No debe caer en una ruta fija.
+        var statusBar = grid[grid.Length - 2];
+        var modelBar = grid[grid.Length - 1];
+        // Las dos filas inferiores muestran estado y modelo; la ruta de trabajo
+        // aparece en la fila Condor cuando el espacio alcanza.
         Assert.Contains("Listo", statusBar);
         Assert.Contains("C:\\GitHub\\prueba", statusBar);
         Assert.DoesNotContain("C:\\GitHub\\condor", statusBar);
         Assert.Contains("RAM", statusBar);
         Assert.DoesNotContain("qwen2.5-coder", statusBar);
+        Assert.Contains("qwen2.5-coder:3b", modelBar);
         Assert.DoesNotContain("build interno", statusBar);
         Assert.DoesNotContain("Workspace:", statusBar);
         Assert.DoesNotContain("Modo:", statusBar);

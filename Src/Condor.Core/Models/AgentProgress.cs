@@ -46,6 +46,12 @@ public sealed class AgentProgress
     /// <summary>Presupuesto seguro dinamico (GB) en el punto del evento, si estaba disponible.</summary>
     public double? SafeBudgetGb { get; init; }
 
-    public static AgentProgress Of(AgentPhase phase, string? action = null, string? path = null, int? iteration = null, string? message = null, ProgressFlag flag = ProgressFlag.Normal, string? resourceState = null, double? availableGb = null, double? safeBudgetGb = null)
-        => new() { Phase = phase, Action = action, Path = path, Iteration = iteration, Message = message, Flag = flag, ResourceState = resourceState, AvailableGb = availableGb, SafeBudgetGb = safeBudgetGb };
+    /// <summary>Actividad visible y concreta del modelo; no expone razonamiento interno.</summary>
+    public string? ModelActivity { get; init; }
+
+    /// <summary>Indica si el modelo esta generando una respuesta en este momento.</summary>
+    public bool? ModelWorking { get; init; }
+
+    public static AgentProgress Of(AgentPhase phase, string? action = null, string? path = null, int? iteration = null, string? message = null, ProgressFlag flag = ProgressFlag.Normal, string? resourceState = null, double? availableGb = null, double? safeBudgetGb = null, string? modelActivity = null, bool? modelWorking = null)
+        => new() { Phase = phase, Action = action, Path = path, Iteration = iteration, Message = message, Flag = flag, ResourceState = resourceState, AvailableGb = availableGb, SafeBudgetGb = safeBudgetGb, ModelActivity = modelActivity, ModelWorking = modelWorking };
 }
