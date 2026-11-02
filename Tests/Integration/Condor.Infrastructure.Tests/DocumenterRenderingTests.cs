@@ -15,12 +15,12 @@ public class DocumenterRenderingTests
             Documentation = new DocumentationResult
             {
                 Success = true,
-                RelativePath = "docs/condor/tareas/prueba.md"
+                RelativePath = "docs/prueba.md"
             }
         });
 
         Assert.Contains("Informe Antes/Durante/Despues", text);
-        Assert.Contains("docs/condor/tareas/prueba.md", text);
+        Assert.Contains("docs/prueba.md", text);
     }
 
     [Fact]
@@ -29,17 +29,17 @@ public class DocumenterRenderingTests
         var oldAgentJson = AgentJson.Serialize(new AgentResult());
         var newAgentJson = AgentJson.Serialize(new AgentResult
         {
-            Documentation = new DocumentationResult { Success = true, RelativePath = "docs/condor/tareas/a.md" }
+            Documentation = new DocumentationResult { Success = true, RelativePath = "docs/a.md" }
         });
         var oldCycleJson = CycleJson.Serialize(new CycleResult());
         var newCycleJson = CycleJson.Serialize(new CycleResult
         {
-            Documentation = new DocumentationResult { Success = true, RelativePath = "docs/condor/tareas/b.md" }
+            Documentation = new DocumentationResult { Success = true, RelativePath = "docs/b.md" }
         });
 
         Assert.DoesNotContain("documentation", oldAgentJson, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("documentation", oldCycleJson, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("docs/condor/tareas/a.md", newAgentJson);
-        Assert.Contains("docs/condor/tareas/b.md", newCycleJson);
+        Assert.Contains("docs/a.md", newAgentJson);
+        Assert.Contains("docs/b.md", newCycleJson);
     }
 }
