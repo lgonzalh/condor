@@ -480,30 +480,27 @@ public sealed class TuiHost : IDisposable
             return false;
         }
 
-        int w;
-        int h;
-        lock (_gate)
-        {
-            w = _width;
-            h = _height;
-        }
-
         try
         {
-            if (Console.WindowWidth == w && Console.WindowHeight == h)
-            {
-                return false;
-            }
+            return ResizeTo(Console.WindowWidth, Console.WindowHeight);
         }
         catch
         {
             return false;
         }
+    }
 
+    internal bool ResizeTo(int width, int height)
+    {
         lock (_gate)
         {
-            _width = Console.WindowWidth;
-            _height = Console.WindowHeight;
+            if (_width == width && _height == height)
+            {
+                return false;
+            }
+
+            _width = width;
+            _height = height;
             RewrapLocked();
             _dirtyAll = true;
         }

@@ -270,6 +270,73 @@ public class SelectListTests
     }
 
     [Fact]
+    public void SlashNoAbreElMenuCuandoLaEntradaYaTieneUnEspacio()
+    {
+        using var host = new TuiHost(110, 34);
+        host.Enter();
+        host.ShowSession("modelo-a");
+        var input = new TuiInput(host);
+
+        input.SetText("/models ");
+
+        Assert.DoesNotContain("/agentes", Ansi.StripSgr(host.SnapshotFullFrame()));
+        Assert.Equal("/models ", input.Buffer);
+    }
+
+    [Fact]
+    public void PaletaFiltraPorSubsecuenciaYConservaAtajosEnLasFilas()
+    {
+        using var host = new TuiHost(110, 34);
+        host.Enter();
+        host.ShowSession("modelo-a");
+        var input = new TuiInput(host);
+        input.BeginCommandPalette(new[] { "/analizar", "/verificar", "/recomendar" });
+
+        var initialFrame = Ansi.StripSgr(host.SnapshotFullFrame());
+        Assert.Contains("Enter", initialFrame);
+
+        input.Handle(new ConsoleKeyInfo('v', ConsoleKey.V, false, false, false));
+        input.Handle(new ConsoleKeyInfo('f', ConsoleKey.F, false, false, false));
+        input.Handle(new ConsoleKeyInfo('r', ConsoleKey.R, false, false, false));
+
+        Assert.Equal("/verificar", input.SelectedCommand);
+        Assert.Equal(InputAction.Submit,
+            input.Handle(new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false)));
+        Assert.Equal("/verificar", input.Buffer);
+    }
+
+    [Fact]
+    public void RedimensionarConPaletaAbiertaRecalculaAnchoYActualizaLasFilas()
+    {
+        using var host = new TuiHost(110, 34);
+        host.Enter();
+        host.ShowSession("modelo-a");
+        var input = new TuiInput(host);
+        var commands = Enumerable.Range(0, 30).Select(index => $"/cmd-{index:00}").ToArray();
+        input.BeginCommandPalette(commands);
+
+        var initialFrame = host.SnapshotFullFrame();
+        Assert.Equal(11, PositionOf(initialFrame, "Comandos").Column);
+
+        foreach (var character in "cmd23")
+        {
+            input.Handle(new ConsoleKeyInfo(character, ConsoleKey.NoName, false, false, false));
+        }
+
+        Assert.Equal("/cmd-23", input.SelectedCommand);
+        Assert.True(host.ResizeTo(80, 24));
+        input.Render();
+        host.Repaint();
+
+        var resizedFrame = host.SnapshotFullFrame();
+        var plainFrame = Ansi.StripSgr(resizedFrame);
+        Assert.Equal(1, PositionOf(resizedFrame, "Comandos").Column);
+        Assert.Contains("Buscar: cmd23", plainFrame);
+        Assert.Contains("/cmd-23", plainFrame);
+        Assert.DoesNotContain("/cmd-00", plainFrame);
+    }
+
+    [Fact]
     public void ModeloActualSeDistingueEnNegritaSinIcono()
     {
         var state = SelectList.Create(new[]
