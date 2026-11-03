@@ -633,16 +633,15 @@ public static class CondorTui
                 return false;
             }
 
-            if (!ModelFitsCurrentMemory(model, firstAssessment?.Environment?.Memory, out var reason))
+            var previousModel = session.ActiveModel;
+            if (previousModel?.Equals(model.Name, StringComparison.OrdinalIgnoreCase) == true)
             {
-                host.AddActivity("No se cambió el modelo: " + reason, ActivityKind.Warning);
-                host.SetEstado("RAM insuficiente para ese modelo", ActivityKind.Warning);
-                return false;
+                host.AddActivity("El modelo " + model.Name + " ya está activo.", ActivityKind.System);
+                host.SetEstado("Modelo ya activo", ActivityKind.Success);
+                return true;
             }
 
-            var previousModel = session.ActiveModel;
-            if (!string.IsNullOrWhiteSpace(previousModel) &&
-                !previousModel.Equals(model.Name, StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrWhiteSpace(previousModel))
             {
                 await session.ReleaseAsync(cancellationToken).ConfigureAwait(true);
             }
@@ -651,6 +650,7 @@ public static class CondorTui
             // vuelve a medir justo antes de cambiar el modelo activo.
             var freshAssessment = await ReadAssessmentAsync(assessmentService, cancellationToken).ConfigureAwait(true);
             model = FindInstalledModel(freshAssessment, model.Name);
+            string? reason = null;
             if (model is null || !ModelFitsCurrentMemory(model, freshAssessment?.Environment?.Memory, out reason))
             {
                 if (!string.IsNullOrWhiteSpace(previousModel))
