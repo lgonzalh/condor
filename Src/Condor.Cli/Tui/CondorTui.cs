@@ -161,13 +161,19 @@ public static class CondorTui
         // ---- Sesion de trabajo: Condor Grande -> Condor Ave --------------------
         host.ShowSession(prep.Model);
         host.SetModel(prep.Model);
+        var providerName = session.ProviderName;
+        if (!providerName.Contains("(Local)", StringComparison.OrdinalIgnoreCase))
+        {
+            providerName += " (Local)";
+        }
+        host.SetRuntimeMetadata("Condor principal", providerName, "Predeterminada");
         var workspace = bootstrap.Assessment?.WorkingDirectory;
         host.SetWorkspace(string.IsNullOrWhiteSpace(workspace) ? Environment.CurrentDirectory : workspace);
         host.SetEstado("Entorno listo", ActivityKind.Success);
         host.SetProgreso("—");
 
         // ---- Bucle principal: teclado + repintado por regiones ------------------
-        Console.TreatControlCAsInput = true;
+        using var controlInput = new ConsoleControlInputScope();
         var input = new TuiInput(host);
         host.Repaint();  // transición limpia: ClearScreen + TUI 2 (Ave) antes de cualquier elemento de TUI 2
         input.Render();
@@ -180,7 +186,10 @@ public static class CondorTui
 
         while (true)
         {
-            host.HandleResizeIfNeeded();
+            if (host.HandleResizeIfNeeded())
+            {
+                input.Render();
+            }
             host.Tick();
 
             // Actualizar modelo en cabecera si hay tarea activa y el modelo de sesion cambio.
@@ -409,7 +418,8 @@ public static class CondorTui
                             input.BeginModelPicker(
                                 models,
                                 DescribeModelCapabilities,
-                                model => ModelFitsCurrentMemory(model, inventory.Memory, out _));
+                                model => ModelFitsCurrentMemory(model, inventory.Memory, out _),
+                                session.ActiveModel);
                             host.SetEstado("Selecciona un modelo local", ActivityKind.System);
                         }
                         continue;
@@ -475,7 +485,6 @@ public static class CondorTui
         }
 
         runningCts?.Cancel();
-        Console.TreatControlCAsInput = false;
         host.Dispose();
         PrintExitBanner();
         return exitCode;
@@ -743,20 +752,15 @@ public static class CondorTui
         host.AddActivity("Cierra esta ventana o reintenta con 'condor /preparar' cuando el entorno permita continuar.", ActivityKind.System);
         host.Repaint();
 
+        using var controlInput = new ConsoleControlInputScope();
         try
         {
-            Console.TreatControlCAsInput = true;
             Console.ReadKey(intercept: true);
         }
         catch
         {
             await Task.Delay(1500);
         }
-        finally
-        {
-            Console.TreatControlCAsInput = false;
-        }
-
         host.Dispose();
         PrintExitBanner();
         return 1;
@@ -882,4 +886,13 @@ public static class CondorTui
 
     internal static bool IsExitAccessible(string text) => IsExit(text);
     internal static void RenderHelpInTuiAccessible(TuiHost host) => RenderHelpInTui(host);
+
+    private sealed class ConsoleControlInputScope : IDisposable
+    {
+        private readonly bool _previousValue = Console.TreatControlCAsInput;
+
+        public ConsoleControlInputScope() => Console.TreatControlCAsInput = true;
+
+        public void Dispose() => Console.TreatControlCAsInput = _previousValue;
+    }
 }

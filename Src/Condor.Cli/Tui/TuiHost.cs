@@ -65,7 +65,7 @@ public sealed class TuiHost : IDisposable
     internal const int MinWidth = 80;
     internal const int MinHeight = 24;
 
-    private const int BottomRows = 3;             // separador entrada + entrada + estado combinado
+    private const int BottomRows = 4;             // separador + entrada + metadata + estado/hints
     private const int HeaderRows = 5;             // cuatro líneas de mascota + separador inferior
 
     private static readonly string[] SpinnerFrames = { "◐", "◑", "◒", "◕", "◔" };
@@ -77,6 +77,9 @@ public sealed class TuiHost : IDisposable
     private List<string> _overlayItems = new();
     private List<bool> _overlayDisabledItems = new();
     private int _overlaySelectedIndex = -1;
+    private SelectListOverlay? _selectListOverlay;
+    private readonly Dictionary<(int Row, int Column), string> _paintedSelectListRows = new();
+    private SelectListTheme _selectListTheme = SelectListTheme.Default;
 
     private int _width;
     private int _height;
@@ -87,6 +90,10 @@ public sealed class TuiHost : IDisposable
     private HostMode _mode = HostMode.Welcome;
     private string? _model;
     private string? _workspace;
+    private string _agentName = "Condor principal";
+    private string _providerName = "Ollama (Local)";
+    private string _modelVariant = "Predeterminada";
+    private string _inputPlaceholder = Placeholder;
     private string _estado = "Iniciando";
     private ActivityKind _estadoKind = ActivityKind.System;
     private string _progreso = "";
@@ -100,14 +107,17 @@ public sealed class TuiHost : IDisposable
     private bool _dirtyHeader;
     private bool _dirtyActivity;
     private bool _dirtyStatus;
+    private bool _dirtyMetadata;
     private bool _dirtyInput;
+    private bool _dirtyOverlay;
 
     // Filas logicas (0-based) de la sesion. La convencion de pintura usa At(fila+1): "fila" 0-based.
     // La cabecera de Trabajo ocupa cuatro filas de mascota y una línea divisoria.
     private int ContentTop => HeaderRows + 1;
     private int SepInputRow => _height - BottomRows;         // separador antes de la entrada
     public int InputRow => _height - BottomRows + 1;         // fila de entrada
-    private int EstadoRow => _height - BottomRows + 2;       // fila unica de estado
+    private int MetadataRow => _height - BottomRows + 2;      // agente, modelo, proveedor y variante
+    private int EstadoRow => _height - BottomRows + 3;        // estado y atajos
     private int ContentBottom => SepInputRow - 1;            // ultima fila utilizable de contenido
 
     // Composicion de referencia: la mascota se ancla a la IZQUIERDA del area de
@@ -147,6 +157,13 @@ public sealed class TuiHost : IDisposable
 
     /// <summary>La TUI requiere terminal interactiva con soporte VT.</summary>
     public bool Supported { get; }
+    public int TerminalWidth
+    {
+        get
+        {
+            lock (_gate) return _width > 0 ? _width : MinWidth;
+        }
+    }
 
     public void Enter()
     {
@@ -248,6 +265,29 @@ public sealed class TuiHost : IDisposable
             _modelWorking = false;
             _dirtyHeader = true;
             _dirtyStatus = true;
+            _dirtyMetadata = true;
+        }
+    }
+
+    public void SetSelectListTheme(SelectListTheme theme)
+    {
+        ArgumentNullException.ThrowIfNull(theme);
+        lock (_gate)
+        {
+            _selectListTheme = theme;
+            _dirtyInput = true;
+            _dirtyMetadata = true;
+        }
+    }
+
+    public void SetRuntimeMetadata(string? agentName, string? providerName, string? modelVariant)
+    {
+        lock (_gate)
+        {
+            _agentName = string.IsNullOrWhiteSpace(agentName) ? "Condor principal" : agentName.Trim();
+            _providerName = string.IsNullOrWhiteSpace(providerName) ? "Ollama (Local)" : providerName.Trim();
+            _modelVariant = string.IsNullOrWhiteSpace(modelVariant) ? "Predeterminada" : modelVariant.Trim();
+            _dirtyMetadata = true;
         }
     }
 
@@ -425,11 +465,11 @@ public sealed class TuiHost : IDisposable
     }
 
     /// <summary>Detecta cambios de tamano de la ventana y reacomoda la pantalla.</summary>
-    public void HandleResizeIfNeeded()
+    public bool HandleResizeIfNeeded()
     {
         if (_forceInteractive)
         {
-            return;
+            return false;
         }
 
         int w;
@@ -444,12 +484,12 @@ public sealed class TuiHost : IDisposable
         {
             if (Console.WindowWidth == w && Console.WindowHeight == h)
             {
-                return;
+                return false;
             }
         }
         catch
         {
-            return;
+            return false;
         }
 
         lock (_gate)
@@ -459,6 +499,8 @@ public sealed class TuiHost : IDisposable
             RewrapLocked();
             _dirtyAll = true;
         }
+
+        return true;
     }
 
     /// <summary>
@@ -479,7 +521,8 @@ public sealed class TuiHost : IDisposable
     {
         lock (_gate)
         {
-            if (!_entered || (!_dirtyAll && !_dirtyHeader && !_dirtyActivity && !_dirtyStatus && !_dirtyInput))
+            if (!_entered || (!_dirtyAll && !_dirtyHeader && !_dirtyActivity && !_dirtyStatus &&
+                              !_dirtyMetadata && !_dirtyInput && !_dirtyOverlay))
             {
                 return "";
             }
@@ -502,6 +545,8 @@ public sealed class TuiHost : IDisposable
                 {
                     PaintChromeLocked(sb);
                     PaintActivityLocked(sb);
+                    PaintSelectListOverlayDiffLocked(sb, force: true, underlayPainted: true);
+                    PaintMetadataLocked(sb);
                     PaintEstadoLocked(sb);
                     PaintInputRegionLocked(sb);
                 }
@@ -515,9 +560,21 @@ public sealed class TuiHost : IDisposable
                     PaintSeparatorLocked(sb, SepInputRow, null);
                 }
 
+                var activityPainted = false;
                 if (_dirtyActivity && _mode == HostMode.Session)
                 {
                     PaintActivityLocked(sb);
+                    activityPainted = true;
+                }
+
+                if ((_dirtyOverlay || activityPainted) && _mode == HostMode.Session)
+                {
+                    PaintSelectListOverlayDiffLocked(sb, force: activityPainted, underlayPainted: activityPainted);
+                }
+
+                if ((_dirtyMetadata || _dirtyStatus) && _mode == HostMode.Session)
+                {
+                    PaintMetadataLocked(sb);
                 }
 
                 if (_dirtyStatus && _mode == HostMode.Session)
@@ -535,7 +592,7 @@ public sealed class TuiHost : IDisposable
                 }
             }
 
-            _dirtyAll = _dirtyHeader = _dirtyActivity = _dirtyStatus = _dirtyInput = false;
+            _dirtyAll = _dirtyHeader = _dirtyActivity = _dirtyStatus = _dirtyMetadata = _dirtyInput = _dirtyOverlay = false;
             return sb.ToString();
         }
     }
@@ -731,6 +788,104 @@ public sealed class TuiHost : IDisposable
         PaintOverlayLocked(sb, height);
     }
 
+    private void PaintSelectListOverlayDiffLocked(
+        System.Text.StringBuilder sb,
+        bool force,
+        bool underlayPainted)
+    {
+        var nextRows = GetSelectListRowsLocked();
+        var next = nextRows.ToDictionary(row => (row.Row, row.Column), row => row.Line);
+
+        if (underlayPainted)
+        {
+            _paintedSelectListRows.Clear();
+            force = true;
+        }
+        else
+        {
+            foreach (var oldRow in _paintedSelectListRows.Keys)
+            {
+                if (!next.ContainsKey(oldRow))
+                {
+                    PaintActivityRowLocked(sb, oldRow.Row - 1);
+                }
+            }
+        }
+
+        foreach (var row in nextRows)
+        {
+            var key = (row.Row, row.Column);
+            if (force || !_paintedSelectListRows.TryGetValue(key, out var oldLine) ||
+                !string.Equals(oldLine, row.Line, StringComparison.Ordinal))
+            {
+                sb.Append(Ansi.At(row.Row, row.Column));
+                sb.Append(row.Line);
+            }
+        }
+
+        _paintedSelectListRows.Clear();
+        foreach (var row in next)
+        {
+            _paintedSelectListRows[row.Key] = row.Value;
+        }
+    }
+
+    private List<(int Row, int Column, string Line)> GetSelectListRowsLocked()
+    {
+        var overlay = _selectListOverlay;
+        if (overlay is null || overlay.Lines.Count == 0)
+        {
+            return new List<(int Row, int Column, string Line)>();
+        }
+
+        var contentHeight = Math.Max(0, ContentBottom - ContentTop + 1);
+        var firstRow = overlay.Placement == SelectListPlacement.Centered
+            ? ContentTop + Math.Max(0, (contentHeight - overlay.Lines.Count) / 2)
+            : Math.Max(ContentTop, ContentBottom - overlay.Lines.Count + 1);
+        var firstColumn = Math.Clamp(overlay.Column + 1, 1, Math.Max(1, _width - overlay.Width + 1));
+        var lines = new List<(int Row, int Column, string Line)>(overlay.Lines.Count);
+        for (var index = 0; index < overlay.Lines.Count; index++)
+        {
+            var row = firstRow + index;
+            if (row > ContentBottom)
+            {
+                break;
+            }
+
+            lines.Add((row + 1, firstColumn, overlay.Lines[index]));
+        }
+
+        return lines;
+    }
+
+    private void PaintActivityRowLocked(System.Text.StringBuilder sb, int row)
+    {
+        if (row < ContentTop || row > ContentBottom)
+        {
+            return;
+        }
+
+        var contentHeight = ContentBottom - ContentTop + 1;
+        var rowIndex = row - ContentTop;
+        var take = Math.Min(contentHeight, _wrapped.Count);
+        var skip = Math.Max(0, _wrapped.Count - take);
+        sb.Append(Ansi.At(row + 1, 2));
+        sb.Append(Ansi.ClearLine);
+        if (rowIndex < take)
+        {
+            var (line, kind) = _wrapped[skip + rowIndex];
+            sb.Append(ActivityPrefix(kind) + line + Ansi.Reset);
+        }
+    }
+
+    private static bool SelectListOverlayEquals(SelectListOverlay? left, SelectListOverlay? right)
+    {
+        if (ReferenceEquals(left, right)) return true;
+        if (left is null || right is null) return false;
+        return left.Placement == right.Placement && left.Width == right.Width && left.Column == right.Column &&
+               left.Lines.SequenceEqual(right.Lines, StringComparer.Ordinal);
+    }
+
     private void PaintOverlayLocked(System.Text.StringBuilder sb, int contentHeight)
     {
         if (string.IsNullOrWhiteSpace(_overlayTitle) || _overlayItems.Count == 0 || contentHeight < 2)
@@ -849,6 +1004,39 @@ public sealed class TuiHost : IDisposable
         sb.Append(Ansi.FgGris + shortcuts + Ansi.Reset);
     }
 
+    private void PaintMetadataLocked(System.Text.StringBuilder sb)
+    {
+        sb.Append(Ansi.At(MetadataRow + 1, 1));
+        sb.Append(Ansi.ClearLine);
+
+        var fields = new[] { _agentName, _model ?? "Modelo sin seleccionar", _providerName, _modelVariant };
+        var available = Math.Max(1, _width - 2);
+        var separator = " · ";
+        var remaining = Math.Max(0, available - (separator.Length * (fields.Length - 1)));
+        var displayed = new string[fields.Length];
+        for (var index = 0; index < fields.Length; index++)
+        {
+            var remainingFields = fields.Length - index;
+            var budget = Math.Max(0, remaining / remainingFields);
+            displayed[index] = Ansi.ClipVisible(fields[index], budget);
+            remaining -= Ansi.VisibleWidth(displayed[index]);
+        }
+
+        sb.Append(" ");
+        for (var index = 0; index < displayed.Length; index++)
+        {
+            if (index > 0) sb.Append(Ansi.FgGris + separator + Ansi.Reset);
+            if (index == 1)
+            {
+                sb.Append(_selectListTheme.Accent + Ansi.Bold + displayed[index] + Ansi.Reset);
+            }
+            else
+            {
+                sb.Append(Ansi.FgGris + displayed[index] + Ansi.Reset);
+            }
+        }
+    }
+
     private string EstadoColor(ActivityKind kind)
     {
         return kind switch
@@ -896,16 +1084,17 @@ public sealed class TuiHost : IDisposable
     /// <summary>Pinta la region de entrada. El contenido lo dibuja el editor.</summary>
     private void PaintInputRegionLocked(System.Text.StringBuilder sb)
     {
-        sb.Append(Ansi.At(InputRow + 1, 1));
-        sb.Append(Ansi.ClearLine);
         if (_busy)
         {
-            sb.Append(" " + Ansi.FgAmarillo + "Condor esta trabajando...  Esc + Esc interrumpe la tarea" + Ansi.Reset);
+            sb.Append(Ansi.At(InputRow + 1, 1));
+            sb.Append(Ansi.ClearLine);
+            sb.Append(" ").Append(_selectListTheme.Accent).Append("┃").Append(Ansi.Reset).Append(" ")
+                .Append(Ansi.FgAmarillo).Append("Condor esta trabajando...  Esc + Esc interrumpe la tarea")
+                .Append(Ansi.Reset);
         }
         else
         {
-            // Estado inicial de la zona de entrada: la invitacion al usuario.
-            sb.Append(" " + Ansi.Bold + Ansi.FgDorado + "> " + Ansi.Reset + Ansi.FgGris + Placeholder + Ansi.Reset);
+            sb.Append(BuildInputLocked("", 0, _inputPlaceholder));
         }
     }
 
@@ -916,11 +1105,19 @@ public sealed class TuiHost : IDisposable
         string? overlayTitle = null,
         IReadOnlyList<string>? overlayItems = null,
         int overlaySelectedIndex = -1,
-        IReadOnlyList<bool>? overlayDisabledItems = null)
+        IReadOnlyList<bool>? overlayDisabledItems = null,
+        string? placeholder = null)
     {
         string? snapshot = null;
         lock (_gate)
         {
+            if (_selectListOverlay is not null)
+            {
+                _selectListOverlay = null;
+                _dirtyOverlay = true;
+                _dirtyActivity = true;
+            }
+
             var nextItems = overlayItems?.ToList() ?? new List<string>();
             var nextDisabledItems = overlayDisabledItems?.ToList() ?? new List<bool>();
             var overlayChanged = !string.Equals(_overlayTitle, overlayTitle, StringComparison.Ordinal) ||
@@ -931,6 +1128,7 @@ public sealed class TuiHost : IDisposable
             _overlayItems = nextItems;
             _overlayDisabledItems = nextDisabledItems;
             _overlaySelectedIndex = overlaySelectedIndex;
+            _inputPlaceholder = placeholder ?? Placeholder;
             if (overlayChanged && _mode == HostMode.Session)
             {
                 _dirtyActivity = true;
@@ -941,53 +1139,135 @@ public sealed class TuiHost : IDisposable
                 return;
             }
 
-            snapshot = BuildInputLocked(buffer, caret);
+            snapshot = BuildInputLocked(buffer, caret, _inputPlaceholder);
         }
 
         Console.Write(snapshot);
     }
 
-    private string BuildInputLocked(string buffer, int caret)
+    public void RenderInputWithSelectList(
+        string buffer,
+        int caret,
+        SelectListOverlay? overlay,
+        string? placeholder = null)
+    {
+        string? snapshot = null;
+        lock (_gate)
+        {
+            var legacyOverlayActive = !string.IsNullOrWhiteSpace(_overlayTitle) && _overlayItems.Count > 0;
+            _overlayTitle = null;
+            _overlayItems.Clear();
+            _overlayDisabledItems.Clear();
+            _overlaySelectedIndex = -1;
+            if (legacyOverlayActive)
+            {
+                _dirtyActivity = true;
+            }
+
+            var changed = !SelectListOverlayEquals(_selectListOverlay, overlay);
+            var closing = _selectListOverlay is not null && overlay is null;
+            _selectListOverlay = overlay;
+            _inputPlaceholder = placeholder ?? Placeholder;
+            if (changed)
+            {
+                _dirtyOverlay = true;
+                if (closing)
+                {
+                    _dirtyActivity = true;
+                }
+            }
+
+            if (!_entered || _mode != HostMode.Session || _busy)
+            {
+                return;
+            }
+
+            snapshot = BuildInputLocked(buffer, caret, _inputPlaceholder);
+        }
+
+        Console.Write(snapshot);
+    }
+
+    private string BuildInputLocked(string buffer, int caret, string? placeholder)
     {
         var sb = new System.Text.StringBuilder();
         sb.Append(Ansi.At(InputRow + 1, 1));
         sb.Append(Ansi.ClearLine);
 
-        var width = Math.Max(10, _width - 4);
+        var prefixWidth = 5; // margen, barra, separador y prompt
+        var budget = Math.Max(1, _width - prefixWidth - 1);
+        sb.Append(" ").Append(_selectListTheme.Accent).Append("┃").Append(Ansi.Reset).Append(" ");
+        sb.Append(Ansi.Bold).Append(Ansi.FgDorado).Append("> ").Append(Ansi.Reset);
+
         if (buffer.Length == 0)
         {
-            sb.Append(" " + Ansi.Bold + Ansi.FgDorado + "> " + Ansi.Reset + Ansi.FgGris + Placeholder + Ansi.Reset);
+            sb.Append(Ansi.FgGris).Append(Ansi.ClipVisible(placeholder ?? Placeholder, budget)).Append(Ansi.Reset);
             return sb.ToString();
         }
 
-        sb.Append(" " + Ansi.Bold + Ansi.FgDorado + "> " + Ansi.Reset);
-        var budget = width - 2;
-        var start = 0;
-        if (buffer.Length > budget)
+        var runes = new List<(string Text, int Start, int Width)>();
+        var utf16Offset = 0;
+        foreach (var rune in buffer.EnumerateRunes())
         {
-            start = Math.Max(0, Math.Min(caret - budget / 2, buffer.Length - budget));
+            var runeText = rune.ToString();
+            runes.Add((runeText, utf16Offset, Math.Max(0, Ansi.VisibleWidth(runeText))));
+            utf16Offset += rune.Utf16SequenceLength;
         }
 
-        for (var i = start; i < buffer.Length && (i - start) < budget; i++)
+        caret = Math.Clamp(caret, 0, buffer.Length);
+        var caretRune = runes.FindIndex(rune => rune.Start >= caret);
+        if (caretRune < 0) caretRune = runes.Count;
+        var startRune = caretRune;
+        var used = 0;
+        if (caretRune == runes.Count)
         {
-            if (i == caret)
+            var textBudget = Math.Max(0, budget - 1);
+            while (startRune > 0 && used + runes[startRune - 1].Width <= textBudget)
             {
-                sb.Append(Ansi.Esc + "7m" + buffer[i] + Ansi.Reset);
+                startRune--;
+                used += runes[startRune].Width;
             }
-            else
-            {
-                sb.Append(Ansi.FgBlanco.ToString() + buffer[i]);
-            }
-        }
-
-        if (caret >= buffer.Length)
-        {
-            sb.Append(Ansi.Esc + "7m" + " " + Ansi.Reset);
         }
         else
         {
-            sb.Append(Ansi.Reset);
+            while (startRune > 0 && used < budget / 2)
+            {
+                startRune--;
+                used += runes[startRune].Width;
+            }
         }
+
+        var visibleWidth = 0;
+        for (var index = startRune; index < runes.Count; index++)
+        {
+            var rune = runes[index];
+            if (visibleWidth + rune.Width > budget)
+            {
+                break;
+            }
+
+            if (index == caretRune)
+            {
+                sb.Append(Ansi.Esc).Append("7m").Append(rune.Text).Append(Ansi.Reset);
+            }
+            else
+            {
+                sb.Append(Ansi.FgBlanco).Append(rune.Text);
+            }
+
+            visibleWidth += rune.Width;
+            if (visibleWidth >= budget)
+            {
+                break;
+            }
+        }
+
+        if (caretRune == runes.Count && visibleWidth < budget)
+        {
+            sb.Append(Ansi.Esc).Append("7m ").Append(Ansi.Reset);
+        }
+
+        sb.Append(Ansi.Reset);
 
         return sb.ToString();
     }

@@ -131,9 +131,12 @@ public class TuiShortcutTests
 
         var rawFrame = host.SnapshotFullFrame();
         var frame = Ansi.StripSgr(rawFrame);
-        Assert.Contains("modelo-a · presupuesto no disponible", frame);
-        Assert.Contains("modelo-c · presupuesto no disponible", frame);
-        Assert.Contains(Ansi.Dim + Ansi.FgGris, rawFrame);
+        Assert.Contains("modelo-a · Código · presupuesto no disponible", frame);
+        Assert.Contains("modelo-c · Código · presupuesto no disponible", frame);
+        if (Ansi.ColorEnabled)
+        {
+            Assert.Contains(Ansi.Dim + Ansi.FgGris, rawFrame);
+        }
         Assert.Equal("modelo-b", input.SelectedModel);
 
         input.Handle(new ConsoleKeyInfo((char)0, ConsoleKey.DownArrow, false, false, false));

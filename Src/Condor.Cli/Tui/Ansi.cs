@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace Condor.Cli.Tui;
 
@@ -109,7 +111,64 @@ public static class Ansi
     /// <summary>Ancho visible (sin SGR) de una linea ya coloreada.</summary>
     public static int VisibleWidth(string text)
     {
-        return StripSgr(text).Length;
+        var width = 0;
+        foreach (var rune in StripSgr(text).EnumerateRunes())
+        {
+            width += RuneWidth(rune);
+        }
+
+        return width;
+    }
+
+    /// <summary>Recorta texto ANSI a un ancho de celdas, sin partir caracteres Unicode.</summary>
+    public static string ClipVisible(string text, int maxWidth)
+    {
+        if (string.IsNullOrEmpty(text) || maxWidth <= 0)
+        {
+            return "";
+        }
+
+        var plain = StripSgr(text);
+        var result = new StringBuilder(plain.Length);
+        var width = 0;
+        foreach (var rune in plain.EnumerateRunes())
+        {
+            var runeWidth = RuneWidth(rune);
+            if (width + runeWidth > maxWidth)
+            {
+                break;
+            }
+
+            result.Append(rune.ToString());
+            width += runeWidth;
+        }
+
+        return result.ToString();
+    }
+
+    private static int RuneWidth(Rune rune)
+    {
+        var category = Rune.GetUnicodeCategory(rune);
+        if (category is UnicodeCategory.NonSpacingMark or UnicodeCategory.SpacingCombiningMark or
+            UnicodeCategory.EnclosingMark or UnicodeCategory.Control or UnicodeCategory.Format)
+        {
+            return 0;
+        }
+
+        var value = rune.Value;
+        return value is >= 0x1100 and <= 0x115F or
+            0x2329 or 0x232A or
+            >= 0x2E80 and <= 0xA4CF or
+            >= 0xAC00 and <= 0xD7A3 or
+            >= 0xF900 and <= 0xFAFF or
+            >= 0xFE10 and <= 0xFE19 or
+            >= 0xFE30 and <= 0xFE6F or
+            >= 0xFF00 and <= 0xFF60 or
+            >= 0xFFE0 and <= 0xFFE6 or
+            >= 0x1F300 and <= 0x1FAFF or
+            >= 0x20000 and <= 0x3FFFD
+            ? 2
+            : 1;
     }
 
     /// <summary>Texto tal cual se debe emitir: sin SGR si NO_COLOR esta activo.</summary>
