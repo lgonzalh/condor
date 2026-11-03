@@ -28,6 +28,9 @@ namespace Condor.Cli.Tui;
 /// </summary>
 public static class CondorTui
 {
+    private const string PlanAgentId = "plan";
+    private const string CodeAgentId = "codigo";
+
     /// <summary>La TUI requiere terminal interactiva con VT y tamano suficiente.</summary>
     public static bool CanRun()
     {
@@ -166,7 +169,8 @@ public static class CondorTui
         {
             providerName += " (Local)";
         }
-        host.SetRuntimeMetadata("Condor principal", providerName, "Predeterminada");
+        var activeAgentId = CodeAgentId;
+        host.SetRuntimeMetadata(AgentDisplayName(activeAgentId), providerName, "Predeterminada");
         var workspace = bootstrap.Assessment?.WorkingDirectory;
         host.SetWorkspace(string.IsNullOrWhiteSpace(workspace) ? Environment.CurrentDirectory : workspace);
         host.SetEstado("Entorno listo", ActivityKind.Success);
@@ -177,6 +181,23 @@ public static class CondorTui
         var input = new TuiInput(host);
         host.Repaint();  // transición limpia: ClearScreen + TUI 2 (Ave) antes de cualquier elemento de TUI 2
         input.Render();
+
+        void ApplyAgentSelection(bool taskRunning)
+        {
+            var selectedAgentId = input.SelectedAgentId;
+            if (string.IsNullOrWhiteSpace(selectedAgentId))
+            {
+                return;
+            }
+
+            activeAgentId = selectedAgentId;
+            var label = AgentDisplayName(activeAgentId);
+            host.SetRuntimeMetadata(label, providerName, "Predeterminada");
+            host.AddActivity("Agente seleccionado: " + label, ActivityKind.System);
+            host.SetEstado(
+                taskRunning ? "Agente " + label + " para la siguiente tarea" : "Agente activo: " + label,
+                ActivityKind.Success);
+        }
 
         Task<AgentResult>? running = null;
         CancellationTokenSource? runningCts = null;
@@ -293,8 +314,13 @@ public static class CondorTui
                     }
                     if (interruptAction == InputAction.OpenAgents)
                     {
-                        await OpenAgentsPanelAsync(input, host, assessmentService, session, running: true, shutdownToken)
-                            .ConfigureAwait(true);
+                        OpenAgentPicker(input, host, activeAgentId, taskRunning: true);
+                        host.Repaint();
+                        continue;
+                    }
+                    if (interruptAction == InputAction.AgentSelected)
+                    {
+                        ApplyAgentSelection(taskRunning: true);
                         host.Repaint();
                         continue;
                     }
@@ -305,19 +331,13 @@ public static class CondorTui
                         host.Repaint();
                         continue;
                     }
-                    if (interruptAction == InputAction.ClosePanel)
-                    {
-                        host.SetEstado("Tarea en ejecución", ActivityKind.System);
-                        continue;
-                    }
                     if (interruptAction == InputAction.Submit)
                     {
                         var command = input.Buffer.Trim();
                         input.Clear();
-                        if (IsAgentPanelCommand(command))
+                        if (IsAgentPickerCommand(command))
                         {
-                            await OpenAgentsPanelAsync(input, host, assessmentService, session, running: true, shutdownToken)
-                                .ConfigureAwait(true);
+                            OpenAgentPicker(input, host, activeAgentId, taskRunning: true);
                         }
                         else if (IsModelListCommand(command))
                         {
@@ -338,14 +358,14 @@ public static class CondorTui
                 var submitAction = input.Handle(key);
                 if (submitAction == InputAction.OpenAgents)
                 {
-                    await OpenAgentsPanelAsync(input, host, assessmentService, session, running: false, shutdownToken)
-                        .ConfigureAwait(true);
+                    OpenAgentPicker(input, host, activeAgentId, taskRunning: false);
                     continue;
                 }
 
-                if (submitAction == InputAction.ClosePanel)
+                if (submitAction == InputAction.AgentSelected)
                 {
-                    host.SetEstado("Listo", ActivityKind.Success);
+                    ApplyAgentSelection(taskRunning: false);
+                    host.Repaint();
                     continue;
                 }
 
@@ -398,10 +418,9 @@ public static class CondorTui
                         continue;
                     }
 
-                    if (IsAgentPanelCommand(text))
+                    if (IsAgentPickerCommand(text))
                     {
-                        await OpenAgentsPanelAsync(input, host, assessmentService, session, running: false, shutdownToken)
-                            .ConfigureAwait(true);
+                        OpenAgentPicker(input, host, activeAgentId, taskRunning: false);
                         continue;
                     }
 
@@ -460,6 +479,24 @@ public static class CondorTui
                             break;
 
                         case FreeIntentionRoute free when !string.IsNullOrWhiteSpace(free.Intention):
+                            host.AddActivity(text, ActivityKind.User);
+                            var modeRoute = RouteAgentMode(activeAgentId, free.Intention);
+                            if (modeRoute is SlashRoute planRoute && planRoute.Kind == SlashCommandKind.Planear)
+                            {
+                                host.SetBusy(true);
+                                host.SetEstado("Creando plan de trabajo", ActivityKind.System);
+                                host.SetProgreso("—");
+                                await host.SuspendAsync(async () =>
+                                    exitCode = await Program.HandleSlashAsync(
+                                        planRoute, assessmentService, stateStore, session.Llm, session)).ConfigureAwait(true);
+                                host.SetBusy(false);
+                                host.SetEstado(
+                                    exitCode == 0 ? "Plan creado" : "No se pudo crear el plan",
+                                    exitCode == 0 ? ActivityKind.Success : ActivityKind.Error);
+                                input.Render();
+                                break;
+                            }
+
                             host.SetBusy(true);
                             host.SetEstado("Preparando análisis de la tarea");
                             host.SetProgreso("0 s");
@@ -511,7 +548,7 @@ public static class CondorTui
         Console.WriteLine(Ansi.FgGris + "Hasta pronto." + Ansi.Reset);
     }
 
-    private static bool IsAgentPanelCommand(string text)
+    private static bool IsAgentPickerCommand(string text)
         => text.Equals("/agentes", StringComparison.OrdinalIgnoreCase) ||
            text.Equals("/agents", StringComparison.OrdinalIgnoreCase);
 
@@ -536,36 +573,31 @@ public static class CondorTui
         return false;
     }
 
-    private static async Task OpenAgentsPanelAsync(
-        TuiInput input,
-        TuiHost host,
-        IAssessmentService assessmentService,
-        LocalModelSession session,
-        bool running,
-        CancellationToken cancellationToken)
+    private static void OpenAgentPicker(TuiInput input, TuiHost host, string activeAgentId, bool taskRunning)
     {
-        var modelName = session.ActiveModel;
-        var capabilities = "sin modelo local";
-        if (!string.IsNullOrWhiteSpace(modelName))
+        var items = new[]
         {
-            var assessment = await ReadAssessmentAsync(assessmentService, cancellationToken).ConfigureAwait(true);
-            var model = FindInstalledModel(assessment, modelName);
-            capabilities = model is null ? "capacidades no verificadas" : DescribeModelCapabilities(model);
-        }
-
-        var items = new List<string>
-        {
-            "Condor · agente principal",
-            "Estado · " + (running ? "ejecución en curso" : "listo para recibir tareas"),
-            "Modelo · " + (string.IsNullOrWhiteSpace(modelName) ? "sin modelo local" : modelName),
-            "Capacidades · " + capabilities,
-            running ? "Cambio de modelo · disponible al terminar" : "Cambiar modelo · Ctrl+P y elige /models",
-            "Cerrar este panel · Tab o Esc"
+            new SelectItem(
+                PlanAgentId, "Plan", "Crea y guarda un plan; no ejecuta cambios en el proyecto.",
+                Array.Empty<string>(), Disabled: false, DisabledReason: null, Shortcut: "Enter"),
+            new SelectItem(
+                CodeAgentId, "Código", "Ejecuta la tarea con herramientas y documenta Antes, Durante y Después.",
+                Array.Empty<string>(), Disabled: false, DisabledReason: null, Shortcut: "Enter")
         };
 
-        input.BeginAgentsPanel(items);
-        host.SetEstado(running ? "Agente principal en ejecución" : "Panel de agentes", ActivityKind.System);
+        input.BeginAgentPicker(items, activeAgentId);
+        host.SetEstado(
+            taskRunning ? "Elige el modo para la siguiente tarea" : "Elige el agente de trabajo",
+            ActivityKind.System);
     }
+
+    private static string AgentDisplayName(string agentId) =>
+        string.Equals(agentId, PlanAgentId, StringComparison.OrdinalIgnoreCase) ? "Plan" : "Código";
+
+    internal static IntentionRoute RouteAgentMode(string agentId, string intention) =>
+        string.Equals(agentId, PlanAgentId, StringComparison.OrdinalIgnoreCase)
+            ? IntentionRouter.Route("/planear " + intention)
+            : new FreeIntentionRoute(intention);
 
     private static async Task<(IReadOnlyList<ModelInfo> Models, MemoryInfo? Memory)> LoadInstalledModelsAsync(
         IAssessmentService assessmentService,

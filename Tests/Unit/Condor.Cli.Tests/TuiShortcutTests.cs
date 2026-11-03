@@ -1,4 +1,5 @@
 using Condor.Cli.Tui;
+using Condor.Cli.Routing;
 using Condor.Core.Models;
 
 namespace Condor.Cli.Tests;
@@ -167,26 +168,90 @@ public class TuiShortcutTests
     }
 
     [Fact]
-    public void PanelAgentes_MuestraElAgenteActivoYSeCierraConEscape()
+    public void SelectorAgentes_PermiteElegirPlanYConservaLaTarea()
     {
         using var host = new TuiHost(forceInteractive: true);
         host.Enter();
         host.ShowSession("granite4.2:3b");
         var input = new TuiInput(host);
-        input.BeginAgentsPanel(new[]
+        input.SetText("actualiza el sitio de prueba");
+        input.BeginAgentPicker(new[]
         {
-            "Condor · agente principal",
-            "Estado · listo para recibir tareas",
-            "Modelo · granite4.2:3b"
-        });
+            new SelectItem("plan", "Plan", "Crea y guarda un plan", Array.Empty<string>(), false, null, "Enter"),
+            new SelectItem("codigo", "Código", "Ejecuta tareas con herramientas", Array.Empty<string>(), false, null, "Enter")
+        }, activeAgentId: "codigo");
 
         var frame = Ansi.StripSgr(host.SnapshotFullFrame());
         Assert.Contains("Agentes", frame);
-        Assert.Contains("agente principal", frame);
-        Assert.Equal(InputAction.ClosePanel,
+        Assert.Contains("Plan", frame);
+        Assert.Contains("Código", frame);
+        Assert.Equal("codigo", input.SelectedAgentId);
+
+        input.Handle(new ConsoleKeyInfo((char)0, ConsoleKey.DownArrow, false, false, false));
+
+        Assert.Equal("plan", input.SelectedAgentId);
+        Assert.Equal(InputAction.AgentSelected,
+            input.Handle(new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false)));
+        Assert.Equal("plan", input.SelectedAgentId);
+        Assert.Equal("actualiza el sitio de prueba", input.Buffer);
+    }
+
+    [Fact]
+    public void SelectorAgentes_EscapeCierraSinCambiarElModoNiPerderLaTarea()
+    {
+        using var host = new TuiHost(forceInteractive: true);
+        host.Enter();
+        var input = new TuiInput(host);
+        input.SetText("revisa el proyecto");
+        input.BeginAgentPicker(new[]
+        {
+            new SelectItem("plan", "Plan", "Crea y guarda un plan", Array.Empty<string>(), false, null, null),
+            new SelectItem("codigo", "Código", "Ejecuta tareas con herramientas", Array.Empty<string>(), false, null, null)
+        }, activeAgentId: "codigo");
+
+        Assert.Equal(InputAction.None,
             input.Handle(new ConsoleKeyInfo((char)0, ConsoleKey.Escape, false, false, false)));
-        Assert.DoesNotContain("Estado · listo para recibir tareas",
-            Ansi.StripSgr(host.SnapshotFullFrame()));
+
+        Assert.Equal("codigo", input.SelectedAgentId);
+        Assert.Equal("revisa el proyecto", input.Buffer);
+        Assert.DoesNotContain("Agentes", Ansi.StripSgr(host.SnapshotFullFrame()));
+    }
+
+    [Fact]
+    public void PaletaDesdeAgentes_ConservaElTextoDeLaTareaAlCerrar()
+    {
+        using var host = new TuiHost(forceInteractive: true);
+        var input = new TuiInput(host);
+        input.SetText("construye el sitio");
+        input.BeginAgentPicker(new[]
+        {
+            new SelectItem("plan", "Plan", "Planifica", Array.Empty<string>(), false, null, null),
+            new SelectItem("codigo", "Código", "Construye", Array.Empty<string>(), false, null, null)
+        }, activeAgentId: "codigo");
+
+        Assert.Equal(InputAction.OpenCommands,
+            input.Handle(new ConsoleKeyInfo('\0', ConsoleKey.P, false, false, true)));
+        input.BeginCommandPalette();
+        input.Handle(new ConsoleKeyInfo((char)0, ConsoleKey.Escape, false, false, false));
+
+        Assert.Equal("construye el sitio", input.Buffer);
+    }
+
+    [Fact]
+    public void ModoPlan_EnviaLaSolicitudAlPlanificadorExistente()
+    {
+        var route = Assert.IsType<SlashRoute>(CondorTui.RouteAgentMode("plan", "preparar una pagina"));
+
+        Assert.Equal(SlashCommandKind.Planear, route.Kind);
+        Assert.Equal("preparar una pagina", string.Join(" ", route.Arguments));
+    }
+
+    [Fact]
+    public void ModoCodigo_ConservaLaRutaDelAgenteConHerramientas()
+    {
+        var route = Assert.IsType<FreeIntentionRoute>(CondorTui.RouteAgentMode("codigo", "crear una pagina"));
+
+        Assert.Equal("crear una pagina", route.Intention);
     }
 
     [Fact]

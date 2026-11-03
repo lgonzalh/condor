@@ -17,7 +17,7 @@ public enum InputAction
     /// <summary>El usuario interrumpio la tarea activa (Esc + Esc).</summary>
     Interrupt,
 
-    /// <summary>Abre el panel del agente activo (Tab).</summary>
+    /// <summary>Abre el selector de agentes (Tab).</summary>
     OpenAgents,
 
     /// <summary>Abre la paleta de comandos (Ctrl+P).</summary>
@@ -26,8 +26,8 @@ public enum InputAction
     /// <summary>Confirma el modelo elegido en el selector.</summary>
     ModelSelected,
 
-    /// <summary>Cierra el panel abierto y vuelve a la entrada principal.</summary>
-    ClosePanel,
+    /// <summary>Confirma el agente elegido para las tareas siguientes.</summary>
+    AgentSelected,
 
     /// <summary>Tecla ignorada (no aplica en el estado actual).</summary>
     Ignored
@@ -61,10 +61,9 @@ public sealed class TuiInput
     private string _returnBuffer = "";
     private int _returnCaret;
     private string? _selectedModel;
+    private string _selectedAgentId = "codigo";
     private string? _inputPlaceholder;
     private bool _slashSuggestionsDismissed;
-    private List<string> _agentPanelItems = new();
-    private bool _agentPanelActive;
 
     public TuiInput(
         TuiHost host,
@@ -80,6 +79,9 @@ public sealed class TuiInput
     public string Buffer => _buffer;
     public string? SelectedModel => _selectedModel ??
         (_overlayState == OverlayState.Modelos ? _selectList?.Selected?.Id : null);
+    public string? SelectedAgentId => _overlayState == OverlayState.Agentes
+        ? _selectList?.Selected?.Id
+        : _selectedAgentId;
     public string? SelectedCommand => _overlayState == OverlayState.Paleta
         ? _selectList?.Selected?.Id
         : null;
@@ -100,6 +102,8 @@ public sealed class TuiInput
                     Title: "Comandos",
                     IncludeSearchField: true,
                     ShowShortcuts: true),
+                OverlayState.Agentes => new SelectListRenderOptions(
+                    Title: "Agentes · arriba/abajo · Enter elegir · Esc cerrar"),
                 _ => new SelectListRenderOptions()
             };
             var overlay = new SelectListOverlay(
@@ -113,9 +117,7 @@ public sealed class TuiInput
             return;
         }
 
-        var title = _agentPanelActive ? "Agentes · Tab o Esc vuelve a la tarea" : null;
-        IReadOnlyList<string>? items = _agentPanelActive ? _agentPanelItems : null;
-        _host.RenderInput(_buffer, _caret, title, items, -1, null, _inputPlaceholder);
+        _host.RenderInput(_buffer, _caret, placeholder: _inputPlaceholder);
     }
 
     /// <summary>Limpia el editor y redibuja.</summary>
@@ -123,8 +125,6 @@ public sealed class TuiInput
     {
         _selectList = null;
         _overlayState = OverlayState.None;
-        _agentPanelActive = false;
-        _agentPanelItems.Clear();
         _buffer = "";
         _caret = 0;
         _historyIndex = _history.Count;
@@ -140,8 +140,6 @@ public sealed class TuiInput
     {
         _selectList = null;
         _overlayState = OverlayState.None;
-        _agentPanelActive = false;
-        _agentPanelItems.Clear();
         _buffer = text ?? "";
         _caret = _buffer.Length;
         _selectedModel = null;
@@ -174,6 +172,13 @@ public sealed class TuiInput
                     return InputAction.None;
                 }
 
+                if (_overlayState == OverlayState.Agentes)
+                {
+                    CloseSelectList(restoreBuffer: true);
+                    Render();
+                    return InputAction.None;
+                }
+
                 CloseSelectList(restoreBuffer: true);
                 return InputAction.OpenAgents;
             }
@@ -188,11 +193,6 @@ public sealed class TuiInput
 
         if (key.Key == ConsoleKey.Tab)
         {
-            if (_agentPanelActive)
-            {
-                return HandleAgentPanel(key);
-            }
-
             return InputAction.OpenAgents;
         }
 
@@ -200,11 +200,6 @@ public sealed class TuiInput
         {
             Complete();
             return InputAction.None;
-        }
-
-        if (_agentPanelActive)
-        {
-            return HandleAgentPanel(key);
         }
 
         switch (key.Key)
@@ -323,8 +318,6 @@ public sealed class TuiInput
         string? activeModel = null)
     {
         _selectedModel = null;
-        _agentPanelActive = false;
-        _agentPanelItems.Clear();
         var items = models
             .Where(model => !string.IsNullOrWhiteSpace(model.Name))
             .GroupBy(model => model.Name, StringComparer.OrdinalIgnoreCase)
@@ -359,8 +352,6 @@ public sealed class TuiInput
     {
         CaptureReturnBuffer();
         _selectedModel = null;
-        _agentPanelActive = false;
-        _agentPanelItems.Clear();
         var items = (commands ?? KnownCommands)
             .Where(command => !string.IsNullOrWhiteSpace(command))
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -374,15 +365,25 @@ public sealed class TuiInput
         Render();
     }
 
-    public void BeginAgentsPanel(IEnumerable<string> items)
+    public void BeginAgentPicker(IEnumerable<SelectItem> agents, string? activeAgentId = null)
     {
-        _selectList = null;
-        _overlayState = OverlayState.None;
-        _inputPlaceholder = null;
+        CaptureReturnBuffer();
         _selectedModel = null;
-        _agentPanelItems = items.Where(item => !string.IsNullOrWhiteSpace(item)).ToList();
-        _agentPanelActive = true;
-        SetTextInternal("");
+        if (!string.IsNullOrWhiteSpace(activeAgentId))
+        {
+            _selectedAgentId = activeAgentId;
+        }
+
+        var items = agents
+            .Where(agent => !string.IsNullOrWhiteSpace(agent.Id) && !string.IsNullOrWhiteSpace(agent.Label))
+            .Select(agent => agent with { IsCurrent = string.Equals(agent.Id, _selectedAgentId, StringComparison.OrdinalIgnoreCase) })
+            .ToList();
+        _overlayState = OverlayState.Agentes;
+        _selectList = SelectList.Create(items, selectedId: _selectedAgentId);
+        _buffer = "";
+        _caret = 0;
+        _inputPlaceholder = "Filtrar agentes";
+        Render();
     }
 
     private InputAction HandleSelectList(ConsoleKeyInfo key)
@@ -409,6 +410,14 @@ public sealed class TuiInput
                     CloseSelectList(restoreBuffer: false);
                     Render();
                     return InputAction.ModelSelected;
+                }
+
+                if (_overlayState == OverlayState.Agentes)
+                {
+                    _selectedAgentId = selected.Id;
+                    CloseSelectList(restoreBuffer: true);
+                    Render();
+                    return InputAction.AgentSelected;
                 }
 
                 _buffer = selected.Id;
@@ -483,12 +492,24 @@ public sealed class TuiInput
                     }
                     Render();
                 }
+                else if ((_overlayState is OverlayState.Paleta or OverlayState.Agentes) && _selectList.Query.Length > 0)
+                {
+                    _selectList = _selectList.SetQuery(_selectList.Query[..^1]);
+                    Render();
+                }
                 return InputAction.None;
 
             case ConsoleKey.Tab:
                 if (_overlayState == OverlayState.Slash)
                 {
                     CompleteSelectedCommand();
+                    return InputAction.None;
+                }
+
+                if (_overlayState == OverlayState.Agentes)
+                {
+                    CloseSelectList(restoreBuffer: true);
+                    Render();
                     return InputAction.None;
                 }
 
@@ -530,7 +551,7 @@ public sealed class TuiInput
             default:
                 if (!char.IsControl(key.KeyChar))
                 {
-                    if (_overlayState == OverlayState.Paleta)
+                    if (_overlayState is OverlayState.Paleta or OverlayState.Agentes)
                     {
                         _selectList = _selectList.SetQuery(_selectList.Query + key.KeyChar);
                         Render();
@@ -551,19 +572,6 @@ public sealed class TuiInput
 
                 return InputAction.None;
         }
-    }
-
-    private InputAction HandleAgentPanel(ConsoleKeyInfo key)
-    {
-        if (key.Key is ConsoleKey.Enter or ConsoleKey.Escape or ConsoleKey.Tab)
-        {
-            _agentPanelActive = false;
-            _agentPanelItems.Clear();
-            SetTextInternal("");
-            return InputAction.ClosePanel;
-        }
-
-        return InputAction.None;
     }
 
     private void CompleteSelectedCommand()
@@ -627,6 +635,11 @@ public sealed class TuiInput
 
     private void CaptureReturnBuffer()
     {
+        if (_selectList is not null && (_overlayState is OverlayState.Paleta or OverlayState.Modelos or OverlayState.Agentes))
+        {
+            return;
+        }
+
         _returnBuffer = _buffer;
         _returnCaret = _caret;
     }
@@ -662,7 +675,7 @@ public sealed class TuiInput
 
     private static string CommandDescription(string command) => command.ToLowerInvariant() switch
     {
-        "/agentes" => "Abrir panel de agentes",
+        "/agentes" => "Elegir modo de trabajo",
         "/analizar" => "Analizar estructura y recursos del proyecto",
         "/avanzar" => "Planificar, construir y verificar una tarea",
         "/ayuda" => "Mostrar ayuda de Condor",
@@ -686,7 +699,8 @@ public sealed class TuiInput
         None,
         Slash,
         Paleta,
-        Modelos
+        Modelos,
+        Agentes
     }
 
     private void Insert(string text)
