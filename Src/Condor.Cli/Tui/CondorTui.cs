@@ -214,7 +214,6 @@ public static class CondorTui
             activeAgentId = selectedAgentId;
             var label = AgentModeLabel(activeAgentId);
             host.SetRuntimeMetadata(label, providerName, "Predeterminada");
-            host.AddActivity("Modo seleccionado: " + label, ActivityKind.System);
             host.SetEstado(
                 taskRunning ? "Modo " + label + " para la siguiente tarea" : "Modo activo: " + label,
                 ActivityKind.Success);
@@ -311,8 +310,13 @@ public static class CondorTui
 
                 if (result is not null)
                 {
-                    foreach (var line in SplitLines(AgentRenderer.BuildResultText(result, runningWatch.Elapsed)))
+                    foreach (var line in SplitLines(AgentRenderer.BuildResultText(result)))
                     {
+                        if (IsInternalResultLine(line))
+                        {
+                            continue;
+                        }
+
                         host.AddActivity(line, result.Success ? ResultActivityKind(line) : ActivityKind.Error);
                     }
 
@@ -695,8 +699,9 @@ public static class CondorTui
         host.SetBusy(true);
         host.SetEstado("Consultando al modelo activo", ActivityKind.System);
         host.SetModelStatus(activeModel + " · consultando", working: true);
-        host.AddActivity("Condor consulta al modelo local " + activeModel + "...", ActivityKind.System);
+        host.AddActivity("Condor consulta al modelo local...", ActivityKind.System);
         host.Repaint();
+        var watch = System.Diagnostics.Stopwatch.StartNew();
 
         try
         {
@@ -711,7 +716,6 @@ public static class CondorTui
                 return 1;
             }
 
-            host.AddActivity("Respuesta de " + (response.Model ?? activeModel) + ":", ActivityKind.System);
             var content = response.Content ?? "";
             foreach (var line in SplitLines(content))
             {
@@ -743,8 +747,9 @@ public static class CondorTui
         }
         finally
         {
+            watch.Stop();
             host.SetBusy(false);
-            host.SetProgreso("—");
+            host.SetProgreso(FormatoTiempo(watch.Elapsed));
             host.SetModelStatus(activeModel + " · listo", working: false);
         }
     }
@@ -771,6 +776,7 @@ public static class CondorTui
         host.SetModelStatus((activeModel ?? "Modelo local") + " · examinando imagen", working: true);
         host.AddActivity("Condor examina la imagen con el modelo local...", ActivityKind.System);
         host.Repaint();
+        var watch = System.Diagnostics.Stopwatch.StartNew();
 
         try
         {
@@ -792,8 +798,9 @@ public static class CondorTui
         }
         finally
         {
+            watch.Stop();
             host.SetBusy(false);
-            host.SetProgreso("—");
+            host.SetProgreso(FormatoTiempo(watch.Elapsed));
             host.SetModelStatus((activeModel ?? "Modelo local") + " · listo", working: false);
         }
     }
@@ -1089,7 +1096,6 @@ public static class CondorTui
                 ? memory.FreeBytes / ModelMemoryBudget.BytesPerGb
                 : 0;
             host.SetModel(model.Name);
-            host.AddActivity("Modelo seleccionado: " + model.Name + " · " + DescribeModelCapabilities(model), ActivityKind.Success);
             host.SetEstado("Modelo seleccionado", ActivityKind.Success);
             return true;
         }
@@ -1260,6 +1266,14 @@ public static class CondorTui
         return ActivityKind.Response;
     }
 
+    private static bool IsInternalResultLine(string line)
+    {
+        var text = line.TrimStart();
+        return text.StartsWith("Tarea:", StringComparison.OrdinalIgnoreCase) ||
+               text.StartsWith("Contexto del entorno:", StringComparison.OrdinalIgnoreCase) ||
+               text.StartsWith("©Condor", StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>Motivo corto y legible de una excepcion: nunca stack traces.</summary>
     private static string ShortReason(Exception ex)
     {
@@ -1269,9 +1283,7 @@ public static class CondorTui
 
     private static string FormatoTiempo(TimeSpan e)
     {
-        return e.TotalHours >= 1
-            ? string.Format("{0:00}:{1:00}:{2:00}", (int)e.TotalHours, e.Minutes, e.Seconds)
-            : string.Format("{0:00}:{1:00}", e.Minutes, e.Seconds);
+        return AgentProgressLabels.FormatElapsed(e);
     }
 
     /// <summary>Renderiza la ayuda integrada dentro de la TUI (zona de actividad).</summary>

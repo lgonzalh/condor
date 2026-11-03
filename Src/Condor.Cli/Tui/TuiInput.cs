@@ -61,6 +61,7 @@ public sealed class TuiInput
     private OverlayState _overlayState;
     private string _returnBuffer = "";
     private int _returnCaret;
+    private bool _hasSubmittedFirstInteraction;
     private string? _selectedModel;
     private string _selectedAgentId = "codificar";
     private string? _inputPlaceholder;
@@ -93,6 +94,11 @@ public sealed class TuiInput
     /// <summary>Dibuja la linea de entrada en su region.</summary>
     public void Render()
     {
+        var hideInitialPlaceholder = _hasSubmittedFirstInteraction &&
+                                     _buffer.Length == 0 &&
+                                     _inputPlaceholder is null;
+        var showCursorWhenEmpty = hideInitialPlaceholder && _selectList is null;
+        var placeholder = hideInitialPlaceholder ? string.Empty : _inputPlaceholder;
         if (_selectList is not null)
         {
             var options = _overlayState switch
@@ -117,11 +123,11 @@ public sealed class TuiInput
                     ? SelectListPlacement.Centered
                     : SelectListPlacement.AboveInput,
                 MaximumWidth: _overlayState == OverlayState.Paleta ? 90 : null);
-            _host.RenderInputWithSelectList(_buffer, _caret, overlay, _inputPlaceholder);
+            _host.RenderInputWithSelectList(_buffer, _caret, overlay, placeholder);
             return;
         }
 
-        _host.RenderInput(_buffer, _caret, placeholder: _inputPlaceholder);
+        _host.RenderInput(_buffer, _caret, placeholder: placeholder, showCursorWhenEmpty: showCursorWhenEmpty);
     }
 
     public InputAction HandleMouse(TuiMouseEvent mouseEvent)
@@ -158,6 +164,17 @@ public sealed class TuiInput
 
             _selectList = _selectList.SelectIndex(filteredIndex);
             return HandleSelectList(new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false));
+        }
+
+        if (_host.TryGetFooterActionAt(mouseEvent.Row, mouseEvent.Column, out var footerAction))
+        {
+            if (_selectList is not null)
+            {
+                CloseSelectList(restoreBuffer: true);
+                Render();
+            }
+
+            return footerAction;
         }
 
         var keepCurrentBuffer = _selectList is null || _overlayState == OverlayState.Slash;
@@ -268,6 +285,11 @@ public sealed class TuiInput
         {
             case ConsoleKey.Enter:
                 var text = _buffer.Trim();
+                if (text.Length > 0)
+                {
+                    _hasSubmittedFirstInteraction = true;
+                }
+
                 if (text.Length > 0 && (_history.Count == 0 || _history[^1] != text))
                 {
                     _history.Add(text);

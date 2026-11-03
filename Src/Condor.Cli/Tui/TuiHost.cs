@@ -50,7 +50,7 @@ public enum ActivityKind
 ///   ── Actividad del agente ────────────────────────────────
 ///   (historial vivo de la conversacion y la actividad)
 ///   &gt; ¿que deseas construir...?
-///   (barra de estado de una linea: Condor | modelo | RAM | atajos)
+///   (barra de estado de una linea: segundos | RAM | ruta | atajos)
 ///
 /// La identidad institucional y el modelo REAL seleccionado comparten la linea
 /// de identidad de la cabecera, fuera del area del arte; "Modo Local 100%"
@@ -65,8 +65,12 @@ public sealed class TuiHost : IDisposable
     internal const int MinWidth = 80;
     internal const int MinHeight = 24;
 
-    private const int BottomRows = 4;             // separador + entrada + metadata + estado/hints
+    private const int BottomRows = 3;             // separador + entrada + estado/hints
     private const int HeaderRows = 5;             // cuatro líneas de mascota + separador inferior
+    private const string AgentsHint = "tab agentes";
+    private const string CommandsHint = "ctrl+p comandos";
+    private const string HintGap = "  ";
+    private static string Shortcuts => AgentsHint + HintGap + CommandsHint;
 
     private static readonly string[] SpinnerFrames = { "◐", "◑", "◒", "◕", "◔" };
 
@@ -93,8 +97,6 @@ public sealed class TuiHost : IDisposable
     private string? _model;
     private string? _workspace;
     private string _agentName = "Condor principal";
-    private string _providerName = "Ollama (Local)";
-    private string _modelVariant = "Predeterminada";
     private string _inputPlaceholder = Placeholder;
     private string _estado = "Iniciando";
     private ActivityKind _estadoKind = ActivityKind.System;
@@ -109,17 +111,16 @@ public sealed class TuiHost : IDisposable
     private bool _dirtyHeader;
     private bool _dirtyActivity;
     private bool _dirtyStatus;
-    private bool _dirtyMetadata;
     private bool _dirtyInput;
     private bool _dirtyOverlay;
+    private bool _showEmptyInputCursor;
 
     // Filas logicas (0-based) de la sesion. La convencion de pintura usa At(fila+1): "fila" 0-based.
     // La cabecera de Trabajo ocupa cuatro filas de mascota y una línea divisoria.
     private int ContentTop => HeaderRows + 1;
     private int SepInputRow => _height - BottomRows;         // separador antes de la entrada
     public int InputRow => _height - BottomRows + 1;         // fila de entrada
-    private int MetadataRow => _height - BottomRows + 2;      // agente, modelo, proveedor y variante
-    private int EstadoRow => _height - BottomRows + 3;        // estado y atajos
+    private int EstadoRow => _height - BottomRows + 2;        // estado, equipo, ruta y atajos
     private int ContentBottom => SepInputRow - 1;            // ultima fila utilizable de contenido
 
     // Composicion de referencia: la mascota se ancla a la IZQUIERDA del area de
@@ -270,7 +271,6 @@ public sealed class TuiHost : IDisposable
             _modelWorking = false;
             _dirtyHeader = true;
             _dirtyStatus = true;
-            _dirtyMetadata = true;
         }
     }
 
@@ -288,7 +288,6 @@ public sealed class TuiHost : IDisposable
             }
 
             _dirtyInput = true;
-            _dirtyMetadata = true;
         }
     }
 
@@ -297,9 +296,7 @@ public sealed class TuiHost : IDisposable
         lock (_gate)
         {
             _agentName = string.IsNullOrWhiteSpace(agentName) ? "Condor principal" : agentName.Trim();
-            _providerName = string.IsNullOrWhiteSpace(providerName) ? "Ollama (Local)" : providerName.Trim();
-            _modelVariant = string.IsNullOrWhiteSpace(modelVariant) ? "Predeterminada" : modelVariant.Trim();
-            _dirtyMetadata = true;
+            _dirtyHeader = true;
         }
     }
 
@@ -533,7 +530,7 @@ public sealed class TuiHost : IDisposable
         lock (_gate)
         {
             if (!_entered || (!_dirtyAll && !_dirtyHeader && !_dirtyActivity && !_dirtyStatus &&
-                              !_dirtyMetadata && !_dirtyInput && !_dirtyOverlay))
+                              !_dirtyInput && !_dirtyOverlay))
             {
                 return "";
             }
@@ -557,7 +554,6 @@ public sealed class TuiHost : IDisposable
                     PaintChromeLocked(sb);
                     PaintActivityLocked(sb);
                     PaintSelectListOverlayDiffLocked(sb, force: true, underlayPainted: true);
-                    PaintMetadataLocked(sb);
                     PaintEstadoLocked(sb);
                     PaintInputRegionLocked(sb);
                 }
@@ -583,11 +579,6 @@ public sealed class TuiHost : IDisposable
                     PaintSelectListOverlayDiffLocked(sb, force: activityPainted, underlayPainted: activityPainted);
                 }
 
-                if ((_dirtyMetadata || _dirtyStatus) && _mode == HostMode.Session)
-                {
-                    PaintMetadataLocked(sb);
-                }
-
                 if (_dirtyStatus && _mode == HostMode.Session)
                 {
                     PaintEstadoLocked(sb);
@@ -603,7 +594,8 @@ public sealed class TuiHost : IDisposable
                 }
             }
 
-            _dirtyAll = _dirtyHeader = _dirtyActivity = _dirtyStatus = _dirtyMetadata = _dirtyInput = _dirtyOverlay = false;
+            AppendInputCursorStateLocked(sb);
+            _dirtyAll = _dirtyHeader = _dirtyActivity = _dirtyStatus = _dirtyInput = _dirtyOverlay = false;
             return sb.ToString();
         }
     }
@@ -668,7 +660,12 @@ public sealed class TuiHost : IDisposable
                     PaintHeaderTextLocked(sb, row, textLeftCol, Slogan, Ansi.FgTerracota);
                     break;
                 case 3:
-                    PaintHeaderTextLocked(sb, row, textLeftCol, IdentityLine + "  " + (_model ?? "—"), Ansi.FgDorado);
+                    PaintHeaderTextLocked(
+                        sb,
+                        row,
+                        textLeftCol,
+                        IdentityLine + " · " + (_model ?? "—"),
+                        Ansi.FgDorado);
                     break;
                 case 4:
                     PaintHeaderTextLocked(sb, row, textLeftCol, CopyrightLine, Ansi.FgGris);
@@ -955,19 +952,21 @@ public sealed class TuiHost : IDisposable
 
     private string ActivityPrefix(ActivityKind kind)
     {
-        return kind switch
+        var color = kind switch
         {
-            ActivityKind.User => "  " + Ansi.FgBlanco + "› ",
-            ActivityKind.Condor => "  " + Ansi.FgCrema + "◆ ",
-            ActivityKind.Analysis => "  " + Ansi.FgCian + "◦ ",
-            ActivityKind.CodeEdit => "  " + Ansi.FgDorado + "▸ ",
-            ActivityKind.Response => "  " + Ansi.FgCrema + "◆ ",
-            ActivityKind.Question => "  " + Ansi.FgAmarillo + "？ ",
-            ActivityKind.Success => "  " + Ansi.FgVerde + "● ",
-            ActivityKind.Warning => "  " + Ansi.FgAmarillo + "▲ ",
-            ActivityKind.Error => "  " + Ansi.FgRojo + "✗ ",
-            _ => "  " + Ansi.FgVerde + "● "
+            ActivityKind.User => Ansi.FgBlanco,
+            ActivityKind.Condor => Ansi.FgCrema,
+            ActivityKind.Analysis => Ansi.FgCian,
+            ActivityKind.CodeEdit => Ansi.FgDorado,
+            ActivityKind.Response => Ansi.FgCrema,
+            ActivityKind.Question => Ansi.FgAmarillo,
+            ActivityKind.Success => Ansi.FgVerde,
+            ActivityKind.Warning => Ansi.FgAmarillo,
+            ActivityKind.Error => Ansi.FgRojo,
+            _ => Ansi.FgVerde
         };
+
+        return "  " + color;
     }
 
     /// <summary>
@@ -985,79 +984,81 @@ public sealed class TuiHost : IDisposable
         sb.Append(Ansi.At(EstadoRow + 1, 1));
         sb.Append(Ansi.ClearLine);
         var frame = _busy || _modelWorking ? SpinnerFrames[_spin % SpinnerFrames.Length] + " " : "";
-        var shortcuts = "tab agentes  ctrl+p comandos";
-        var availableWidth = Math.Max(1, _width - shortcuts.Length - 2);
-        var memory = " · RAM " + (Environment.WorkingSet / (1024 * 1024)) + "MB";
-        var condorLabel = _width < 100 ? "C: " : "Condor: ";
-        var modelLabel = _width < 100 ? "M: " : "Modelo: ";
-        var dynamicWidth = Math.Max(2, availableWidth - frame.Length - condorLabel.Length - modelLabel.Length - memory.Length - 3);
-        var modelActivity = _modelStatus;
-        if (!string.IsNullOrWhiteSpace(_model) &&
-            modelActivity.StartsWith(_model + " · ", StringComparison.OrdinalIgnoreCase))
+        var availableWidth = Math.Max(1, _width - Shortcuts.Length - 2);
+        var showStatus = _busy || _estadoKind is ActivityKind.Warning or ActivityKind.Error;
+        var parts = new List<string>();
+        if (showStatus && !string.IsNullOrWhiteSpace(_estado))
         {
-            modelActivity = modelActivity[(_model.Length + 3)..];
-        }
-        else if (modelActivity.StartsWith("Modelo local · ", StringComparison.OrdinalIgnoreCase))
-        {
-            modelActivity = modelActivity["Modelo local · ".Length..];
+            parts.Add(_estado);
         }
 
+        if (!_busy && EsDuracionEnSegundos(_progreso))
+        {
+            parts.Add(_progreso);
+        }
+
+        parts.Add("RAM " + (Environment.WorkingSet / (1024 * 1024)) + "MB");
         var workspace = string.IsNullOrWhiteSpace(_workspace) ? Environment.CurrentDirectory : _workspace;
-        var workspaceSuffix = " · " + workspace;
-        var includeWorkspace = _estado.Length + modelActivity.Length + workspaceSuffix.Length <= dynamicWidth;
-        if (includeWorkspace)
-        {
-            dynamicWidth -= workspaceSuffix.Length;
-        }
-
-        var condorBudget = Math.Min(_estado.Length, Math.Max(1, (dynamicWidth * 55) / 100));
-        var modelBudget = Math.Min(modelActivity.Length, Math.Max(1, dynamicWidth - condorBudget));
-        var remainingWidth = dynamicWidth - condorBudget - modelBudget;
-        var extraCondor = Math.Min(remainingWidth, Math.Max(0, _estado.Length - condorBudget));
-        condorBudget += extraCondor;
-        remainingWidth -= extraCondor;
-        modelBudget += Math.Min(remainingWidth, Math.Max(0, modelActivity.Length - modelBudget));
-
-        var condorText = Clip(_estado, condorBudget);
-        var modelText = Clip(modelActivity, modelBudget);
-        var footer = frame + condorLabel + condorText + " · " + modelLabel + modelText + memory +
-                     (includeWorkspace ? workspaceSuffix : "");
-        sb.Append(EstadoColor(_estadoKind) + Clip(footer, availableWidth) + Ansi.Reset);
-        var shortcutsCol = Math.Max(1, _width - shortcuts.Length + 1);
+        parts.Add(workspace);
+        var footer = frame + string.Join(" · ", parts);
+        var color = showStatus ? EstadoColor(_estadoKind) : Ansi.FgGris;
+        sb.Append(color + Clip(footer, availableWidth) + Ansi.Reset);
+        var shortcutsCol = Math.Max(1, _width - Shortcuts.Length + 1);
         sb.Append(Ansi.At(EstadoRow + 1, shortcutsCol));
-        sb.Append(Ansi.FgGris + shortcuts + Ansi.Reset);
+        sb.Append(Ansi.FgGris + Shortcuts + Ansi.Reset);
     }
 
-    private void PaintMetadataLocked(System.Text.StringBuilder sb)
+    private static bool EsDuracionEnSegundos(string value)
     {
-        sb.Append(Ansi.At(MetadataRow + 1, 1));
-        sb.Append(Ansi.ClearLine);
-
-        var fields = new[] { _agentName, _model ?? "Modelo sin seleccionar", _providerName, _modelVariant };
-        var available = Math.Max(1, _width - 2);
-        var separator = " · ";
-        var remaining = Math.Max(0, available - (separator.Length * (fields.Length - 1)));
-        var displayed = new string[fields.Length];
-        for (var index = 0; index < fields.Length; index++)
+        var text = value.Trim();
+        if (!text.EndsWith(" s", StringComparison.OrdinalIgnoreCase))
         {
-            var remainingFields = fields.Length - index;
-            var budget = Math.Max(0, remaining / remainingFields);
-            displayed[index] = Ansi.ClipVisible(fields[index], budget);
-            remaining -= Ansi.VisibleWidth(displayed[index]);
+            return false;
         }
 
-        sb.Append(" ");
-        for (var index = 0; index < displayed.Length; index++)
+        var number = text[..^2].Trim();
+        return number.Length > 0 && number.All(character => char.IsDigit(character) || character is ',' or '.');
+    }
+
+    internal bool TryGetFooterActionAt(int screenRow, int screenColumn, out InputAction action)
+    {
+        lock (_gate)
         {
-            if (index > 0) sb.Append(Ansi.FgGris + separator + Ansi.Reset);
-            if (index == 1)
+            action = InputAction.None;
+            if (_mode != HostMode.Session || screenRow != EstadoRow + 1 || screenColumn < 1)
             {
-                sb.Append(_tuiTheme.Accent + Ansi.Bold + displayed[index] + Ansi.Reset);
+                return false;
             }
-            else
+
+            var start = Math.Max(1, _width - Shortcuts.Length + 1);
+            var offset = screenColumn - start;
+            if (offset >= 0 && offset < AgentsHint.Length)
             {
-                sb.Append(Ansi.FgGris + displayed[index] + Ansi.Reset);
+                action = InputAction.OpenAgents;
+                return true;
             }
+
+            var commandsStart = AgentsHint.Length + HintGap.Length;
+            if (offset >= commandsStart && offset < commandsStart + CommandsHint.Length)
+            {
+                action = InputAction.OpenCommands;
+                return true;
+            }
+
+            return false;
+        }
+    }
+
+    private void AppendInputCursorStateLocked(System.Text.StringBuilder sb)
+    {
+        if (_mode == HostMode.Session && !_busy && _showEmptyInputCursor)
+        {
+            sb.Append(Ansi.At(InputRow + 1, 6));
+            sb.Append(Ansi.ShowCursor);
+        }
+        else
+        {
+            sb.Append(Ansi.HideCursor);
         }
     }
 
@@ -1130,7 +1131,8 @@ public sealed class TuiHost : IDisposable
         IReadOnlyList<string>? overlayItems = null,
         int overlaySelectedIndex = -1,
         IReadOnlyList<bool>? overlayDisabledItems = null,
-        string? placeholder = null)
+        string? placeholder = null,
+        bool showCursorWhenEmpty = false)
     {
         string? snapshot = null;
         lock (_gate)
@@ -1154,6 +1156,8 @@ public sealed class TuiHost : IDisposable
             _overlayDisabledItems = nextDisabledItems;
             _overlaySelectedIndex = overlaySelectedIndex;
             _inputPlaceholder = placeholder ?? Placeholder;
+            _showEmptyInputCursor = showCursorWhenEmpty && buffer.Length == 0 &&
+                                    string.IsNullOrEmpty(overlayTitle) && nextItems.Count == 0;
             if (overlayChanged && _mode == HostMode.Session)
             {
                 _dirtyActivity = true;
@@ -1164,7 +1168,9 @@ public sealed class TuiHost : IDisposable
                 return;
             }
 
-            snapshot = BuildInputLocked(buffer, caret, _inputPlaceholder);
+            var output = new System.Text.StringBuilder(BuildInputLocked(buffer, caret, _inputPlaceholder));
+            AppendInputCursorStateLocked(output);
+            snapshot = output.ToString();
         }
 
         Console.Write(snapshot);
@@ -1195,6 +1201,7 @@ public sealed class TuiHost : IDisposable
             _selectListModel = overlay;
             _selectListOverlay = renderedOverlay;
             _inputPlaceholder = placeholder ?? Placeholder;
+            _showEmptyInputCursor = false;
             if (changed)
             {
                 _dirtyOverlay = true;
@@ -1209,7 +1216,9 @@ public sealed class TuiHost : IDisposable
                 return;
             }
 
-            snapshot = BuildInputLocked(buffer, caret, _inputPlaceholder);
+            var output = new System.Text.StringBuilder(BuildInputLocked(buffer, caret, _inputPlaceholder));
+            AppendInputCursorStateLocked(output);
+            snapshot = output.ToString();
         }
 
         Console.Write(snapshot);
@@ -1353,7 +1362,11 @@ public sealed class TuiHost : IDisposable
 
         if (buffer.Length == 0)
         {
-            sb.Append(Ansi.FgGris).Append(Ansi.ClipVisible(placeholder ?? Placeholder, budget)).Append(Ansi.Reset);
+            if (!string.IsNullOrEmpty(placeholder))
+            {
+                sb.Append(Ansi.FgGris).Append(Ansi.ClipVisible(placeholder, budget)).Append(Ansi.Reset);
+            }
+
             return sb.ToString();
         }
 
