@@ -32,23 +32,21 @@ public class ProgramContractTests
     }
 
     [Fact]
-    public async Task Main_SinArgumentos_ReflejaPreparacionDelEntorno()
+    public async Task Main_SinTuiCompatible_NoIniciaLaConsolaClasica()
     {
-        // Sin argumentos y sin entrada interactiva, el codigo de salida refleja
-        // si Condor quedo operativo: 0 cuando hay un modelo utilizable, 1 cuando
-        // no (reportando el motivo sin entrar al prompt silenciosamente). Esto
-        // es el contrato del flujo de arranque honesto: nunca decir "listo" sin
-        // capacidad operativa.
-        var state = new LocalStateStore();
-        var prep = await new StartupPreparer(
-            new AssessmentService(),
-            state,
-            modelAutoSetup: new ModelAutoSetupService(state, new AssessmentService())).RunAsync();
-
         var exitCode = await Program.Main(Array.Empty<string>());
 
-        Assert.True(prep.Ready ? exitCode == 0 : exitCode == 1);
-        Assert.False(prep.Ready && exitCode != 0);
-        Assert.False(!prep.Ready && exitCode == 0);
+        Assert.Equal(1, exitCode);
+    }
+
+    [Theory]
+    [InlineData("hola")]
+    [InlineData("/consultar hola")]
+    [InlineData("/examinar imagen.png")]
+    public async Task Main_InteraccionConModeloSinTui_NoLaEjecutaEnConsola(string request)
+    {
+        var exitCode = await Program.Main(new[] { request });
+
+        Assert.Equal(1, exitCode);
     }
 }

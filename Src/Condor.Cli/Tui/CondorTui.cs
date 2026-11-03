@@ -12,14 +12,14 @@ using Condor.Infrastructure.DependencyBootstrap;
 using Condor.Infrastructure.Documentation;
 using Condor.Infrastructure.Llm;
 using Condor.Infrastructure.Setup;
+using Condor.Infrastructure.Vision;
 
 namespace Condor.Cli.Tui;
 
 /// <summary>
-/// Sesion interactiva de Condor sobre la TUI persistente. Sustituye el bucle
-/// clasico de consola cuando hay terminal interactiva con soporte VT; en otro
-/// caso Condor usa automaticamente la experiencia CLI establecida (E2E,
-/// pipelines y terminales sin VT no cambian).
+/// Sesion interactiva de Condor sobre la TUI persistente. Toda interaccion con
+/// modelos locales permanece en esta pantalla; si la terminal no admite TUI,
+/// Program informa el requisito y no deriva la solicitud a una consola clasica.
 ///
 /// Flujo del mockup oficial: Condor Grande da la bienvenida mientras se prepara
 /// el entorno real; al estar listo, la sesion pasa a Condor Ave con la identidad
@@ -77,7 +77,8 @@ public static class CondorTui
         LocalModelSession session,
         CancellationToken shutdownToken,
         int? tuiWidth = null,
-        int? tuiHeight = null)
+        int? tuiHeight = null,
+        string? initialInput = null)
     {
         using var host = tuiWidth.HasValue && tuiHeight.HasValue
             ? new TuiHost(tuiWidth.Value, tuiHeight.Value)
@@ -193,7 +194,14 @@ public static class CondorTui
         var input = new TuiInput(host);
         var terminalInput = new TuiConsoleInputReader();
         host.Repaint();  // transición limpia: ClearScreen + TUI 2 (Ave) antes de cualquier elemento de TUI 2
-        input.Render();
+        if (string.IsNullOrWhiteSpace(initialInput))
+        {
+            input.Render();
+        }
+        else
+        {
+            input.SetText(initialInput);
+        }
 
         void ApplyAgentSelection(bool taskRunning)
         {
@@ -518,6 +526,25 @@ public static class CondorTui
                             input.Render();
                             break;
 
+                        case SlashRoute slash when slash.Kind == SlashCommandKind.Consultar:
+                            host.AddActivity(text, ActivityKind.User);
+                            exitCode = await ConsultInTuiAsync(
+                                host, session.Llm, session.ActiveModel, slash.Arguments, shutdownToken);
+                            input.Render();
+                            break;
+
+                        case SlashRoute slash when slash.Kind == SlashCommandKind.Examinar:
+                            host.AddActivity(text, ActivityKind.User);
+                            exitCode = await ExamineInTuiAsync(
+                                host,
+                                stateStore,
+                                new VisionService(stateStore, session: session),
+                                session.ActiveModel,
+                                slash.Arguments,
+                                shutdownToken);
+                            input.Render();
+                            break;
+
                         case SlashRoute slash:
                             // Los demas comandos "/" conservan su presentacion establecida:
                             // la pantalla TUI se suspende y retoma intacta.
@@ -535,6 +562,27 @@ public static class CondorTui
                             var modeRoute = RouteAgentMode(activeAgentId, free.Intention, session.ActiveModel);
                             if (modeRoute is SlashRoute modeSlash)
                             {
+                                if (modeSlash.Kind == SlashCommandKind.Consultar)
+                                {
+                                    exitCode = await ConsultInTuiAsync(
+                                        host, session.Llm, session.ActiveModel, modeSlash.Arguments, shutdownToken);
+                                    input.Render();
+                                    break;
+                                }
+
+                                if (modeSlash.Kind == SlashCommandKind.Examinar)
+                                {
+                                    exitCode = await ExamineInTuiAsync(
+                                        host,
+                                        stateStore,
+                                        new VisionService(stateStore, session: session),
+                                        session.ActiveModel,
+                                        modeSlash.Arguments,
+                                        shutdownToken);
+                                    input.Render();
+                                    break;
+                                }
+
                                 host.SetBusy(true);
                                 host.SetEstado(modeSlash.Kind switch
                                 {
@@ -597,6 +645,193 @@ public static class CondorTui
         host.Dispose();
         PrintExitBanner();
         return exitCode;
+    }
+
+    internal static async Task<int> ConsultInTuiAsync(
+        TuiHost host,
+        ILlmClient llmClient,
+        string? activeModel,
+        string[] args,
+        CancellationToken cancellationToken)
+    {
+        var queryArgs = args.ToList();
+        var modelOption = queryArgs.FindIndex(argument =>
+            argument.Equals("--modelo", StringComparison.OrdinalIgnoreCase));
+        if (modelOption >= 0)
+        {
+            var requestedModel = modelOption + 1 < queryArgs.Count
+                ? queryArgs[modelOption + 1]
+                : null;
+            if (!string.Equals(requestedModel, activeModel, StringComparison.OrdinalIgnoreCase))
+            {
+                host.AddActivity(
+                    "La consulta usa el modelo activo. Para cambiarlo, selecciona otro desde /modelo.",
+                    ActivityKind.Warning);
+                host.SetEstado("Selecciona el modelo dentro de la TUI", ActivityKind.Warning);
+                return 1;
+            }
+
+            // El modo Preguntar incluye el modelo activo en la ruta; se valida
+            // contra la seleccion actual y se retira antes de formar el prompt.
+            queryArgs.RemoveAt(modelOption + 1);
+            queryArgs.RemoveAt(modelOption);
+        }
+
+        var prompt = string.Join(" ", queryArgs).Trim();
+        if (string.IsNullOrWhiteSpace(prompt))
+        {
+            host.AddActivity("Uso: /consultar <mensaje>", ActivityKind.Warning);
+            host.SetEstado("Falta el mensaje para consultar", ActivityKind.Warning);
+            return 1;
+        }
+
+        if (string.IsNullOrWhiteSpace(activeModel))
+        {
+            host.AddActivity("No hay un modelo local activo para esta consulta.", ActivityKind.Error);
+            host.SetEstado("Selecciona un modelo local", ActivityKind.Error);
+            return 1;
+        }
+
+        host.SetBusy(true);
+        host.SetEstado("Consultando al modelo activo", ActivityKind.System);
+        host.SetModelStatus(activeModel + " · consultando", working: true);
+        host.AddActivity("Condor consulta al modelo local " + activeModel + "...", ActivityKind.System);
+        host.Repaint();
+
+        try
+        {
+            var response = await llmClient.CompleteAsync(
+                new LlmRequest { Model = activeModel, Prompt = prompt },
+                cancellationToken).ConfigureAwait(true);
+
+            if (!response.Success)
+            {
+                host.AddActivity(response.Error ?? "El modelo local no devolvio una respuesta valida.", ActivityKind.Error);
+                host.SetEstado("No se pudo completar la consulta", ActivityKind.Error);
+                return 1;
+            }
+
+            host.AddActivity("Respuesta de " + (response.Model ?? activeModel) + ":", ActivityKind.System);
+            var content = response.Content ?? "";
+            foreach (var line in SplitLines(content))
+            {
+                if (!string.IsNullOrWhiteSpace(line))
+                {
+                    host.AddActivity(line, ActivityKind.Response);
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                host.AddActivity("El modelo no devolvio contenido.", ActivityKind.Warning);
+            }
+
+            host.SetEstado("Consulta completada", ActivityKind.Success);
+            return 0;
+        }
+        catch (OperationCanceledException)
+        {
+            host.AddActivity("Consulta cancelada.", ActivityKind.Warning);
+            host.SetEstado("Consulta cancelada", ActivityKind.Warning);
+            return 130;
+        }
+        catch (Exception ex)
+        {
+            host.AddActivity("No se pudo consultar el modelo: " + ShortReason(ex), ActivityKind.Error);
+            host.SetEstado("Fallo en la consulta", ActivityKind.Error);
+            return 1;
+        }
+        finally
+        {
+            host.SetBusy(false);
+            host.SetProgreso("—");
+            host.SetModelStatus(activeModel + " · listo", working: false);
+        }
+    }
+
+    private static async Task<int> ExamineInTuiAsync(
+        TuiHost host,
+        IStateStore stateStore,
+        IVisionService visionService,
+        string? activeModel,
+        string[] args,
+        CancellationToken cancellationToken)
+    {
+        var imagePath = string.Join(" ", args.Where(argument =>
+            !argument.Equals("--json", StringComparison.OrdinalIgnoreCase))).Trim();
+        if (string.IsNullOrWhiteSpace(imagePath))
+        {
+            host.AddActivity("Uso: /examinar <ruta de imagen>", ActivityKind.Warning);
+            host.SetEstado("Falta la ruta de la imagen", ActivityKind.Warning);
+            return 1;
+        }
+
+        host.SetBusy(true);
+        host.SetEstado("Examinando imagen con el modelo local", ActivityKind.System);
+        host.SetModelStatus((activeModel ?? "Modelo local") + " · examinando imagen", working: true);
+        host.AddActivity("Condor examina la imagen con el modelo local...", ActivityKind.System);
+        host.Repaint();
+
+        try
+        {
+            var result = await visionService.ExamineAsync(imagePath, cancellationToken).ConfigureAwait(true);
+            await stateStore.SaveVisionAsync(result, cancellationToken).ConfigureAwait(true);
+            return RenderVisionResultInTui(host, result, imagePath);
+        }
+        catch (OperationCanceledException)
+        {
+            host.AddActivity("Examen de imagen cancelado.", ActivityKind.Warning);
+            host.SetEstado("Examen cancelado", ActivityKind.Warning);
+            return 130;
+        }
+        catch (Exception ex)
+        {
+            host.AddActivity("No se pudo examinar la imagen: " + ShortReason(ex), ActivityKind.Error);
+            host.SetEstado("Fallo al examinar la imagen", ActivityKind.Error);
+            return 1;
+        }
+        finally
+        {
+            host.SetBusy(false);
+            host.SetProgreso("—");
+            host.SetModelStatus((activeModel ?? "Modelo local") + " · listo", working: false);
+        }
+    }
+
+    internal static int RenderVisionResultInTui(TuiHost host, VisionResult result, string fallbackImagePath)
+    {
+        var succeeded = result.Status == DetectionStatus.Detected;
+        host.AddActivity(
+            succeeded ? "Condor examinó la imagen." : "Condor no pudo examinar la imagen.",
+            succeeded ? ActivityKind.Success : ActivityKind.Warning);
+        host.AddActivity(
+            "Imagen: " + (string.IsNullOrWhiteSpace(result.ImagePath) ? fallbackImagePath : result.ImagePath),
+            ActivityKind.System);
+        if (!string.IsNullOrWhiteSpace(result.ModelUsed))
+        {
+            host.AddActivity("Modelo: " + result.ModelUsed, ActivityKind.System);
+        }
+
+        foreach (var line in SplitLines(result.Description ?? ""))
+        {
+            if (!string.IsNullOrWhiteSpace(line))
+            {
+                host.AddActivity(line, succeeded ? ActivityKind.Response : ActivityKind.Warning);
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(result.Reason))
+        {
+            host.AddActivity(result.Reason, ActivityKind.Warning);
+        }
+
+        foreach (var limit in result.LimitsApplied)
+        {
+            host.AddActivity("Limite aplicado: " + limit, ActivityKind.Warning);
+        }
+
+        host.SetEstado(succeeded ? "Examen completado" : "Examen limitado", succeeded ? ActivityKind.Success : ActivityKind.Warning);
+        return succeeded ? 0 : 1;
     }
 
     private static void PrintExitBanner()

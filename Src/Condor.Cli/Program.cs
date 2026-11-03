@@ -81,15 +81,8 @@ public static class Program
 
             if (args.Length == 0)
             {
-                // Experiencia TUI persistente cuando hay terminal interactiva con
-                // VT y tamano suficiente; en otro caso, la CLI clasica establecida
-                // (redireccion de E/S para E2E/pipelines queda intacta).
-                if (Tui.CondorTui.CanRun(out var tuiWidth, out var tuiHeight))
-                {
-                    return await Tui.CondorTui.RunAsync(assessmentService, stateStore, session, shutdownCts.Token, tuiWidth, tuiHeight);
-                }
-
-                return await RunInteractiveAsync(assessmentService, stateStore, llmClient, session, shutdownCts.Token);
+                return await RunTuiOrExplainAsync(
+                    assessmentService, stateStore, session, shutdownCts.Token, initialInput: null);
             }
 
             // Entrada con parametros (one-shot).
@@ -98,6 +91,12 @@ public static class Program
 
             if (route is SlashRoute slash)
             {
+                if (slash.Kind is SlashCommandKind.Consultar or SlashCommandKind.Examinar)
+                {
+                    return await RunTuiOrExplainAsync(
+                        assessmentService, stateStore, session, shutdownCts.Token, first);
+                }
+
                 if (slash.Kind != SlashCommandKind.Ayuda)
                 {
                     // Bootstrap de dependencias (Ollama) antes de preparar el modelo.
@@ -120,26 +119,13 @@ public static class Program
 
             if (route is FreeIntentionRoute free && !string.IsNullOrWhiteSpace(free.Intention))
             {
-                // Bootstrap de dependencias (Ollama) antes de ejecutar el agente.
-                var bootstrap = await RunBootstrapAsync(progress: null, shutdownCts.Token);
-                if (!bootstrap.Ready)
-                {
-                    RenderBootstrapFailure(bootstrap);
-                    return 1;
-                }
-
-                // Intencion natural en una sola linea: se entrega al motor agente,
-                // que ya ejecuta su propia preparacion interna y actua con herramientas.
-                return await AgentCommand.ExecuteAsync(
-                    new DocumentingAgentService(
-                        new AgentService(stateStore, assessmentService, session: session),
-                        new DocumenterService()),
-                    args,
-                    shutdownCts.Token);
+                // Las tareas con modelo se confirman y ejecutan dentro de la TUI.
+                return await RunTuiOrExplainAsync(
+                    assessmentService, stateStore, session, shutdownCts.Token, free.Intention);
             }
 
-            // Texto vacio: presentar el flujo interactivo.
-            return await RunInteractiveAsync(assessmentService, stateStore, llmClient, session, shutdownCts.Token);
+            return await RunTuiOrExplainAsync(
+                assessmentService, stateStore, session, shutdownCts.Token, first);
         }
         finally
         {
@@ -149,73 +135,22 @@ public static class Program
         }
     }
 
-    private static async Task<int> RunInteractiveAsync(
+    private static Task<int> RunTuiOrExplainAsync(
         IAssessmentService assessmentService,
         IStateStore stateStore,
-        ILlmClient llmClient,
         LocalModelSession session,
-        System.Threading.CancellationToken shutdownToken)
+        System.Threading.CancellationToken shutdownToken,
+        string? initialInput)
     {
-        // Preparacion automatica con feedback visual continuo y honesto: desde
-        // el arranque hasta el prompt muestra las etapas reales (recursos,
-        // Ollama, modelos, descarga, verificacion). Independiente del progreso
-        // de tareas del agente.
-        using var presenter = new StartupProgressPresenter();
-        presenter.Start();
-        var bridge = new StartupProgressObserverBridge(presenter);
-
-        // Bootstrap de dependencias: antes del flujo normal se detecta/prepara el
-        // entorno necesario (Ollama). El usuario no debe administrar dependencias
-        // manualmente: si falta, Condor lo instala/arranca y verifica el endpoint.
-        var bootstrap = await RunBootstrapAsync(bridge, shutdownToken, assessmentService);
-        if (!bootstrap.Ready)
+        if (!Tui.CondorTui.CanRun(out var tuiWidth, out var tuiHeight))
         {
-            presenter.Stop(false);
-            RenderBootstrapFailure(bootstrap);
-            return 1;
+            Console.Error.WriteLine("La interaccion con modelos locales requiere la TUI de Condor.");
+            Console.Error.WriteLine("Abre Condor en una terminal interactiva compatible con VT y de al menos 80 x 24.");
+            return Task.FromResult(1);
         }
 
-        var prep = await PrepareOnceAsync(assessmentService, stateStore, session, bridge, bootstrap.Assessment);
-
-        presenter.Stop(prep.Ready);
-
-        // Sin un modelo utilizable no se muestra el prompt ni se arranca la
-        // sesion: Cóndor no puede operar. Se informa el motivo y se sale.
-        if (!prep.Ready)
-        {
-            RenderStartupFailure(prep.Reason);
-            return 1;
-        }
-
-        RenderWelcome(prep);
-        Terminal.WriteLine();
-
-        if (Console.IsInputRedirected)
-        {
-            // Modo no interactivo: solo se deja el entorno preparado.
-            return 0;
-        }
-
-        var interpreter = new Interpreter(
-            slash => HandleSlashAsync(slash, assessmentService, stateStore, llmClient, session),
-            free => AgentCommand.ExecuteAsync(
-                new DocumentingAgentService(
-                    new AgentService(stateStore, assessmentService, session: session),
-                    new DocumenterService()),
-                free.Intention.Split(' ', System.StringSplitOptions.RemoveEmptyEntries | System.StringSplitOptions.TrimEntries),
-                shutdownToken),
-            onBeforePrompt: () =>
-            {
-                // Redibuja la identidad (superior e inferior) en cada punto de
-                // espera de entrada para que no desaparezca por el desplazamiento.
-                Presentation.IdentityHeader.Render(prep.Model, Environment.CurrentDirectory);
-                Presentation.IdentityHeader.RenderFooter(prep.Model);
-            });
-
-        Terminal.WriteDim("Escribe '/ayuda' para los comandos de control o '/salir' para terminar.");
-        Terminal.WriteLine();
-
-        return await interpreter.RunAsync();
+        return Tui.CondorTui.RunAsync(
+            assessmentService, stateStore, session, shutdownToken, tuiWidth, tuiHeight, initialInput);
     }
 
     private static async Task<StartupPrepResult> PrepareOnceAsync(
@@ -289,7 +224,7 @@ public static class Program
         Terminal.WriteLine();
     }
 
-    /// <summary>Enrutado de comandos "/" compartido por la CLI clasica y la TUI.</summary>
+    /// <summary>Enrutado de comandos de control que no ejecutan inferencia local.</summary>
     internal static async Task<int> HandleSlashAsync(
         SlashRoute route,
         IAssessmentService assessmentService,
@@ -297,6 +232,12 @@ public static class Program
         ILlmClient llmClient,
         LocalModelSession session)
     {
+        if (route.Kind is SlashCommandKind.Consultar or SlashCommandKind.Examinar)
+        {
+            Terminal.WriteError("Las consultas a modelos locales solo se ejecutan dentro de la TUI.");
+            return 1;
+        }
+
         var args = route.Arguments;
 
         return route.Kind switch
