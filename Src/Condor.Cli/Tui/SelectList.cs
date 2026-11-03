@@ -63,32 +63,100 @@ public enum SelectListPlacement
     Centered
 }
 
-/// <summary>Tokens de color usados por el renderer; se pueden sustituir por tema.</summary>
-public sealed record SelectListTheme(
-    string Accent,
-    string Text,
-    string Muted,
-    string Disabled,
-    string PopupBackground,
-    string SelectionBackground,
-    string SelectionForeground)
+/// <summary>Tokens de tema compatibles con terminales de 256 colores y truecolor.</summary>
+public record TuiTheme(
+    string Acento,
+    string Texto,
+    string TextoAtenuado,
+    string TextoDeshabilitado,
+    string FondoPopup,
+    string FondoSeleccion,
+    string TextoSeleccion)
 {
-    public static SelectListTheme Default { get; } = Ansi.ColorEnabled
-        ? new SelectListTheme(
+    public string Accent => Acento;
+    public string Text => Texto;
+    public string Muted => TextoAtenuado;
+    public string Disabled => TextoDeshabilitado;
+    public string PopupBackground => FondoPopup;
+    public string SelectionBackground => FondoSeleccion;
+    public string SelectionForeground => TextoSeleccion;
+
+    public static TuiTheme Default { get; } = Create(
+        Ansi.ColorEnabled,
+        Ansi.ColorEnabled && SupportsTrueColor());
+
+    public static TuiTheme Create(bool colorEnabled, bool supportsTrueColor)
+    {
+        if (!colorEnabled)
+        {
+            return new TuiTheme("", "", "", "", "", "", "");
+        }
+
+        if (supportsTrueColor)
+        {
+            return new TuiTheme(
+                Ansi.Esc + "38;2;229;162;66m",
+                Ansi.Esc + "38;2;235;235;235m",
+                Ansi.Esc + "38;2;135;135;135m",
+                Ansi.Esc + "38;2;95;95;95m",
+                Ansi.Esc + "48;2;31;31;31m",
+                Ansi.Esc + "48;2;240;177;88m",
+                Ansi.Esc + "38;2;20;20;20m");
+        }
+
+        return new TuiTheme(
             Ansi.FgDorado,
             Ansi.FgBlanco,
             Ansi.FgGris,
-            Ansi.FgGris,
+            Ansi.Esc + "38;5;243m",
             Ansi.Esc + "48;5;235m",
             Ansi.Esc + "48;5;179m",
-            Ansi.Esc + "38;5;16m")
-        : new SelectListTheme("", "", "", "", "", "", "");
+            Ansi.Esc + "38;5;16m");
+    }
+
+    private static bool SupportsTrueColor()
+    {
+        var colorTerm = Environment.GetEnvironmentVariable("COLORTERM");
+        if (colorTerm?.Contains("truecolor", StringComparison.OrdinalIgnoreCase) == true ||
+            colorTerm?.Contains("24bit", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return true;
+        }
+
+        return !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("WT_SESSION")) ||
+               string.Equals(Environment.GetEnvironmentVariable("TERM_PROGRAM"), "vscode", StringComparison.OrdinalIgnoreCase);
+    }
+}
+
+/// <summary>Alias temporal para los consumidores anteriores al tema comun.</summary>
+public sealed record SelectListTheme : TuiTheme
+{
+    public SelectListTheme(
+        string Accent,
+        string Text,
+        string Muted,
+        string Disabled,
+        string PopupBackground,
+        string SelectionBackground,
+        string SelectionForeground)
+        : base(Accent, Text, Muted, Disabled, PopupBackground, SelectionBackground, SelectionForeground)
+    {
+    }
+
+    public static new SelectListTheme Default { get; } = new(
+        TuiTheme.Default.Accent,
+        TuiTheme.Default.Text,
+        TuiTheme.Default.Muted,
+        TuiTheme.Default.Disabled,
+        TuiTheme.Default.PopupBackground,
+        TuiTheme.Default.SelectionBackground,
+        TuiTheme.Default.SelectionForeground);
 }
 
 public sealed record SelectListRenderOptions(
     string? Title = null,
     bool IncludeSearchField = false,
-    bool TwoColumns = false,
+    bool TwoColumns = true,
     int? LabelColumnWidth = null,
     bool ShowShortcuts = false,
     bool ShowScrollbar = true);
@@ -339,14 +407,17 @@ public static class FuzzyMatcher
 /// <summary>Render puro de filas SelectList sin coordenadas ni efectos de consola.</summary>
 public static class SelectListRenderer
 {
+    public static string[] Render(SelectListState state, int width, TuiTheme theme) =>
+        Render(state, width, new SelectListRenderOptions(), theme).ToArray();
+
     public static IReadOnlyList<string> Render(SelectListState state, int width) =>
-        Render(state, width, new SelectListRenderOptions(), SelectListTheme.Default);
+        Render(state, width, new SelectListRenderOptions(), TuiTheme.Default);
 
     public static IReadOnlyList<string> Render(
         SelectListState state,
         int width,
         SelectListRenderOptions options,
-        SelectListTheme theme)
+        TuiTheme theme)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(options);
@@ -380,8 +451,8 @@ public static class SelectListRenderer
                 .Max())
             : 0;
         var contentWidth = Math.Max(1, rowWidth - (shortcutWidth > 0 ? shortcutWidth + 2 : 0));
-        var maxLabel = state.Filtered
-            .Select(index => Ansi.VisibleWidth(state.Items[index].Label))
+        var maxLabel = state.Items
+            .Select(item => Ansi.VisibleWidth(item.Label))
             .DefaultIfEmpty(0)
             .Max();
         var labelWidth = options.TwoColumns
@@ -455,7 +526,7 @@ public static class SelectListRenderer
         return lines;
     }
 
-    private static string RenderSimple(string text, int width, string foreground, SelectListTheme theme)
+    private static string RenderSimple(string text, int width, string foreground, TuiTheme theme)
     {
         var visible = ClipWithEllipsis(text, width);
         var padding = new string(' ', Math.Max(0, width - Ansi.VisibleWidth(visible)));
@@ -469,7 +540,7 @@ public static class SelectListRenderer
         int width,
         SelectItem item,
         bool selected,
-        SelectListTheme theme)
+        TuiTheme theme)
     {
         var labelWidth = Ansi.VisibleWidth(label);
         var detailWidth = Ansi.VisibleWidth(detail);

@@ -160,6 +160,41 @@ public class SelectListTests
     }
 
     [Fact]
+    public void RendererProduceSnapshotDeDosColumnasEnTextoPlano()
+    {
+        var state = SelectList.Create(new[]
+        {
+            new SelectItem("alpha", "alpha", "Descriptor", Array.Empty<string>(), false, null, null)
+        }, selectedId: "alpha");
+        var theme = TuiTheme.Create(colorEnabled: false, supportsTrueColor: false);
+
+        var line = SelectListRenderer.Render(state, 28, theme).Single();
+
+        Assert.Equal("alpha    Descriptor" + new string(' ', 9), Ansi.StripSgr(line));
+        Assert.Equal(28, Ansi.VisibleWidth(line));
+    }
+
+    [Fact]
+    public void RendererProduceSnapshotCrudoConAcentoYColoresConfigurables()
+    {
+        var state = SelectList.Create(new[]
+        {
+            new SelectItem("alpha", "alpha", "Descriptor", Array.Empty<string>(), false, null, null)
+        }, selectedId: "alpha");
+        var theme = TuiTheme.Create(colorEnabled: true, supportsTrueColor: false);
+        var trueColorTheme = TuiTheme.Create(colorEnabled: true, supportsTrueColor: true);
+
+        var line = SelectListRenderer.Render(state, 28, theme).Single();
+
+        Assert.StartsWith(theme.FondoSeleccion + theme.TextoSeleccion, line);
+        Assert.EndsWith(Ansi.Reset, line);
+        Assert.Equal(28, Ansi.VisibleWidth(line));
+        Assert.StartsWith(Ansi.Esc + "38;5;", theme.Acento);
+        Assert.StartsWith(Ansi.Esc + "38;2;", trueColorTheme.Acento);
+        Assert.Equal("", TuiTheme.Create(colorEnabled: false, supportsTrueColor: false).Acento);
+    }
+
+    [Fact]
     public void SlashAbreMenuFiltraYTabCompletaLaSeleccion()
     {
         using var host = new TuiHost(forceInteractive: true);

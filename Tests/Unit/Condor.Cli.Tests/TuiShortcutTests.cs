@@ -99,7 +99,7 @@ public class TuiShortcutTests
             new ModelInfo { Name = "modelo-b" }
         }, _ => "Código · Herramientas");
 
-        Assert.Contains("modelo-a · Código · Herramientas",
+        Assert.Contains("modelo-a    Código · Herramientas",
             Ansi.StripSgr(host.SnapshotFullFrame()));
 
         var initial = input.SelectedModel;
@@ -131,8 +131,8 @@ public class TuiShortcutTests
 
         var rawFrame = host.SnapshotFullFrame();
         var frame = Ansi.StripSgr(rawFrame);
-        Assert.Contains("modelo-a · Código · presupuesto no disponible", frame);
-        Assert.Contains("modelo-c · Código · presupuesto no disponible", frame);
+        Assert.Contains("modelo-a    Código · presupuesto no disponible", frame);
+        Assert.Contains("modelo-c    Código · presupuesto no disponible", frame);
         if (Ansi.ColorEnabled)
         {
             Assert.Contains(Ansi.Dim + Ansi.FgGris, rawFrame);
