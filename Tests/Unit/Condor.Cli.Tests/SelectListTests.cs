@@ -219,10 +219,10 @@ public class SelectListTests
         input.Handle(new ConsoleKeyInfo('d', ConsoleKey.D, false, false, false));
         input.Handle(new ConsoleKeyInfo('e', ConsoleKey.E, false, false, false));
         input.Handle(new ConsoleKeyInfo('l', ConsoleKey.L, false, false, false));
-        input.Handle(new ConsoleKeyInfo('s', ConsoleKey.S, false, false, false));
+        input.Handle(new ConsoleKeyInfo('o', ConsoleKey.O, false, false, false));
         input.Handle(new ConsoleKeyInfo('\t', ConsoleKey.Tab, false, false, false));
 
-        Assert.Equal("/models ", input.Buffer);
+        Assert.Equal("/modelo ", input.Buffer);
         Assert.Equal(InputAction.Submit,
             input.Handle(new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false)));
     }
@@ -243,7 +243,7 @@ public class SelectListTests
         input.BeginModelPicker(
             new[] { new ModelInfo { Name = "modelo-a" }, new ModelInfo { Name = "modelo-b" } },
             activeModel: "modelo-a");
-        Assert.Equal((34, 1), PositionOf(host.SnapshotFullFrame(), "Modelos locales"));
+        Assert.Equal((34, 1), PositionOf(host.SnapshotFullFrame(), "Modelo local"));
 
         input.BeginCommandPalette(new[] { "/models" });
         Assert.Equal((20, 16), PositionOf(host.SnapshotFullFrame(), "Comandos"));

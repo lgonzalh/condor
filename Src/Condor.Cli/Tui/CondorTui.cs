@@ -29,7 +29,10 @@ namespace Condor.Cli.Tui;
 public static class CondorTui
 {
     private const string PlanAgentId = "plan";
-    private const string CodeAgentId = "codigo";
+    private const string AskAgentId = "preguntar";
+    private const string CodeAgentId = "codificar";
+    private const string DebugAgentId = "depurar";
+    private const string OrchestratorAgentId = "orquestador";
 
     /// <summary>La TUI requiere terminal interactiva con VT y tamano suficiente.</summary>
     public static bool CanRun()
@@ -169,8 +172,17 @@ public static class CondorTui
         {
             providerName += " (Local)";
         }
-        var activeAgentId = CodeAgentId;
-        host.SetRuntimeMetadata(AgentDisplayName(activeAgentId), providerName, "Predeterminada");
+        var activeModelName = session.ActiveModel ?? prep.Model;
+        ModelInfo? activeModelInfo = string.IsNullOrWhiteSpace(activeModelName)
+            ? null
+            : FindInstalledModel(bootstrap.Assessment, activeModelName);
+        if (activeModelInfo is null || (activeModelInfo.Capabilities?.Count ?? 0) == 0)
+        {
+            var refreshedAssessment = await ReadAssessmentAsync(assessmentService, shutdownToken).ConfigureAwait(true);
+            activeModelInfo = FindInstalledModel(refreshedAssessment, activeModelName ?? "") ?? activeModelInfo;
+        }
+        var activeAgentId = ResolveAgentModeForModel(CodeAgentId, activeModelInfo);
+        host.SetRuntimeMetadata(AgentModeLabel(activeAgentId), providerName, "Predeterminada");
         var workspace = bootstrap.Assessment?.WorkingDirectory;
         host.SetWorkspace(string.IsNullOrWhiteSpace(workspace) ? Environment.CurrentDirectory : workspace);
         host.SetEstado("Entorno listo", ActivityKind.Success);
@@ -191,12 +203,38 @@ public static class CondorTui
             }
 
             activeAgentId = selectedAgentId;
-            var label = AgentDisplayName(activeAgentId);
+            var label = AgentModeLabel(activeAgentId);
             host.SetRuntimeMetadata(label, providerName, "Predeterminada");
-            host.AddActivity("Agente seleccionado: " + label, ActivityKind.System);
+            host.AddActivity("Modo seleccionado: " + label, ActivityKind.System);
             host.SetEstado(
-                taskRunning ? "Agente " + label + " para la siguiente tarea" : "Agente activo: " + label,
+                taskRunning ? "Modo " + label + " para la siguiente tarea" : "Modo activo: " + label,
                 ActivityKind.Success);
+        }
+
+        void ReconcileAgentMode(ModelInfo? model)
+        {
+            activeModelInfo = model;
+            var resolvedAgentId = ResolveAgentModeForModel(activeAgentId, model);
+            if (string.Equals(resolvedAgentId, activeAgentId, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            var previousLabel = AgentModeLabel(activeAgentId);
+            activeAgentId = resolvedAgentId;
+            var activeLabel = AgentModeLabel(activeAgentId);
+            host.SetRuntimeMetadata(activeLabel, providerName, "Predeterminada");
+            host.AddActivity(
+                $"El modo {previousLabel} no está disponible con el modelo actual; se activó {activeLabel}.",
+                ActivityKind.Warning);
+        }
+
+        void OpenAgentPicker(bool taskRunning)
+        {
+            input.BeginAgentPicker(BuildAgentOptions(activeModelInfo), activeAgentId);
+            host.SetEstado(
+                taskRunning ? "Elige el modo para la siguiente tarea" : "Elige el modo de trabajo",
+                ActivityKind.System);
         }
 
         Task<AgentResult>? running = null;
@@ -314,7 +352,7 @@ public static class CondorTui
                     }
                     if (interruptAction == InputAction.OpenAgents)
                     {
-                        OpenAgentPicker(input, host, activeAgentId, taskRunning: true);
+                        OpenAgentPicker(taskRunning: true);
                         host.Repaint();
                         continue;
                     }
@@ -337,7 +375,7 @@ public static class CondorTui
                         input.Clear();
                         if (IsAgentPickerCommand(command))
                         {
-                            OpenAgentPicker(input, host, activeAgentId, taskRunning: true);
+                            OpenAgentPicker(taskRunning: true);
                         }
                         else if (IsModelListCommand(command))
                         {
@@ -358,7 +396,7 @@ public static class CondorTui
                 var submitAction = input.Handle(key);
                 if (submitAction == InputAction.OpenAgents)
                 {
-                    OpenAgentPicker(input, host, activeAgentId, taskRunning: false);
+                    OpenAgentPicker(taskRunning: false);
                     continue;
                 }
 
@@ -382,8 +420,16 @@ public static class CondorTui
                     input.Clear();
                     if (!string.IsNullOrWhiteSpace(selectedModel))
                     {
-                        await SwitchModelAsync(selectedModel, assessmentService, session, host, shutdownToken)
+                        var switched = await SwitchModelAsync(selectedModel, assessmentService, session, host, shutdownToken)
                             .ConfigureAwait(true);
+                        if (switched)
+                        {
+                            var assessment = await ReadAssessmentAsync(assessmentService, shutdownToken).ConfigureAwait(true);
+                            var model = string.IsNullOrWhiteSpace(session.ActiveModel)
+                                ? null
+                                : FindInstalledModel(assessment, session.ActiveModel);
+                            ReconcileAgentMode(model);
+                        }
                     }
                     continue;
                 }
@@ -420,7 +466,7 @@ public static class CondorTui
 
                     if (IsAgentPickerCommand(text))
                     {
-                        OpenAgentPicker(input, host, activeAgentId, taskRunning: false);
+                        OpenAgentPicker(taskRunning: false);
                         continue;
                     }
 
@@ -480,23 +526,43 @@ public static class CondorTui
 
                         case FreeIntentionRoute free when !string.IsNullOrWhiteSpace(free.Intention):
                             host.AddActivity(text, ActivityKind.User);
-                            var modeRoute = RouteAgentMode(activeAgentId, free.Intention);
-                            if (modeRoute is SlashRoute planRoute && planRoute.Kind == SlashCommandKind.Planear)
+                            var modeRoute = RouteAgentMode(activeAgentId, free.Intention, session.ActiveModel);
+                            if (modeRoute is SlashRoute modeSlash)
                             {
                                 host.SetBusy(true);
-                                host.SetEstado("Creando plan de trabajo", ActivityKind.System);
+                                host.SetEstado(modeSlash.Kind switch
+                                {
+                                    SlashCommandKind.Planear => "Creando plan con Condor",
+                                    SlashCommandKind.Consultar => "Consultando al modelo activo",
+                                    SlashCommandKind.Avanzar => "Orquestando el ciclo de Condor",
+                                    _ => "Ejecutando el modo seleccionado"
+                                }, ActivityKind.System);
                                 host.SetProgreso("—");
-                                await host.SuspendAsync(async () =>
-                                    exitCode = await Program.HandleSlashAsync(
-                                        planRoute, assessmentService, stateStore, session.Llm, session)).ConfigureAwait(true);
-                                host.SetBusy(false);
-                                host.SetEstado(
-                                    exitCode == 0 ? "Plan creado" : "No se pudo crear el plan",
-                                    exitCode == 0 ? ActivityKind.Success : ActivityKind.Error);
+                                try
+                                {
+                                    await host.SuspendAsync(async () =>
+                                        exitCode = await Program.HandleSlashAsync(
+                                            modeSlash, assessmentService, stateStore, session.Llm, session)).ConfigureAwait(true);
+                                }
+                                finally
+                                {
+                                    host.SetBusy(false);
+                                    host.SetProgreso("—");
+                                }
+                                host.SetEstado(modeSlash.Kind switch
+                                {
+                                    SlashCommandKind.Planear => exitCode == 0 ? "Plan creado" : "No se pudo crear el plan",
+                                    SlashCommandKind.Consultar => exitCode == 0 ? "Consulta completada" : "No se pudo completar la consulta",
+                                    SlashCommandKind.Avanzar => exitCode == 0 ? "Ciclo de Condor completado" : "No se pudo completar el ciclo",
+                                    _ => exitCode == 0 ? "Modo completado" : "No se pudo completar el modo"
+                                }, exitCode == 0 ? ActivityKind.Success : ActivityKind.Error);
                                 input.Render();
                                 break;
                             }
 
+                            var agentIntention = modeRoute is FreeIntentionRoute routedFree
+                                ? routedFree.Intention
+                                : free.Intention;
                             host.SetBusy(true);
                             host.SetEstado("Preparando análisis de la tarea");
                             host.SetProgreso("0 s");
@@ -510,7 +576,7 @@ public static class CondorTui
                                 new DocumenterService());
                             runningWatch.Restart();
                             var token = runningCts.Token;
-                            running = Task.Run(() => agent.RunAsync(free.Intention, agentBridge, token));
+                            running = Task.Run(() => agent.RunAsync(agentIntention, agentBridge, token));
                             break;
                     }
                 }
@@ -573,31 +639,124 @@ public static class CondorTui
         return false;
     }
 
-    private static void OpenAgentPicker(TuiInput input, TuiHost host, string activeAgentId, bool taskRunning)
+    internal static IReadOnlyList<SelectItem> BuildAgentOptions(ModelInfo? model)
     {
-        var items = new[]
+        var hasCompletion = HasCapability(model, "completion");
+        var hasTools = HasCapability(model, "tools", "tool-use");
+        var canCode = hasCompletion && hasTools && IsCodingModel(model);
+        var hasOrchestrator = HasCapability(model, "orchestrator");
+        var unknownCapabilities = model is null || (model.Capabilities?.Count ?? 0) == 0;
+
+        string CompletionReason() => unknownCapabilities
+            ? "capacidades del modelo no verificadas"
+            : "el modelo no declara capacidad de respuesta";
+
+        string CodingReason() => !hasCompletion
+            ? CompletionReason()
+            : !hasTools
+                ? "el modelo no declara uso de herramientas"
+                : "el perfil del modelo no identifica capacidad de código";
+
+        return new[]
         {
             new SelectItem(
-                PlanAgentId, "Plan", "Crea y guarda un plan; no ejecuta cambios en el proyecto.",
-                Array.Empty<string>(), Disabled: false, DisabledReason: null, Shortcut: "Enter"),
+                CodeAgentId, "Codificar", "Implementa la tarea con herramientas de Condor.",
+                Array.Empty<string>(), Disabled: !canCode, DisabledReason: canCode ? null : CodingReason(), Shortcut: "Enter"),
             new SelectItem(
-                CodeAgentId, "Código", "Ejecuta la tarea con herramientas y documenta Antes, Durante y Después.",
+                AskAgentId, "Preguntar", "Consulta al modelo activo sin ejecutar cambios.",
+                Array.Empty<string>(), Disabled: !hasCompletion, DisabledReason: hasCompletion ? null : CompletionReason(), Shortcut: "Enter"),
+            new SelectItem(
+                DebugAgentId, "Depurar", "Investiga el fallo y valida una corrección con herramientas.",
+                Array.Empty<string>(), Disabled: !canCode, DisabledReason: canCode ? null : CodingReason(), Shortcut: "Enter"),
+            new SelectItem(
+                OrchestratorAgentId, "Orquestador", "Ejecuta el ciclo de plan, construcción y verificación de Condor.",
+                Array.Empty<string>(), Disabled: !hasOrchestrator,
+                DisabledReason: hasOrchestrator ? null : unknownCapabilities
+                    ? "capacidades del modelo no verificadas"
+                    : "el modelo no declara la opción Orquestador",
+                Shortcut: "Enter"),
+            new SelectItem(
+                PlanAgentId, "Plan", "Condor prepara y guarda un plan sin modificar el proyecto.",
                 Array.Empty<string>(), Disabled: false, DisabledReason: null, Shortcut: "Enter")
         };
-
-        input.BeginAgentPicker(items, activeAgentId);
-        host.SetEstado(
-            taskRunning ? "Elige el modo para la siguiente tarea" : "Elige el agente de trabajo",
-            ActivityKind.System);
     }
 
-    private static string AgentDisplayName(string agentId) =>
-        string.Equals(agentId, PlanAgentId, StringComparison.OrdinalIgnoreCase) ? "Plan" : "Código";
+    internal static string ResolveAgentModeForModel(string? preferredAgentId, ModelInfo? model)
+    {
+        var options = BuildAgentOptions(model);
+        if (!string.IsNullOrWhiteSpace(preferredAgentId) && options.Any(option =>
+                option.Id.Equals(preferredAgentId, StringComparison.OrdinalIgnoreCase) && !option.Disabled))
+        {
+            return options.First(option => option.Id.Equals(preferredAgentId, StringComparison.OrdinalIgnoreCase)).Id;
+        }
 
-    internal static IntentionRoute RouteAgentMode(string agentId, string intention) =>
-        string.Equals(agentId, PlanAgentId, StringComparison.OrdinalIgnoreCase)
-            ? IntentionRouter.Route("/planear " + intention)
-            : new FreeIntentionRoute(intention);
+        return options.FirstOrDefault(option => !option.Disabled)?.Id ?? PlanAgentId;
+    }
+
+    internal static string AgentModeLabel(string agentId) => agentId.ToLowerInvariant() switch
+    {
+        "codificar" => "Codificar",
+        "preguntar" => "Preguntar",
+        "depurar" => "Depurar",
+        "orquestador" => "Orquestador",
+        "plan" => "Plan",
+        _ => "Modo de trabajo"
+    };
+
+    internal static IntentionRoute RouteAgentMode(string agentId, string intention, string? activeModel = null)
+    {
+        if (string.Equals(agentId, PlanAgentId, StringComparison.OrdinalIgnoreCase))
+        {
+            return new SlashRoute(SlashCommandKind.Planear, new[] { intention });
+        }
+
+        if (string.Equals(agentId, AskAgentId, StringComparison.OrdinalIgnoreCase))
+        {
+            var arguments = new List<string> { intention };
+            if (!string.IsNullOrWhiteSpace(activeModel))
+            {
+                arguments.Add("--modelo");
+                arguments.Add(activeModel);
+            }
+
+            return new SlashRoute(SlashCommandKind.Consultar, arguments.ToArray());
+        }
+
+        if (string.Equals(agentId, OrchestratorAgentId, StringComparison.OrdinalIgnoreCase))
+        {
+            return new SlashRoute(SlashCommandKind.Avanzar, new[] { intention });
+        }
+
+        if (string.Equals(agentId, DebugAgentId, StringComparison.OrdinalIgnoreCase))
+        {
+            return new FreeIntentionRoute(
+                "Depura e investiga la falla descrita; aplica una corrección y valida el resultado. Solicitud: " + intention);
+        }
+
+        return new FreeIntentionRoute(intention);
+    }
+
+    private static bool HasCapability(ModelInfo? model, params string[] expected)
+        => model?.Capabilities?.Any(value => expected.Contains(value, StringComparer.OrdinalIgnoreCase)) == true;
+
+    private static bool IsCodingModel(ModelInfo? model)
+    {
+        if (model is null)
+        {
+            return false;
+        }
+
+        var identity = (model.Name + " " + model.Family).ToLowerInvariant();
+        if (identity.Contains("coder", StringComparison.Ordinal) || identity.Contains("code", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        var catalogProfile = ModelCatalog.Default.FirstOrDefault(candidate =>
+            candidate.Name.Equals(model.Name, StringComparison.OrdinalIgnoreCase) ||
+            candidate.PullName.Equals(model.Name, StringComparison.OrdinalIgnoreCase));
+        return (catalogProfile?.CodingLevel ?? 0) > 0;
+    }
 
     private static async Task<(IReadOnlyList<ModelInfo> Models, MemoryInfo? Memory)> LoadInstalledModelsAsync(
         IAssessmentService assessmentService,
@@ -752,23 +911,21 @@ public static class CondorTui
     internal static string DescribeModelCapabilities(ModelInfo model)
     {
         var labels = new List<string>();
-        var capabilities = model.Capabilities ?? new List<string>();
-        var hasTools = capabilities.Any(value =>
-            value.Equals("tools", StringComparison.OrdinalIgnoreCase) ||
-            value.Equals("tool-use", StringComparison.OrdinalIgnoreCase));
-        var hasThinking = capabilities.Any(value => value.Equals("thinking", StringComparison.OrdinalIgnoreCase));
-        var identity = (model.Name + " " + model.Family).ToLowerInvariant();
-        var catalogProfile = ModelCatalog.Default.FirstOrDefault(candidate =>
-            candidate.Name.Equals(model.Name, StringComparison.OrdinalIgnoreCase) ||
-            candidate.PullName.Equals(model.Name, StringComparison.OrdinalIgnoreCase));
+        var hasCompletion = HasCapability(model, "completion");
+        var hasTools = HasCapability(model, "tools", "tool-use");
+        var canCode = hasCompletion && hasTools && IsCodingModel(model);
 
-        if (hasTools && hasThinking) labels.Add("Agente");
+        if (hasCompletion) labels.Add("Preguntar");
         if (hasTools) labels.Add("Herramientas");
-        if (identity.Contains("coder", StringComparison.Ordinal) || identity.Contains("code", StringComparison.Ordinal) ||
-            (catalogProfile?.CodingLevel ?? 0) > 0) labels.Add("Código");
-        if (capabilities.Any(value => value.Equals("vision", StringComparison.OrdinalIgnoreCase))) labels.Add("Visión");
-        if (capabilities.Any(value => value.Equals("audio", StringComparison.OrdinalIgnoreCase))) labels.Add("Audio");
-        if (labels.Count == 0) labels.Add("Chat");
+        if (canCode)
+        {
+            labels.Add("Codificar");
+            labels.Add("Depurar");
+        }
+        if (HasCapability(model, "orchestrator")) labels.Add("Orquestador");
+        if (HasCapability(model, "vision")) labels.Add("Visión");
+        if (HasCapability(model, "audio")) labels.Add("Audio");
+        if (labels.Count == 0) labels.Add("Capacidades no declaradas");
         return string.Join(" · ", labels);
     }
 

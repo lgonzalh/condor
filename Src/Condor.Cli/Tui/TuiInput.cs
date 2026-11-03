@@ -41,11 +41,12 @@ public sealed class TuiInput
     private static readonly string[] KnownCommands =
     {
         "/agentes", "/analizar", "/avanzar", "/ayuda", "/construir", "/consultar",
-        "/contexto", "/examinar", "/model", "/modelo", "/models", "/planear",
+        "/contexto", "/examinar", "/modelo", "/planear",
         "/preparar", "/recomendar", "/verificar", "/verificar-semantico", "/version", "/salir"
     };
 
-    private static readonly string[] BusyCommands = { "/agentes", "/ayuda", "/models" };
+    private static readonly string[] BusyCommands =
+        { "/agentes", "/ayuda", "/modelo", "/model", "/models", "/modelos" };
 
     private readonly TuiHost _host;
     private readonly List<string> _history = new();
@@ -61,7 +62,7 @@ public sealed class TuiInput
     private string _returnBuffer = "";
     private int _returnCaret;
     private string? _selectedModel;
-    private string _selectedAgentId = "codigo";
+    private string _selectedAgentId = "codificar";
     private string? _inputPlaceholder;
     private bool _slashSuggestionsDismissed;
 
@@ -97,13 +98,13 @@ public sealed class TuiInput
             var options = _overlayState switch
             {
                 OverlayState.Slash => new SelectListRenderOptions(TwoColumns: true),
-                OverlayState.Modelos => new SelectListRenderOptions(Title: "Modelos locales"),
+                OverlayState.Modelos => new SelectListRenderOptions(Title: "Modelo local"),
                 OverlayState.Paleta => new SelectListRenderOptions(
                     Title: "Comandos",
                     IncludeSearchField: true,
                     ShowShortcuts: true),
                 OverlayState.Agentes => new SelectListRenderOptions(
-                    Title: "Agentes · arriba/abajo · Enter elegir · Esc cerrar"),
+                    Title: "Modos de trabajo · arriba/abajo · Enter elegir · Esc cerrar"),
                 _ => new SelectListRenderOptions()
             };
             var overlay = new SelectListOverlay(
@@ -382,7 +383,7 @@ public sealed class TuiInput
         _selectList = SelectList.Create(items, selectedId: _selectedAgentId);
         _buffer = "";
         _caret = 0;
-        _inputPlaceholder = "Filtrar agentes";
+        _inputPlaceholder = "Filtrar modos";
         Render();
     }
 

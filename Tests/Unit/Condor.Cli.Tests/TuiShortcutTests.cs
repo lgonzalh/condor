@@ -39,7 +39,7 @@ public class TuiShortcutTests
     }
 
     [Fact]
-    public void CtrlP_MuestraComandosFiltrablesYModelsEjecutaElSelectorLocal()
+    public void CtrlP_MuestraComandosFiltrablesYModeloEjecutaElSelectorLocal()
     {
         using var host = new TuiHost(forceInteractive: true);
         host.Enter();
@@ -51,7 +51,7 @@ public class TuiShortcutTests
         Assert.Contains("Comandos", initialFrame);
         Assert.Contains("/agentes", initialFrame);
 
-        foreach (var character in "models")
+        foreach (var character in "modelo")
         {
             var key = character switch
             {
@@ -60,16 +60,15 @@ public class TuiShortcutTests
                 'd' => ConsoleKey.D,
                 'e' => ConsoleKey.E,
                 'l' => ConsoleKey.L,
-                's' => ConsoleKey.S,
                 _ => ConsoleKey.NoName
             };
             input.Handle(new ConsoleKeyInfo(character, key, false, false, false));
         }
 
-        Assert.Equal("/models", input.SelectedCommand);
+        Assert.Equal("/modelo", input.SelectedCommand);
         Assert.Equal(InputAction.Submit,
             input.Handle(new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false)));
-        Assert.Equal("/models", input.Buffer);
+        Assert.Equal("/modelo", input.Buffer);
     }
 
     [Fact]
@@ -98,9 +97,9 @@ public class TuiShortcutTests
         {
             new ModelInfo { Name = "modelo-a" },
             new ModelInfo { Name = "modelo-b" }
-        }, _ => "Código · Herramientas");
+        }, _ => "Codificar · Herramientas");
 
-        Assert.Contains("modelo-a    Código · Herramientas",
+        Assert.Contains("modelo-a    Codificar · Herramientas",
             Ansi.StripSgr(host.SnapshotFullFrame()));
 
         var initial = input.SelectedModel;
@@ -110,7 +109,7 @@ public class TuiShortcutTests
         Assert.Equal(InputAction.ModelSelected,
             input.Handle(new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false)));
         Assert.Equal("modelo-b", input.SelectedModel);
-        Assert.DoesNotContain("Modelos locales", Ansi.StripSgr(host.SnapshotFullFrame()));
+        Assert.DoesNotContain("Modelo local", Ansi.StripSgr(host.SnapshotFullFrame()));
     }
 
     [Fact]
@@ -127,13 +126,13 @@ public class TuiShortcutTests
                 new ModelInfo { Name = "modelo-b" },
                 new ModelInfo { Name = "modelo-c" }
             },
-            _ => "Código",
+            _ => "Codificar",
             model => model.Name == "modelo-b");
 
         var rawFrame = host.SnapshotFullFrame();
         var frame = Ansi.StripSgr(rawFrame);
-        Assert.Contains("modelo-a    Código · presupuesto no disponible", frame);
-        Assert.Contains("modelo-c    Código · presupuesto no disponible", frame);
+        Assert.Contains("modelo-a    Codificar · presupuesto no disponible", frame);
+        Assert.Contains("modelo-c    Codificar · presupuesto no disponible", frame);
         if (Ansi.ColorEnabled)
         {
             Assert.Contains(Ansi.Dim + Ansi.FgGris, rawFrame);
@@ -178,14 +177,14 @@ public class TuiShortcutTests
         input.BeginAgentPicker(new[]
         {
             new SelectItem("plan", "Plan", "Crea y guarda un plan", Array.Empty<string>(), false, null, "Enter"),
-            new SelectItem("codigo", "Código", "Ejecuta tareas con herramientas", Array.Empty<string>(), false, null, "Enter")
-        }, activeAgentId: "codigo");
+            new SelectItem("codificar", "Codificar", "Ejecuta tareas con herramientas", Array.Empty<string>(), false, null, "Enter")
+        }, activeAgentId: "codificar");
 
         var frame = Ansi.StripSgr(host.SnapshotFullFrame());
-        Assert.Contains("Agentes", frame);
+        Assert.Contains("Modos de trabajo", frame);
         Assert.Contains("Plan", frame);
-        Assert.Contains("Código", frame);
-        Assert.Equal("codigo", input.SelectedAgentId);
+        Assert.Contains("Codificar", frame);
+        Assert.Equal("codificar", input.SelectedAgentId);
 
         input.Handle(new ConsoleKeyInfo((char)0, ConsoleKey.DownArrow, false, false, false));
 
@@ -206,15 +205,15 @@ public class TuiShortcutTests
         input.BeginAgentPicker(new[]
         {
             new SelectItem("plan", "Plan", "Crea y guarda un plan", Array.Empty<string>(), false, null, null),
-            new SelectItem("codigo", "Código", "Ejecuta tareas con herramientas", Array.Empty<string>(), false, null, null)
-        }, activeAgentId: "codigo");
+            new SelectItem("codificar", "Codificar", "Ejecuta tareas con herramientas", Array.Empty<string>(), false, null, null)
+        }, activeAgentId: "codificar");
 
         Assert.Equal(InputAction.None,
             input.Handle(new ConsoleKeyInfo((char)0, ConsoleKey.Escape, false, false, false)));
 
-        Assert.Equal("codigo", input.SelectedAgentId);
+        Assert.Equal("codificar", input.SelectedAgentId);
         Assert.Equal("revisa el proyecto", input.Buffer);
-        Assert.DoesNotContain("Agentes", Ansi.StripSgr(host.SnapshotFullFrame()));
+        Assert.DoesNotContain("Modos de trabajo", Ansi.StripSgr(host.SnapshotFullFrame()));
     }
 
     [Fact]
@@ -226,8 +225,8 @@ public class TuiShortcutTests
         input.BeginAgentPicker(new[]
         {
             new SelectItem("plan", "Plan", "Planifica", Array.Empty<string>(), false, null, null),
-            new SelectItem("codigo", "Código", "Construye", Array.Empty<string>(), false, null, null)
-        }, activeAgentId: "codigo");
+            new SelectItem("codificar", "Codificar", "Construye", Array.Empty<string>(), false, null, null)
+        }, activeAgentId: "codificar");
 
         Assert.Equal(InputAction.OpenCommands,
             input.Handle(new ConsoleKeyInfo('\0', ConsoleKey.P, false, false, true)));
@@ -249,9 +248,64 @@ public class TuiShortcutTests
     [Fact]
     public void ModoCodigo_ConservaLaRutaDelAgenteConHerramientas()
     {
-        var route = Assert.IsType<FreeIntentionRoute>(CondorTui.RouteAgentMode("codigo", "crear una pagina"));
+        var route = Assert.IsType<FreeIntentionRoute>(CondorTui.RouteAgentMode("codificar", "crear una pagina"));
 
         Assert.Equal("crear una pagina", route.Intention);
+    }
+
+    [Fact]
+    public void ModoPreguntar_ConsultaConElModeloActivo()
+    {
+        var route = Assert.IsType<SlashRoute>(CondorTui.RouteAgentMode("preguntar", "explica el proyecto", "granite4.2:3b"));
+
+        Assert.Equal(SlashCommandKind.Consultar, route.Kind);
+        Assert.Equal(new[] { "explica el proyecto", "--modelo", "granite4.2:3b" }, route.Arguments);
+    }
+
+    [Fact]
+    public void ModoDepurar_EnrutaLaSolicitudConObjetivoDeDiagnosticoYValidacion()
+    {
+        var route = Assert.IsType<FreeIntentionRoute>(CondorTui.RouteAgentMode("depurar", "el test falla al guardar"));
+
+        Assert.Contains("Depura e investiga la falla descrita", route.Intention);
+        Assert.Contains("el test falla al guardar", route.Intention);
+        Assert.Contains("valida el resultado", route.Intention);
+    }
+
+    [Fact]
+    public void ModoOrquestador_EnviaLaSolicitudAlCicloDeCondor()
+    {
+        var route = Assert.IsType<SlashRoute>(CondorTui.RouteAgentMode("orquestador", "crea una pagina"));
+
+        Assert.Equal(SlashCommandKind.Avanzar, route.Kind);
+        Assert.Equal("crea una pagina", string.Join(" ", route.Arguments));
+    }
+
+    [Fact]
+    public void ModosSeHabilitanSegunCapacidadesDeclaradasYFuncionesDeCondor()
+    {
+        var model = new ModelInfo
+        {
+            Name = "qwen2.5-coder:3b",
+            Capabilities = new List<string> { "completion", "tools" }
+        };
+
+        var options = CondorTui.BuildAgentOptions(model).ToDictionary(option => option.Id);
+
+        Assert.False(options["codificar"].Disabled);
+        Assert.False(options["preguntar"].Disabled);
+        Assert.False(options["depurar"].Disabled);
+        Assert.True(options["orquestador"].Disabled);
+        Assert.False(options["plan"].Disabled);
+        Assert.Equal("preguntar", CondorTui.ResolveAgentModeForModel("codificar", new ModelInfo
+        {
+            Name = "granite4.2:3b",
+            Capabilities = new List<string> { "completion" }
+        }));
+
+        model.Capabilities.Add("orchestrator");
+        options = CondorTui.BuildAgentOptions(model).ToDictionary(option => option.Id);
+        Assert.False(options["orquestador"].Disabled);
     }
 
     [Fact]
@@ -264,10 +318,13 @@ public class TuiShortcutTests
             Capabilities = new List<string> { "completion", "tools", "thinking", "vision" }
         });
 
-        Assert.Contains("Agente", labels);
+        Assert.Contains("Preguntar", labels);
         Assert.Contains("Herramientas", labels);
-        Assert.Contains("Código", labels);
+        Assert.Contains("Codificar", labels);
+        Assert.Contains("Depurar", labels);
         Assert.Contains("Visión", labels);
+        Assert.DoesNotContain("Orquestador", labels);
+        Assert.DoesNotContain("Plan", labels);
         Assert.DoesNotContain("Rápido", labels);
     }
 
