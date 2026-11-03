@@ -40,8 +40,10 @@ public sealed class TuiPresentationChangeTests
 
         var frame = Ansi.StripSgr(host.SnapshotFullFrame());
 
-        Assert.Contains("Condor: Construyendo index.html", frame);
-        Assert.Contains("Modelo: creando archivo", frame);
+        Assert.Contains("Construyendo index.html", frame);
+        Assert.Contains("RAM Condor", frame);
+        Assert.DoesNotContain("qwen2.5-coder:3b · creando archivo", frame);
+        Assert.DoesNotContain("Iteración 1", frame);
         Assert.Contains("tab agentes  ctrl+p comandos", frame);
     }
 

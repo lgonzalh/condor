@@ -9,6 +9,7 @@ using Condor.Core.Models;
 using Condor.Infrastructure;
 using Condor.Infrastructure.Agent;
 using Condor.Infrastructure.DependencyBootstrap;
+using Condor.Infrastructure.Detection;
 using Condor.Infrastructure.Documentation;
 using Condor.Infrastructure.Llm;
 using Condor.Infrastructure.Setup;
@@ -250,6 +251,8 @@ public static class CondorTui
         var runningWatch = System.Diagnostics.Stopwatch.StartNew();
         var exitCode = 0;
         string? lastHeaderModel = null;
+        Task<MemoryInfo>? lecturaRam = new MemoryDetector().DetectAsync(shutdownToken);
+        var proximaLecturaRam = DateTime.UtcNow.AddSeconds(10);
 
         while (true)
         {
@@ -258,6 +261,26 @@ public static class CondorTui
                 input.Render();
             }
             host.Tick();
+
+            if (lecturaRam is { IsCompleted: true })
+            {
+                try
+                {
+                    ActualizarRamLibre(host, await lecturaRam.ConfigureAwait(true));
+                }
+                catch
+                {
+                    host.SetRamLibrePorcentaje(null);
+                }
+
+                lecturaRam = null;
+                proximaLecturaRam = DateTime.UtcNow.AddSeconds(10);
+            }
+
+            if (lecturaRam is null && DateTime.UtcNow >= proximaLecturaRam)
+            {
+                lecturaRam = new MemoryDetector().DetectAsync(shutdownToken);
+            }
 
             // Actualizar modelo en cabecera si hay tarea activa y el modelo de sesion cambio.
             if (running is not null)
@@ -642,6 +665,18 @@ public static class CondorTui
             else
             {
                 Thread.Sleep(40);
+            }
+        }
+
+        if (lecturaRam is not null)
+        {
+            try
+            {
+                ActualizarRamLibre(host, await lecturaRam.ConfigureAwait(true));
+            }
+            catch
+            {
+                host.SetRamLibrePorcentaje(null);
             }
         }
 
@@ -1274,6 +1309,20 @@ public static class CondorTui
                text.StartsWith("©Condor", StringComparison.OrdinalIgnoreCase);
     }
 
+    private static void ActualizarRamLibre(TuiHost host, MemoryInfo memory)
+    {
+        if (memory.Status != DetectionStatus.Detected || memory.TotalBytes <= 0)
+        {
+            host.SetRamLibrePorcentaje(null);
+            return;
+        }
+
+        var porcentaje = (int)Math.Round(
+            memory.FreeBytes * 100d / memory.TotalBytes,
+            MidpointRounding.AwayFromZero);
+        host.SetRamLibrePorcentaje(porcentaje);
+    }
+
     /// <summary>Motivo corto y legible de una excepcion: nunca stack traces.</summary>
     private static string ShortReason(Exception ex)
     {
@@ -1281,9 +1330,9 @@ public static class CondorTui
         return message.Length == 0 ? ex.GetType().Name : message;
     }
 
-    private static string FormatoTiempo(TimeSpan e)
+    internal static string FormatoTiempo(TimeSpan e)
     {
-        return AgentProgressLabels.FormatElapsed(e);
+        return e.TotalSeconds.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + "s";
     }
 
     /// <summary>Renderiza la ayuda integrada dentro de la TUI (zona de actividad).</summary>

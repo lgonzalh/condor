@@ -35,7 +35,15 @@ public class TuiModelInteractionTests
         Assert.Equal("hola", llm.LastRequest.Prompt);
         Assert.Contains("Respuesta visible en Condor.", frame);
         Assert.Contains("Segunda linea.", frame);
-        Assert.Contains("Consulta completada", frame);
+        Assert.DoesNotContain("Consulta completada", frame);
+        Assert.Contains("RAM Condor", frame);
+        Assert.Matches(@"[0-9]+\.[0-9]s", frame);
+    }
+
+    [Fact]
+    public void FormatoTiempo_MuestraSegundosConDecimal()
+    {
+        Assert.Equal("27.0s", CondorTui.FormatoTiempo(TimeSpan.FromSeconds(27)));
     }
 
     [Fact]

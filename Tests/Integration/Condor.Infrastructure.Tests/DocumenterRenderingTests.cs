@@ -19,8 +19,8 @@ public class DocumenterRenderingTests
             }
         });
 
-        Assert.Contains("Informe Antes/Durante/Despues", text);
         Assert.Contains("docs/prueba.md", text);
+        Assert.DoesNotContain("Informe Antes/Durante/Despues", text);
     }
 
     [Fact]

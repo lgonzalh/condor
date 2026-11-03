@@ -187,6 +187,7 @@ public class FotogramasTuiTests
     public void Sesion_MuestraIdentidad_Modelo_YContenidoDinamico()
     {
         using var host = HostSesion();
+        host.SetRuntimeMetadata("Codificar", "Ollama (Local)", "Predeterminada");
         host.SetEstado("Listo", ActivityKind.Success);
         host.AddActivity("Entorno listo. Modo Local 100% activo.", ActivityKind.Success);
         var grid = Grid(host.SnapshotFullFrame());
@@ -202,7 +203,7 @@ public class FotogramasTuiTests
                                 (110 - tituloEsperado.Length) / 2), 0, 0);
 
         var cabecera = string.Join("\n", grid.Take(4));
-        Assert.Contains("qwen2.5-coder:3b", cabecera);
+        Assert.Contains("Codificar · qwen2.5-coder:3b", cabecera);
 
         // La version NO se repite en ningun otro lugar (estado/panel/pie).
         Assert.DoesNotContain(grid.Skip(1), line => line.Contains("build interno"));
@@ -310,7 +311,7 @@ public class FotogramasTuiTests
     }
 
     [Fact]
-    public void Sesion_EnMarcha_MuestraEstadoRealDeVerificacion()
+    public void Sesion_EnMarcha_MuestraElEstadoRealDeVerificacion()
     {
         using var host = HostSesion();
         var view = new TuiAgentProgressView(host);
@@ -318,13 +319,14 @@ public class FotogramasTuiTests
         view.Report(AgentProgress.Of(AgentPhase.Verifying, iteration: 2));
         var frame = Ansi.StripSgr(host.SnapshotFullFrame());
 
-        // Estado real de la fase + indicador de trabajo; la metadata tecnica es minima.
-        Assert.Contains("Condor: Verificando resultado", frame);
+        // La actividad de la tarea conserva su fase real y la entrada indica trabajo.
+        Assert.Contains("Verificando resultado", frame);
         Assert.Contains("Condor esta trabajando", frame);
+        Assert.Contains("RAM Condor", frame);
     }
 
     [Fact]
-    public void Sesion_ActualizaEnSitioUnaLineaDeEstado()
+    public void Sesion_OcultaDetallesTecnicosDelPie()
     {
         using var host = HostSesion();
         var view = new TuiAgentProgressView(host);
@@ -338,10 +340,10 @@ public class FotogramasTuiTests
 
         var first = Grid(host.SnapshotFullFrame());
         var firstStatus = first[^1];
-        Assert.Contains("Condor:", firstStatus);
         Assert.Contains("Analizando", firstStatus);
-        Assert.Contains("generando propuesta", firstStatus);
-        Assert.Contains("RAM", firstStatus);
+        Assert.DoesNotContain("generando propuesta", firstStatus);
+        Assert.DoesNotContain("qwen2.5-coder", firstStatus);
+        Assert.Contains("RAM Condor", firstStatus);
 
         view.Report(AgentProgress.Of(
             AgentPhase.Analyzing,
@@ -352,8 +354,8 @@ public class FotogramasTuiTests
 
         var updated = Grid(host.SnapshotFullFrame());
         var updatedStatus = updated[^1];
-        Assert.Contains("Condor:", updatedStatus);
-        Assert.Contains("propuso create_file", updatedStatus);
+        Assert.DoesNotContain("Condor:", updatedStatus);
+        Assert.DoesNotContain("propuso create_file", updatedStatus);
         Assert.DoesNotContain("generando propuesta", updatedStatus);
         Assert.DoesNotContain('\n', host.SnapshotFullFrame());
     }
@@ -370,9 +372,19 @@ public class FotogramasTuiTests
 
         var status = Grid(host.SnapshotFullFrame())[^1];
 
-        Assert.Contains("C: Evaluando", status);
-        Assert.Contains("M: Cargando", status);
-        Assert.Contains("RAM", status);
+        Assert.Contains("Evaluando el cambio de modelo", status);
+        Assert.DoesNotContain("Cargando lfm3", status);
+        Assert.Contains("RAM Condor", status);
+    }
+
+    [Theory]
+    [InlineData(10, Ansi.FgRojo)]
+    [InlineData(40, Ansi.FgNaranja)]
+    [InlineData(60, Ansi.FgAmarillo)]
+    [InlineData(80, Ansi.FgVerde)]
+    public void RamLibre_UsaElColorDelSemaforo(int porcentaje, string colorEsperado)
+    {
+        Assert.Equal(colorEsperado, TuiHost.ColorRamLibre(porcentaje));
     }
 
     [Fact]
@@ -537,31 +549,38 @@ public class ArquitecturaInteraccionesTests
     public void Tui2_Sesion_MuestraModeloRealEnCabecera()
     {
         using var host = HostSesion();
+        host.SetRuntimeMetadata("Preguntar", "Ollama (Local)", "Predeterminada");
         host.SetEstado("En espera de tu intencion", ActivityKind.Success);
         var cabecera = string.Join("\n", Grid(host.SnapshotFullFrame()).Take(4));
-        Assert.Contains("qwen2.5-coder:3b", cabecera);
+        Assert.Contains("Preguntar · qwen2.5-coder:3b", cabecera);
     }
     [Fact]
-    public void Tui2_Sesion_BarraEstadoMuestraWorkspaceYEstado()
+    public void Tui2_Sesion_BarraEstadoMuestraDuracionRamLibreYWorkspace()
     {
         using var host = HostSesion();
         host.SetWorkspace("C:\\GitHub\\prueba");
+        host.SetRuntimeMetadata("Codificar", "Ollama (Local)", "Predeterminada");
+        host.SetProgreso("27.0s");
+        host.SetProgreso("inventario local y RAM disponibles");
         host.SetEstado("Listo", ActivityKind.Success);
         var grid = Grid(host.SnapshotFullFrame());
 
         var statusBar = grid[^1];
         var cabecera = string.Join("\n", grid.Take(4));
-        // Una fila compacta combina Condor, modelo, memoria y ruta si cabe.
-        Assert.Contains("Listo", statusBar);
+        // El pie muestra duracion, RAM de Condor, RAM libre y ruta; los estados normales
+        // y la actividad del modelo permanecen fuera de la vista de produccion.
+        Assert.Contains("27.0s", statusBar);
+        Assert.Contains("RAM Condor", statusBar);
+        Assert.Contains("RAM libre s/d", statusBar);
         Assert.Contains("C:\\GitHub\\prueba", statusBar);
         Assert.DoesNotContain("C:\\GitHub\\condor", statusBar);
-        Assert.Contains("RAM", statusBar);
+        Assert.DoesNotContain("Listo", statusBar);
         Assert.DoesNotContain("qwen2.5-coder", statusBar);
-        Assert.Contains("qwen2.5-coder:3b", cabecera);
+        Assert.Contains("Codificar · qwen2.5-coder:3b", cabecera);
         Assert.DoesNotContain("build interno", statusBar);
         Assert.DoesNotContain("Workspace:", statusBar);
         Assert.DoesNotContain("Modo:", statusBar);
-        Assert.Contains("Modelo: listo", statusBar);
+        Assert.DoesNotContain("Modelo: listo", statusBar);
     }
     [Fact]
     public void Tui2_Sesion_SeparaZonasConSeparadores()

@@ -22,6 +22,7 @@ public static class Ansi
     // terracota #C2665A -> 167, dorado #D9A25A -> 179, crema #E8E4D8 -> 255,
     // cuerpo oscuro #2A2924 -> 235.
     public const string FgTerracota = Esc + "38;5;167m";
+    public const string FgNaranja = Esc + "38;5;208m";
     public const string FgDorado = Esc + "38;5;179m";
     public const string FgCrema = Esc + "38;5;255m";
     public const string FgBlanco = Esc + "97m";

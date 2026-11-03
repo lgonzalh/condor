@@ -101,8 +101,10 @@ public sealed class TuiHost : IDisposable
     private string _estado = "Iniciando";
     private ActivityKind _estadoKind = ActivityKind.System;
     private string _progreso = "";
+    private string _duracion = "";
     private string _modelStatus = "Modelo local · esperando una tarea";
     private ActivityKind _modelStatusKind = ActivityKind.System;
+    private int? _ramLibrePorcentaje;
     private bool _modelWorking;
     private bool _busy;
     private int _spin;
@@ -300,6 +302,21 @@ public sealed class TuiHost : IDisposable
         }
     }
 
+    public void SetRamLibrePorcentaje(int? porcentaje)
+    {
+        int? siguiente = porcentaje.HasValue ? Math.Clamp(porcentaje.Value, 0, 100) : null;
+        lock (_gate)
+        {
+            if (_ramLibrePorcentaje == siguiente)
+            {
+                return;
+            }
+
+            _ramLibrePorcentaje = siguiente;
+            _dirtyStatus = true;
+        }
+    }
+
     public void SetWorkspace(string? workspace)
     {
         lock (_gate)
@@ -335,6 +352,11 @@ public sealed class TuiHost : IDisposable
             }
 
             _progreso = text;
+            if (EsDuracionEnSegundos(text))
+            {
+                _duracion = text;
+            }
+
             _dirtyStatus = true;
         }
     }
@@ -664,7 +686,7 @@ public sealed class TuiHost : IDisposable
                         sb,
                         row,
                         textLeftCol,
-                        IdentityLine + " · " + (_model ?? "—"),
+                        IdentityLine + " · " + _agentName + " · " + (_model ?? "—"),
                         Ansi.FgDorado);
                     break;
                 case 4:
@@ -992,17 +1014,32 @@ public sealed class TuiHost : IDisposable
             parts.Add(_estado);
         }
 
-        if (!_busy && EsDuracionEnSegundos(_progreso))
+        if (!_busy && EsDuracionEnSegundos(_duracion))
         {
-            parts.Add(_progreso);
+            parts.Add(_duracion);
         }
 
-        parts.Add("RAM " + (Environment.WorkingSet / (1024 * 1024)) + "MB");
+        parts.Add("RAM Condor " + (Environment.WorkingSet / (1024 * 1024)) + "MB");
         var workspace = string.IsNullOrWhiteSpace(_workspace) ? Environment.CurrentDirectory : _workspace;
-        parts.Add(workspace);
-        var footer = frame + string.Join(" · ", parts);
+        var prefix = frame + string.Join(" · ", parts);
         var color = showStatus ? EstadoColor(_estadoKind) : Ansi.FgGris;
-        sb.Append(color + Clip(footer, availableWidth) + Ansi.Reset);
+        var visiblePrefix = Clip(prefix, availableWidth);
+        sb.Append(color + visiblePrefix + Ansi.Reset);
+        var remainingWidth = Math.Max(0, availableWidth - Ansi.VisibleWidth(visiblePrefix));
+
+        var ramLibre = _ramLibrePorcentaje.HasValue
+            ? "RAM libre " + _ramLibrePorcentaje.Value + "%"
+            : "RAM libre s/d";
+        var separator = string.IsNullOrEmpty(prefix) ? "" : " · ";
+        var visibleRamLibre = Clip(separator + ramLibre, remainingWidth);
+        var ramColor = _ramLibrePorcentaje.HasValue
+            ? ColorRamLibre(_ramLibrePorcentaje.Value)
+            : Ansi.FgGris;
+        sb.Append(ramColor + visibleRamLibre + Ansi.Reset);
+        remainingWidth = Math.Max(0, remainingWidth - Ansi.VisibleWidth(visibleRamLibre));
+
+        var visibleWorkspace = Clip((string.IsNullOrEmpty(prefix) && string.IsNullOrEmpty(visibleRamLibre) ? "" : " · ") + workspace, remainingWidth);
+        sb.Append(Ansi.FgGris + visibleWorkspace + Ansi.Reset);
         var shortcutsCol = Math.Max(1, _width - Shortcuts.Length + 1);
         sb.Append(Ansi.At(EstadoRow + 1, shortcutsCol));
         sb.Append(Ansi.FgGris + Shortcuts + Ansi.Reset);
@@ -1011,13 +1048,21 @@ public sealed class TuiHost : IDisposable
     private static bool EsDuracionEnSegundos(string value)
     {
         var text = value.Trim();
-        if (!text.EndsWith(" s", StringComparison.OrdinalIgnoreCase))
+        if (!text.EndsWith("s", StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
 
-        var number = text[..^2].Trim();
+        var number = text[..^1].Trim();
         return number.Length > 0 && number.All(character => char.IsDigit(character) || character is ',' or '.');
+    }
+
+    internal static string ColorRamLibre(int porcentaje)
+    {
+        if (porcentaje <= 10) return Ansi.FgRojo;
+        if (porcentaje <= 40) return Ansi.FgNaranja;
+        if (porcentaje < 80) return Ansi.FgAmarillo;
+        return Ansi.FgVerde;
     }
 
     internal bool TryGetFooterActionAt(int screenRow, int screenColumn, out InputAction action)

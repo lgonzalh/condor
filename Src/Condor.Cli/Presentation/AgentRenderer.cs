@@ -105,7 +105,7 @@ public static class AgentRenderer
         {
             sb.AppendLine();
             sb.AppendLine(documentation.Success
-                ? "Informe Antes/Durante/Despues: " + documentation.RelativePath
+                ? documentation.RelativePath
                 : "No se genero el informe de tarea: " + (documentation.Reason ?? "motivo no disponible"));
         }
 
@@ -126,7 +126,7 @@ public static class AgentRenderer
         Terminal.WriteLine();
         if (documentation.Success)
         {
-            Terminal.WriteDim("Informe Antes/Durante/Despues: " + documentation.RelativePath);
+            Terminal.WriteDim(documentation.RelativePath ?? string.Empty);
         }
         else
         {
