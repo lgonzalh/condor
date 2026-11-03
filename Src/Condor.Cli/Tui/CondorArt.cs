@@ -62,12 +62,12 @@ public static class CondorArt
 
     private static readonly string[][] ExitLetters =
     [
-        ["███", "█  ", "█  ", "█  ", "███"],
-        ["████", "█  █", "█  █", "█  █", "████"],
-        ["█  █", "██ █", "█ ██", "█  █", "█  █"],
-        ["████", "█  █", "█  █", "█  █", "████"],
-        ["████", "█  █", "█  █", "█  █", "████"],
-        ["███", "█  ", "█  ", "█  ", "█  "]
+        ["....", "....", "####", "#...", "#...", "####"],
+        ["....", "....", "####", "#..#", "#..#", "####"],
+        ["....", "....", "###.", "#..#", "#..#", "#..#"],
+        ["...#", "...#", "####", "#..#", "#..#", "####"],
+        ["....", "....", "####", "#..#", "#..#", "####"],
+        ["....", "....", "###.", "#...", "#...", "#..."]
     ];
 
     /// <summary>Rótulo pixelado "condor" para despedir al usuario en la terminal.</summary>
@@ -91,13 +91,13 @@ public static class CondorArt
         for (var y = 0; y < rows.Length; y++)
         {
             var line = new System.Text.StringBuilder();
+            line.Append("  ");
             for (var letter = 0; letter < ExitLetters.Length; letter++)
             {
-                if (letter > 0) line.Append("  ");
                 line.Append(letter < 3 ? Ansi.FgGris : Ansi.FgBlanco);
                 foreach (var pixel in ExitLetters[letter][y])
-                    line.Append(pixel == '█' ? "██" : "  ");
-                line.Append(Ansi.Reset);
+                    line.Append(pixel == '#' ? "██" : "  ");
+                line.Append(Ansi.Reset).Append("  ");
             }
 
             rows[y] = line.ToString();

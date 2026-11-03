@@ -163,38 +163,8 @@ public static class CondorTui
         host.SetModel(prep.Model);
         var workspace = bootstrap.Assessment?.WorkingDirectory;
         host.SetWorkspace(string.IsNullOrWhiteSpace(workspace) ? Environment.CurrentDirectory : workspace);
-        host.SetEstado("Listo", ActivityKind.Success);
+        host.SetEstado("Entorno listo", ActivityKind.Success);
         host.SetProgreso("—");
-
-        host.AddActivity("Entorno listo. Modo Local 100% activo.", ActivityKind.System);
-        var ollamaStatus = bootstrap.Assessment?.Tools?.Ollama;
-        if (ollamaStatus?.Installed == true)
-        {
-            if (ollamaStatus.LatestVersion is null)
-            {
-                host.AddActivity("No se pudo comprobar la ultima version de Ollama en este arranque.", ActivityKind.Warning);
-            }
-            else if (ollamaStatus.UpdateAvailable)
-            {
-                host.AddActivity(
-                    "Ollama " + ollamaStatus.ServerVersion + " · nueva version " + ollamaStatus.LatestVersion +
-                    " · winget upgrade --id Ollama.Ollama --exact",
-                    ActivityKind.Warning);
-            }
-            else
-            {
-                host.AddActivity("Ollama actualizado · " + ollamaStatus.ServerVersion, ActivityKind.Success);
-            }
-        }
-
-        if (!string.IsNullOrWhiteSpace(prep.Model))
-        {
-            host.AddActivity("Modelo local listo: " + prep.Model, ActivityKind.System);
-        }
-
-        host.AddActivity(
-            "Existen modelos locales, pero no se pueden cargar, libera RAM para cargar modelos más grandes cerrando aplicaciones/procesos de alto consumo; no es obligatorio para continuar.",
-            ActivityKind.Warning);
 
         // ---- Bucle principal: teclado + repintado por regiones ------------------
         Console.TreatControlCAsInput = true;
@@ -432,20 +402,10 @@ public static class CondorTui
                         var models = inventory.Models;
                         if (models.Count == 0)
                         {
-                            host.AddActivity("Ollama no reporta modelos locales instalados.", ActivityKind.Warning);
                             host.SetEstado("Sin modelos locales", ActivityKind.Warning);
                         }
                         else
                         {
-                            host.AddActivity("Modelos locales · ↑/↓ cambia · Enter selecciona · Esc cancela · Tab abre Agentes", ActivityKind.System);
-                            foreach (var model in models)
-                            {
-                                var available = ModelFitsCurrentMemory(model, inventory.Memory, out _);
-                                var capabilities = DescribeModelCapabilities(model);
-                                var availability = available ? "" : " · presupuesto no disponible";
-                                host.AddActivity(model.Name + " · " + capabilities + availability,
-                                    available ? ActivityKind.Analysis : ActivityKind.Warning);
-                            }
                             input.BeginModelPicker(
                                 models,
                                 DescribeModelCapabilities,

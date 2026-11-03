@@ -72,11 +72,9 @@ public sealed class TuiPresentationChangeTests
     [Fact]
     public void Salida_MuestraWordmarkUnicodeCondor()
     {
-        Assert.Equal(5, CondorArt.ExitWordmark.Length);
-        Assert.All(CondorArt.ExitWordmark, row =>
-        {
-            Assert.Contains("█", row);
-            Assert.Equal(54, Ansi.VisibleWidth(row));
-        });
+        Assert.Equal(6, CondorArt.ExitWordmark.Length);
+        Assert.All(CondorArt.ExitWordmark, row => Assert.Equal(62, Ansi.VisibleWidth(row)));
+        Assert.All(CondorArt.ExitWordmark.Take(2), row => Assert.Equal(2, row.Count(pixel => pixel == '█')));
+        Assert.All(CondorArt.ExitWordmark.Skip(2), row => Assert.Contains("█", row));
     }
 }
