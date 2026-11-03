@@ -359,6 +359,23 @@ public class FotogramasTuiTests
     }
 
     [Fact]
+    public void Sesion_ModeloEnCambio_MuestraLaAccionEnLaFilaCompacta()
+    {
+        using var host = new TuiHost(80, 34);
+        host.Enter();
+        host.ShowSession("granite4.2:3b");
+        host.SetEstado("Evaluando el cambio de modelo");
+        host.SetModelStatus("Cargando lfm3:1.7b-q4_K_M", working: true);
+        host.SetBusy(true);
+
+        var status = Grid(host.SnapshotFullFrame())[^1];
+
+        Assert.Contains("C: Evaluando", status);
+        Assert.Contains("M: Cargando", status);
+        Assert.Contains("RAM", status);
+    }
+
+    [Fact]
     public void Bienvenida_PresentaMascotaGrande()
     {
         var host = new TuiHost(forceInteractive: true);

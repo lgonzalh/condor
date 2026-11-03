@@ -619,7 +619,7 @@ public static class CondorTui
         host.SetBusy(true);
         host.SetEstado("Evaluando el cambio de modelo");
         host.SetProgreso("inventario local y RAM disponibles");
-        host.SetModelStatus(modelName + " · preparando cambio", working: true);
+        host.SetModelStatus("Cargando " + modelName, working: true);
         host.Repaint();
 
         try
