@@ -4,29 +4,57 @@ using System.Text;
 namespace Condor.Cli.Tui;
 
 /// <summary>Elemento comun a las listas interactivas de la TUI.</summary>
-public sealed record SelectListItem(
+public record SelectItem(
     string Id,
     string Label,
-    string Description = "",
-    IReadOnlyList<string>? Tags = null,
-    bool Disabled = false,
-    string? DisabledReason = null,
-    string? Shortcut = null,
-    bool IsCurrent = false);
+    string Description,
+    IReadOnlyList<string> Tags,
+    bool Disabled,
+    string? DisabledReason,
+    string? Shortcut)
+{
+    public bool IsCurrent { get; init; }
+}
+
+/// <summary>Compatibilidad temporal mientras TuiInput migra al nuevo modelo.</summary>
+public sealed record SelectListItem : SelectItem
+{
+    public SelectListItem(
+        string Id,
+        string Label,
+        string Description = "",
+        IReadOnlyList<string>? Tags = null,
+        bool Disabled = false,
+        string? DisabledReason = null,
+        string? Shortcut = null,
+        bool IsCurrent = false)
+        : base(Id, Label, Description, Tags ?? Array.Empty<string>(), Disabled, DisabledReason, Shortcut)
+    {
+        this.IsCurrent = IsCurrent;
+    }
+}
 
 /// <summary>Estado inmutable de filtro, seleccion y desplazamiento de una lista.</summary>
 public sealed record SelectListState(
-    IReadOnlyList<SelectListItem> Items,
+    IReadOnlyList<SelectItem> Items,
     string Query,
     IReadOnlyList<int> Filtered,
     int SelectedIndex,
     int ScrollOffset,
     int VisibleRows)
 {
-    public SelectListItem? SelectedItem =>
+    public SelectItem? Selected =>
         SelectedIndex >= 0 && SelectedIndex < Filtered.Count
             ? Items[Filtered[SelectedIndex]]
             : null;
+
+    public SelectItem? SelectedItem => Selected;
+
+    public SelectListState SetQuery(string query) => SelectList.SetQuery(this, query);
+
+    public SelectListState MoveNext() => SelectList.Move(this, 1);
+
+    public SelectListState MovePrev() => SelectList.Move(this, -1);
 }
 
 public enum SelectListPlacement
@@ -75,16 +103,16 @@ public sealed record SelectListOverlay(
 /// <summary>Operaciones puras para filtrar y navegar listas reutilizables.</summary>
 public static class SelectList
 {
-    public const int DefaultVisibleRows = 9;
+    public const int DefaultVisibleRows = 8;
     public const int MaximumVisibleRows = 10;
 
     public static SelectListState Create(
-        IEnumerable<SelectListItem> items,
+        IEnumerable<SelectItem> items,
         string query = "",
         int visibleRows = DefaultVisibleRows,
         string? selectedId = null)
     {
-        var materialized = items?.ToArray() ?? Array.Empty<SelectListItem>();
+        var materialized = items?.ToArray() ?? Array.Empty<SelectItem>();
         var filtered = Filter(materialized, query);
         var rows = Math.Clamp(visibleRows, 1, MaximumVisibleRows);
         var selected = FindInitialSelection(materialized, filtered, selectedId);
@@ -95,7 +123,8 @@ public static class SelectList
     {
         ArgumentNullException.ThrowIfNull(state);
         var filtered = Filter(state.Items, query);
-        var selected = FindInitialSelection(state.Items, filtered, selectedId: null);
+        var previousId = state.Selected?.Id;
+        var selected = FindInitialSelection(state.Items, filtered, previousId);
         return EnsureVisible(state with
         {
             Query = query ?? "",
@@ -142,9 +171,9 @@ public static class SelectList
         return EnsureVisible(state with { SelectedIndex = index });
     }
 
-    public static IReadOnlyList<int> Filter(IReadOnlyList<SelectListItem> items, string? query)
+    public static IReadOnlyList<int> Filter(IReadOnlyList<SelectItem> items, string? query)
     {
-        var normalizedQuery = Normalize(query ?? "").Trim();
+        var normalizedQuery = (query ?? "").Trim();
         if (normalizedQuery.StartsWith('/'))
         {
             normalizedQuery = normalizedQuery[1..];
@@ -159,9 +188,9 @@ public static class SelectList
             .Select((item, index) => new
             {
                 Index = index,
-                Score = MatchScore(normalizedQuery, SearchText(item))
+                Score = FuzzyMatcher.Score(normalizedQuery, SearchText(item))
             })
-            .Where(result => result.Score >= 0)
+            .Where(result => result.Score is not null)
             .OrderBy(result => result.Score)
             .ThenBy(result => result.Index)
             .Select(result => result.Index)
@@ -190,7 +219,7 @@ public static class SelectList
     }
 
     private static int FindInitialSelection(
-        IReadOnlyList<SelectListItem> items,
+        IReadOnlyList<SelectItem> items,
         IReadOnlyList<int> filtered,
         string? selectedId)
     {
@@ -225,73 +254,86 @@ public static class SelectList
         return -1;
     }
 
-    private static string SearchText(SelectListItem item) => string.Join(' ', new[]
+    private static string SearchText(SelectItem item) => string.Join(' ', new[]
         {
-            item.Id,
             item.Label,
             item.Description,
-            string.Join(' ', item.Tags ?? Array.Empty<string>()),
-            item.DisabledReason ?? ""
+            string.Join(' ', item.Tags)
         }.Where(value => !string.IsNullOrWhiteSpace(value)));
 
-    private static int MatchScore(string query, string candidate)
+    private static int Mod(int value, int length) => (value % length + length) % length;
+}
+
+/// <summary>Coincidencia difusa pura con puntajes mas bajos para coincidencias mejores.</summary>
+public static class FuzzyMatcher
+{
+    public static int? Score(string query, string text)
     {
-        var text = Normalize(candidate);
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentNullException.ThrowIfNull(text);
+
+        var queryRunes = Normalize(query).Where(rune => !Rune.IsWhiteSpace(rune)).ToArray();
+        if (queryRunes.Length == 0)
+        {
+            return 0;
+        }
+
+        var textRunes = Normalize(text);
+        var score = 0;
         var cursor = 0;
         var previous = -2;
-        var score = 0;
-        var matched = false;
 
-        foreach (var character in query)
+        foreach (var queryRune in queryRunes)
         {
-            if (char.IsWhiteSpace(character))
+            var position = -1;
+            for (var index = cursor; index < textRunes.Length; index++)
             {
-                continue;
+                if (textRunes[index] == queryRune)
+                {
+                    position = index;
+                    break;
+                }
             }
 
-            matched = true;
-            var position = text.IndexOf(character, cursor);
             if (position < 0)
             {
-                return -1;
+                return null;
             }
 
-            score += Math.Max(0, position - cursor);
-            if (position == 0 || char.IsWhiteSpace(text[position - 1]) || text[position - 1] is '/' or '-')
+            if (position == 0)
             {
-                score -= 2;
+                score -= 20;
+            }
+            else if (!Rune.IsLetterOrDigit(textRunes[position - 1]))
+            {
+                score -= 4;
             }
 
             if (position == previous + 1)
             {
-                score -= 1;
+                score -= 6;
+            }
+            else
+            {
+                score += position - cursor;
             }
 
             previous = position;
             cursor = position + 1;
         }
 
-        return matched ? Math.Max(0, score) : 0;
+        return score;
     }
 
-    private static string Normalize(string value)
+    private static Rune[] Normalize(string value)
     {
         var decomposed = value.Normalize(NormalizationForm.FormD);
-        var result = new StringBuilder(decomposed.Length);
-        for (var index = 0; index < decomposed.Length; index++)
-        {
-            var character = decomposed[index];
-            if (CharUnicodeInfo.GetUnicodeCategory(decomposed, index) is not
+        return decomposed.EnumerateRunes()
+            .Where(rune => Rune.GetUnicodeCategory(rune) is not
                 (UnicodeCategory.NonSpacingMark or UnicodeCategory.SpacingCombiningMark or UnicodeCategory.EnclosingMark))
-            {
-                result.Append(char.ToLowerInvariant(character));
-            }
-        }
-
-        return result.ToString();
+            .Select(Rune.ToLowerInvariant)
+            .ToArray();
     }
-
-    private static int Mod(int value, int length) => (value % length + length) % length;
 }
 
 /// <summary>Render puro de filas SelectList sin coordenadas ni efectos de consola.</summary>
@@ -425,7 +467,7 @@ public static class SelectListRenderer
         string detail,
         string shortcut,
         int width,
-        SelectListItem item,
+        SelectItem item,
         bool selected,
         SelectListTheme theme)
     {
@@ -471,7 +513,7 @@ public static class SelectListRenderer
         return sb.ToString();
     }
 
-    private static string BuildDescription(SelectListItem item)
+    private static string BuildDescription(SelectItem item)
     {
         var parts = new List<string>();
         if (!string.IsNullOrWhiteSpace(item.Description)) parts.Add(item.Description.Trim());

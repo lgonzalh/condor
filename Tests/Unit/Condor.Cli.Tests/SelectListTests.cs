@@ -32,6 +32,37 @@ public class SelectListTests
     }
 
     [Fact]
+    public void FuzzyMatcherPuntuaPrefijoInicioDePalabraYConsecutividad()
+    {
+        var prefix = FuzzyMatcher.Score("cmd", "command");
+        var word = FuzzyMatcher.Score("cmd", "run command");
+        var consecutive = FuzzyMatcher.Score("ab", "abc");
+        var separated = FuzzyMatcher.Score("ab", "a-b");
+
+        Assert.NotNull(prefix);
+        Assert.NotNull(word);
+        Assert.NotNull(consecutive);
+        Assert.NotNull(separated);
+        Assert.True(prefix < word);
+        Assert.True(consecutive < separated);
+        Assert.Null(FuzzyMatcher.Score("xyz", "command"));
+    }
+
+    [Fact]
+    public void CambiarQueryConservaLaSeleccionSiSigueCoincidiendo()
+    {
+        var state = SelectList.Create(new[]
+        {
+            new SelectItem("first", "Beta primero", "", Array.Empty<string>(), false, null, null),
+            new SelectItem("second", "Beta segundo", "", Array.Empty<string>(), false, null, null)
+        }, selectedId: "second");
+
+        state = state.SetQuery("beta");
+
+        Assert.Equal("second", state.Selected?.Id);
+    }
+
+    [Fact]
     public void NavegacionEnvuelveOmiteDeshabilitadosYMantieneLaSeleccionVisible()
     {
         var items = Enumerable.Range(0, 30)
@@ -42,8 +73,9 @@ public class SelectListTests
                 DisabledReason: index == 1 ? "presupuesto no disponible" : null))
             .ToArray();
 
+        Assert.Equal(8, SelectList.Create(items).VisibleRows);
         var state = SelectList.Create(items, visibleRows: 8, selectedId: "item-0");
-        state = SelectList.Move(state, 1);
+        state = state.MoveNext();
         Assert.Equal("item-2", state.SelectedItem?.Id);
         Assert.Equal(0, state.ScrollOffset);
 
@@ -51,9 +83,28 @@ public class SelectListTests
         Assert.Equal("item-29", state.SelectedItem?.Id);
         Assert.Equal(22, state.ScrollOffset);
 
-        state = SelectList.Move(state, 1);
+        state = state.MoveNext();
         Assert.Equal("item-0", state.SelectedItem?.Id);
         Assert.Equal(0, state.ScrollOffset);
+
+        state = state.MovePrev();
+        Assert.Equal("item-29", state.SelectedItem?.Id);
+        Assert.Equal(22, state.ScrollOffset);
+    }
+
+    [Fact]
+    public void OrdenaPorPuntajeYConservaElOrdenOriginalEnEmpates()
+    {
+        var items = new[]
+        {
+            new SelectItem("separated", "a-b", "", Array.Empty<string>(), false, null, null),
+            new SelectItem("first", "ab", "", Array.Empty<string>(), false, null, null),
+            new SelectItem("second", "ab", "", Array.Empty<string>(), false, null, null)
+        };
+
+        var filtered = SelectList.Filter(items, "ab");
+
+        Assert.Equal(new[] { 1, 2, 0 }, filtered);
     }
 
     [Fact]
