@@ -60,6 +60,19 @@ public static class CondorArt
     /// <summary>Cabeza de la mascota pequeña: matriz exacta de 8x8 en bloques Unicode.</summary>
     public static string[] Ave => BuildHeadArt();
 
+    private static readonly string[][] ExitLetters =
+    [
+        ["███", "█  ", "█  ", "█  ", "███"],
+        ["████", "█  █", "█  █", "█  █", "████"],
+        ["█  █", "██ █", "█ ██", "█  █", "█  █"],
+        ["████", "█  █", "█  █", "█  █", "████"],
+        ["████", "█  █", "█  █", "█  █", "████"],
+        ["███", "█  ", "█  ", "█  ", "█  "]
+    ];
+
+    /// <summary>Rótulo pixelado "condor" para despedir al usuario en la terminal.</summary>
+    public static readonly string[] ExitWordmark = BuildExitWordmark();
+
     private static readonly string[] HeadRows =
     {
         "KKKLLLLK",
@@ -71,6 +84,27 @@ public static class CondorArt
         "KKLDDDDW",
         "KKLDDDDW"
     };
+
+    private static string[] BuildExitWordmark()
+    {
+        var rows = new string[ExitLetters[0].Length];
+        for (var y = 0; y < rows.Length; y++)
+        {
+            var line = new System.Text.StringBuilder();
+            for (var letter = 0; letter < ExitLetters.Length; letter++)
+            {
+                if (letter > 0) line.Append("  ");
+                line.Append(letter < 3 ? Ansi.FgGris : Ansi.FgBlanco);
+                foreach (var pixel in ExitLetters[letter][y])
+                    line.Append(pixel == '█' ? "██" : "  ");
+                line.Append(Ansi.Reset);
+            }
+
+            rows[y] = line.ToString();
+        }
+
+        return rows;
+    }
 
     private static string[] BuildHeadArt()
     {

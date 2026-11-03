@@ -125,6 +125,8 @@ public static class CondorTui
         }
         catch (OperationCanceledException)
         {
+            host.Dispose();
+            PrintExitBanner();
             return 130;
         }
 
@@ -507,8 +509,29 @@ public static class CondorTui
         runningCts?.Cancel();
         Console.TreatControlCAsInput = false;
         host.Dispose();
-        Console.WriteLine("Hasta pronto.");
+        PrintExitBanner();
         return exitCode;
+    }
+
+    private static void PrintExitBanner()
+    {
+        try
+        {
+            Console.OutputEncoding = new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+        }
+        catch
+        {
+            // Conserva la salida aunque el host de consola no permita cambiar la codificacion.
+        }
+
+        Console.WriteLine();
+        foreach (var row in CondorArt.ExitWordmark)
+        {
+            Console.WriteLine(row);
+        }
+
+        Console.WriteLine(Ansi.FgBlanco + "Gracias por usar Condor." + Ansi.Reset);
+        Console.WriteLine(Ansi.FgGris + "Hasta pronto." + Ansi.Reset);
     }
 
     private static bool IsAgentPanelCommand(string text)
@@ -766,6 +789,7 @@ public static class CondorTui
         }
 
         host.Dispose();
+        PrintExitBanner();
         return 1;
     }
 

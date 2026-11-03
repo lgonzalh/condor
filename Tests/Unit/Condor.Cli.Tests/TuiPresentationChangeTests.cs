@@ -69,4 +69,14 @@ public sealed class TuiPresentationChangeTests
         Assert.Contains("pregunta", frame);
     }
 
+    [Fact]
+    public void Salida_MuestraWordmarkUnicodeCondor()
+    {
+        Assert.Equal(5, CondorArt.ExitWordmark.Length);
+        Assert.All(CondorArt.ExitWordmark, row =>
+        {
+            Assert.Contains("█", row);
+            Assert.Equal(54, Ansi.VisibleWidth(row));
+        });
+    }
 }
