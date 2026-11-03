@@ -213,7 +213,7 @@ public class FotogramasTuiTests
         Assert.DoesNotContain(grid, line => line.Contains("ANÁLISIS DEL AGENTE"));
         Assert.DoesNotContain(grid, line => line.Contains("RESPUESTA / INFORME DEL AGENTE"));
         Assert.DoesNotContain(grid, line => line.Contains("Modo: Agente"));
-        Assert.DoesNotContain(grid, line => line.Contains("Modelo:"));
+        Assert.DoesNotContain(grid.Take(4), line => line.Contains("Modelo:"));
 
         // Sin texto de espera redundante.
         Assert.DoesNotContain(grid, line => line.Contains("En espera de tu intencion"));
@@ -319,12 +319,12 @@ public class FotogramasTuiTests
         var frame = Ansi.StripSgr(host.SnapshotFullFrame());
 
         // Estado real de la fase + indicador de trabajo; la metadata tecnica es minima.
-        Assert.Contains("Verificando resultado de los cambios", frame);
+        Assert.Contains("Condor: Verificando resultado", frame);
         Assert.Contains("Condor esta trabajando", frame);
     }
 
     [Fact]
-    public void Sesion_ActualizaEnSitioLasDosLineasDeEstado()
+    public void Sesion_ActualizaEnSitioUnaLineaDeEstado()
     {
         using var host = HostSesion();
         var view = new TuiAgentProgressView(host);
@@ -337,10 +337,11 @@ public class FotogramasTuiTests
             modelWorking: true));
 
         var first = Grid(host.SnapshotFullFrame());
-        Assert.Contains("Condor ·", first[32]);
-        Assert.Contains("Esperando propuesta", first[32]);
-        Assert.Contains("RAM", first[32]);
-        Assert.Contains("generando propuesta", first[33]);
+        var firstStatus = first[^1];
+        Assert.Contains("Condor:", firstStatus);
+        Assert.Contains("Analizando", firstStatus);
+        Assert.Contains("generando propuesta", firstStatus);
+        Assert.Contains("RAM", firstStatus);
 
         view.Report(AgentProgress.Of(
             AgentPhase.Analyzing,
@@ -350,9 +351,10 @@ public class FotogramasTuiTests
             modelWorking: false));
 
         var updated = Grid(host.SnapshotFullFrame());
-        Assert.Contains("Condor ·", updated[32]);
-        Assert.Contains("propuso create_file index.html segunda linea", updated[33]);
-        Assert.DoesNotContain("generando propuesta", updated[33]);
+        var updatedStatus = updated[^1];
+        Assert.Contains("Condor:", updatedStatus);
+        Assert.Contains("propuso create_file", updatedStatus);
+        Assert.DoesNotContain("generando propuesta", updatedStatus);
         Assert.DoesNotContain('\n', host.SnapshotFullFrame());
     }
 
@@ -386,7 +388,7 @@ public class FotogramasTuiTests
         host.SetProgreso("etapa 1/5");
         var frame = Ansi.StripSgr(host.SnapshotFullFrame());
 
-        // La bienvenida conserva dos renglones: Condor y el estado secundario.
+        // Condor y el estado del modelo comparten una sola linea.
         Assert.DoesNotContain("Estado:", frame);
         Assert.DoesNotContain("Progreso:", frame);
         Assert.Contains("Condor · Iniciando ... · etapa 1/5", frame);
@@ -530,20 +532,19 @@ public class ArquitecturaInteraccionesTests
         host.SetEstado("Listo", ActivityKind.Success);
         var grid = Grid(host.SnapshotFullFrame());
 
-        var statusBar = grid[grid.Length - 2];
-        var modelBar = grid[grid.Length - 1];
-        // Las dos filas inferiores muestran estado y modelo; la ruta de trabajo
-        // aparece en la fila Condor cuando el espacio alcanza.
+        var statusBar = grid[^1];
+        var cabecera = string.Join("\n", grid.Take(4));
+        // Una fila compacta combina Condor, modelo, memoria y ruta si cabe.
         Assert.Contains("Listo", statusBar);
         Assert.Contains("C:\\GitHub\\prueba", statusBar);
         Assert.DoesNotContain("C:\\GitHub\\condor", statusBar);
         Assert.Contains("RAM", statusBar);
         Assert.DoesNotContain("qwen2.5-coder", statusBar);
-        Assert.Contains("qwen2.5-coder:3b", modelBar);
+        Assert.Contains("qwen2.5-coder:3b", cabecera);
         Assert.DoesNotContain("build interno", statusBar);
         Assert.DoesNotContain("Workspace:", statusBar);
         Assert.DoesNotContain("Modo:", statusBar);
-        Assert.DoesNotContain("Modelo:", statusBar);
+        Assert.Contains("Modelo: listo", statusBar);
     }
     [Fact]
     public void Tui2_Sesion_SeparaZonasConSeparadores()
@@ -630,9 +631,9 @@ public class ArquitecturaInteraccionesTests
         host.SetProgreso("—");
         host.Repaint();
 
-        var frame = Ansi.StripSgr(host.SnapshotFullFrame()).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        var frame = Grid(host.SnapshotFullFrame());
         // La ayuda se agrega como actividades; la cabecera siempre muestra DisplayName.
-        Assert.Contains(frame, line => line.Contains("build interno"));
+        Assert.Contains(frame, line => line.Contains(VersionInfo.DisplayName));
         // Algunas lineas de ayuda deben estar visibles en la zona de actividad.
         Assert.Contains(frame, line => line.Contains("/salir"));
         Assert.Contains(frame, line => line.Contains("Contracciones:"));

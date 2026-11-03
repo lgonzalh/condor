@@ -50,7 +50,7 @@ public enum ActivityKind
 ///   ── Actividad del agente ────────────────────────────────
 ///   (historial vivo de la conversacion y la actividad)
 ///   &gt; ¿que deseas construir...?
-///   (barra de estado: workspace | estado | RAM)
+///   (barra de estado de una linea: Condor | modelo | RAM | atajos)
 ///
 /// La identidad institucional y el modelo REAL seleccionado comparten la linea
 /// de identidad de la cabecera, fuera del area del arte; "Modo Local 100%"
@@ -65,7 +65,7 @@ public sealed class TuiHost : IDisposable
     internal const int MinWidth = 80;
     internal const int MinHeight = 24;
 
-    private const int BottomRows = 4;             // separador entrada + entrada + estado Condor + estado modelo
+    private const int BottomRows = 3;             // separador entrada + entrada + estado combinado
     private const int HeaderRows = 5;             // cuatro líneas de mascota + separador inferior
 
     private static readonly string[] SpinnerFrames = { "◐", "◑", "◒", "◕", "◔" };
@@ -73,6 +73,9 @@ public sealed class TuiHost : IDisposable
     private readonly object _gate = new();
     private readonly List<(string Text, ActivityKind Kind)> _activity = new();
     private readonly List<(string Line, ActivityKind Kind)> _wrapped = new();
+    private string? _overlayTitle;
+    private List<string> _overlayItems = new();
+    private int _overlaySelectedIndex = -1;
 
     private int _width;
     private int _height;
@@ -103,8 +106,7 @@ public sealed class TuiHost : IDisposable
     private int ContentTop => HeaderRows + 1;
     private int SepInputRow => _height - BottomRows;         // separador antes de la entrada
     public int InputRow => _height - BottomRows + 1;         // fila de entrada
-    private int EstadoRow => _height - BottomRows + 2;       // fila de estado minimo (ultima)
-    private int ModeloRow => _height - BottomRows + 3;       // segunda fila de estado (modelo)
+    private int EstadoRow => _height - BottomRows + 2;       // fila unica de estado
     private int ContentBottom => SepInputRow - 1;            // ultima fila utilizable de contenido
 
     // Composicion de referencia: la mascota se ancla a la IZQUIERDA del area de
@@ -724,6 +726,45 @@ public sealed class TuiHost : IDisposable
                 sb.Append(ActivityPrefix(kind) + line + Ansi.Reset);
             }
         }
+
+        PaintOverlayLocked(sb, height);
+    }
+
+    private void PaintOverlayLocked(System.Text.StringBuilder sb, int contentHeight)
+    {
+        if (string.IsNullOrWhiteSpace(_overlayTitle) || _overlayItems.Count == 0 || contentHeight < 2)
+        {
+            return;
+        }
+
+        var visibleItems = Math.Min(_overlayItems.Count, Math.Min(8, contentHeight - 1));
+        var firstItem = _overlaySelectedIndex >= 0
+            ? Math.Clamp(_overlaySelectedIndex - visibleItems + 1, 0, Math.Max(0, _overlayItems.Count - visibleItems))
+            : Math.Max(0, _overlayItems.Count - visibleItems);
+        var rows = visibleItems + 1;
+        var firstRow = ContentBottom - rows + 1;
+        var maxTextWidth = Math.Max(1, _width - 4);
+
+        sb.Append(Ansi.At(firstRow + 1, 1));
+        sb.Append(Ansi.ClearLine);
+        sb.Append("  " + Ansi.Bold + Ansi.FgGris + Clip(_overlayTitle, maxTextWidth) + Ansi.Reset);
+
+        for (var row = 0; row < visibleItems; row++)
+        {
+            var itemIndex = firstItem + row;
+            var selected = itemIndex == _overlaySelectedIndex;
+            var text = (selected ? "▸ " : "  ") + Clip(_overlayItems[itemIndex], Math.Max(1, maxTextWidth - 2));
+            sb.Append(Ansi.At(firstRow + row + 2, 1));
+            sb.Append(Ansi.ClearLine);
+            if (selected)
+            {
+                sb.Append(Ansi.Esc + "48;5;250m" + Ansi.Esc + "38;5;16m" + text + Ansi.Reset);
+            }
+            else
+            {
+                sb.Append(Ansi.FgGris + text + Ansi.Reset);
+            }
+        }
     }
 
     private string ActivityPrefix(ActivityKind kind)
@@ -744,8 +785,8 @@ public sealed class TuiHost : IDisposable
     }
 
     /// <summary>
-    /// Dos filas fijas de estado: Condor describe la accion actual y el modelo
-    /// describe la generacion o propuesta vigente. Ambas se repintan en sitio.
+    /// Una sola fila de estado combina la accion de Condor, la actividad real
+    /// del modelo y los atajos globales; siempre se repinta en el mismo sitio.
     /// </summary>
     private void PaintEstadoLocked(System.Text.StringBuilder sb)
     {
@@ -757,26 +798,48 @@ public sealed class TuiHost : IDisposable
 
         sb.Append(Ansi.At(EstadoRow + 1, 1));
         sb.Append(Ansi.ClearLine);
-        var frame = _busy ? SpinnerFrames[_spin % SpinnerFrames.Length] + " " : "";
+        var frame = _busy || _modelWorking ? SpinnerFrames[_spin % SpinnerFrames.Length] + " " : "";
         var shortcuts = "tab agentes  ctrl+p comandos";
-        var availableWidth = Math.Max(1, _width - shortcuts.Length - 3);
-        var prefix = frame + "Condor · " + _estado;
-        var memory = " · RAM " + (Environment.WorkingSet / (1024 * 1024)) + " MB";
-        var progressBudget = availableWidth - prefix.Length - memory.Length - (string.IsNullOrWhiteSpace(_progreso) ? 0 : 3);
-        var progress = progressBudget > 0 ? Clip(_progreso, progressBudget) : "";
-        var footer = prefix + (string.IsNullOrWhiteSpace(progress) ? "" : " · " + progress) + memory;
+        var availableWidth = Math.Max(1, _width - shortcuts.Length - 2);
+        var memory = " · RAM " + (Environment.WorkingSet / (1024 * 1024)) + "MB";
+        var condorLabel = _width < 100 ? "C: " : "Condor: ";
+        var modelLabel = _width < 100 ? "M: " : "Modelo: ";
+        var dynamicWidth = Math.Max(2, availableWidth - frame.Length - condorLabel.Length - modelLabel.Length - memory.Length - 3);
+        var modelActivity = _modelStatus;
+        if (!string.IsNullOrWhiteSpace(_model) &&
+            modelActivity.StartsWith(_model + " · ", StringComparison.OrdinalIgnoreCase))
+        {
+            modelActivity = modelActivity[(_model.Length + 3)..];
+        }
+        else if (modelActivity.StartsWith("Modelo local · ", StringComparison.OrdinalIgnoreCase))
+        {
+            modelActivity = modelActivity["Modelo local · ".Length..];
+        }
+
         var workspace = string.IsNullOrWhiteSpace(_workspace) ? Environment.CurrentDirectory : _workspace;
-        if (footer.Length + workspace.Length + 3 <= availableWidth)
-            footer += " · " + workspace;
+        var workspaceSuffix = " · " + workspace;
+        var includeWorkspace = _estado.Length + modelActivity.Length + workspaceSuffix.Length <= dynamicWidth;
+        if (includeWorkspace)
+        {
+            dynamicWidth -= workspaceSuffix.Length;
+        }
+
+        var condorBudget = Math.Min(_estado.Length, Math.Max(1, (dynamicWidth * 55) / 100));
+        var modelBudget = Math.Min(modelActivity.Length, Math.Max(1, dynamicWidth - condorBudget));
+        var remainingWidth = dynamicWidth - condorBudget - modelBudget;
+        var extraCondor = Math.Min(remainingWidth, Math.Max(0, _estado.Length - condorBudget));
+        condorBudget += extraCondor;
+        remainingWidth -= extraCondor;
+        modelBudget += Math.Min(remainingWidth, Math.Max(0, modelActivity.Length - modelBudget));
+
+        var condorText = Clip(_estado, condorBudget);
+        var modelText = Clip(modelActivity, modelBudget);
+        var footer = frame + condorLabel + condorText + " · " + modelLabel + modelText + memory +
+                     (includeWorkspace ? workspaceSuffix : "");
         sb.Append(EstadoColor(_estadoKind) + Clip(footer, availableWidth) + Ansi.Reset);
         var shortcutsCol = Math.Max(1, _width - shortcuts.Length + 1);
         sb.Append(Ansi.At(EstadoRow + 1, shortcutsCol));
         sb.Append(Ansi.FgGris + shortcuts + Ansi.Reset);
-
-        sb.Append(Ansi.At(ModeloRow + 1, 1));
-        sb.Append(Ansi.ClearLine);
-        var modelFrame = _modelWorking ? SpinnerFrames[_spin % SpinnerFrames.Length] + " " : "";
-        sb.Append(EstadoColor(_modelStatusKind) + Clip(modelFrame + _modelStatus, _width) + Ansi.Reset);
     }
 
     private string EstadoColor(ActivityKind kind)
@@ -798,15 +861,29 @@ public sealed class TuiHost : IDisposable
     {
         sb.Append(Ansi.At(18, 3));
         sb.Append(Ansi.ClearLine);
-        var frame = _busy ? SpinnerFrames[_spin % SpinnerFrames.Length] + " " : "";
-        var progress = string.IsNullOrWhiteSpace(_progreso) ? "" : " · " + _progreso;
-        sb.Append(EstadoColor(_estadoKind) + Clip(frame + "Condor · " + _estado + progress, _width - 6) + Ansi.Reset);
+        var frame = _busy || _modelWorking ? SpinnerFrames[_spin % SpinnerFrames.Length] + " " : "";
+        var condorText = "Condor · " + _estado;
+        if (!string.IsNullOrWhiteSpace(_progreso) && _progreso != "—")
+        {
+            condorText += " · " + _progreso;
+        }
 
+        var modelText = string.IsNullOrWhiteSpace(_modelStatus) ? "Modelo local · esperando" : _modelStatus;
+        var width = Math.Max(1, _width - 6);
+        var contentWidth = Math.Max(2, width - frame.Length - 3);
+        var condorBudget = Math.Min(condorText.Length, Math.Max(1, (contentWidth * 55) / 100));
+        var modelBudget = Math.Min(modelText.Length, Math.Max(1, contentWidth - condorBudget));
+        var remainingWidth = contentWidth - condorBudget - modelBudget;
+        var extraCondor = Math.Min(remainingWidth, Math.Max(0, condorText.Length - condorBudget));
+        condorBudget += extraCondor;
+        remainingWidth -= extraCondor;
+        modelBudget += Math.Min(remainingWidth, Math.Max(0, modelText.Length - modelBudget));
+        var combined = frame + Clip(condorText, condorBudget) + " · " + Clip(modelText, modelBudget);
+        sb.Append(EstadoColor(_estadoKind) + Clip(combined, width) + Ansi.Reset);
+
+        // Borra la antigua segunda fila de estado al pasar al diseño de una linea.
         sb.Append(Ansi.At(19, 3));
         sb.Append(Ansi.ClearLine);
-        var modelFrame = _modelWorking ? SpinnerFrames[_spin % SpinnerFrames.Length] + " " : "";
-        var modelStatus = string.IsNullOrWhiteSpace(_modelStatus) ? _progreso : _modelStatus;
-        sb.Append(EstadoColor(_modelStatusKind) + Clip(modelFrame + modelStatus, _width - 6) + Ansi.Reset);
     }
 
     /// <summary>Pinta la region de entrada. El contenido lo dibuja el editor.</summary>
@@ -826,11 +903,28 @@ public sealed class TuiHost : IDisposable
     }
 
     /// <summary>Dibuja la linea de entrada con cursor en bloque (caret inverso).</summary>
-    public void RenderInput(string buffer, int caret)
+    public void RenderInput(
+        string buffer,
+        int caret,
+        string? overlayTitle = null,
+        IReadOnlyList<string>? overlayItems = null,
+        int overlaySelectedIndex = -1)
     {
-        string snapshot;
+        string? snapshot = null;
         lock (_gate)
         {
+            var nextItems = overlayItems?.ToList() ?? new List<string>();
+            var overlayChanged = !string.Equals(_overlayTitle, overlayTitle, StringComparison.Ordinal) ||
+                                 _overlaySelectedIndex != overlaySelectedIndex ||
+                                 !_overlayItems.SequenceEqual(nextItems, StringComparer.Ordinal);
+            _overlayTitle = overlayTitle;
+            _overlayItems = nextItems;
+            _overlaySelectedIndex = overlaySelectedIndex;
+            if (overlayChanged && _mode == HostMode.Session)
+            {
+                _dirtyActivity = true;
+            }
+
             if (!_entered || _mode != HostMode.Session || _busy)
             {
                 return;

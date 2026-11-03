@@ -312,11 +312,44 @@ public static class CondorTui
                     }
                     if (interruptAction == InputAction.OpenAgents)
                     {
-                        host.AddActivity("Agentes · ejecución en curso", ActivityKind.System);
-                        host.AddActivity("Condor · agente principal · modelo activo: " +
-                            (string.IsNullOrWhiteSpace(session.ActiveModel) ? "sin modelo" : session.ActiveModel),
-                            ActivityKind.Analysis);
+                        await OpenAgentsPanelAsync(input, host, assessmentService, session, running: true, shutdownToken)
+                            .ConfigureAwait(true);
                         host.Repaint();
+                        continue;
+                    }
+                    if (interruptAction == InputAction.OpenCommands)
+                    {
+                        input.BeginCommandPalette(TuiInput.BusyCommandPaletteCommands);
+                        host.SetEstado("Comandos disponibles durante la tarea");
+                        host.Repaint();
+                        continue;
+                    }
+                    if (interruptAction == InputAction.ClosePanel)
+                    {
+                        host.SetEstado("Tarea en ejecución", ActivityKind.System);
+                        continue;
+                    }
+                    if (interruptAction == InputAction.Submit)
+                    {
+                        var command = input.Buffer.Trim();
+                        input.Clear();
+                        if (IsAgentPanelCommand(command))
+                        {
+                            await OpenAgentsPanelAsync(input, host, assessmentService, session, running: true, shutdownToken)
+                                .ConfigureAwait(true);
+                        }
+                        else if (IsModelListCommand(command))
+                        {
+                            host.AddActivity("El cambio de modelo estará disponible al terminar la tarea en curso.", ActivityKind.Warning);
+                            host.SetEstado("Modelo local protegido durante la ejecución", ActivityKind.Warning);
+                        }
+                        else if (command.Equals("/ayuda", StringComparison.OrdinalIgnoreCase))
+                        {
+                            RenderHelpInTui(host);
+                            host.SetEstado("Ayuda · tarea en curso", ActivityKind.System);
+                        }
+                        host.Repaint();
+                        continue;
                     }
                     continue; // teclado reservado mientras Condor trabaja
                 }
@@ -324,33 +357,19 @@ public static class CondorTui
                 var submitAction = input.Handle(key);
                 if (submitAction == InputAction.OpenAgents)
                 {
-                    host.AddActivity("Agentes · estado de la ejecución local", ActivityKind.System);
-                    host.AddActivity("Condor · agente principal", ActivityKind.Analysis);
-                    if (string.IsNullOrWhiteSpace(session.ActiveModel))
-                    {
-                        host.AddActivity("Sin modelo activo · usa /modelo para seleccionar uno ya instalado.", ActivityKind.Warning);
-                        host.AddActivity("Abrir comandos: Ctrl+P", ActivityKind.System);
-                        host.SetEstado("Agente sin modelo activo", ActivityKind.Warning);
-                    }
-                    else
-                    {
-                        var assessment = await ReadAssessmentAsync(assessmentService, shutdownToken).ConfigureAwait(true);
-                        var activeModel = FindInstalledModel(assessment, session.ActiveModel);
-                        var capabilities = activeModel is null
-                            ? "capacidades sin verificar"
-                            : DescribeModelCapabilities(activeModel);
-                        host.AddActivity("Modelo activo · " + session.ActiveModel + " · " + capabilities, ActivityKind.Success);
-                        host.AddActivity("Cambiar modelo: /modelo · abrir comandos: Ctrl+P", ActivityKind.System);
-                        host.SetEstado("Panel de agentes", ActivityKind.System);
-                    }
+                    await OpenAgentsPanelAsync(input, host, assessmentService, session, running: false, shutdownToken)
+                        .ConfigureAwait(true);
+                    continue;
+                }
+
+                if (submitAction == InputAction.ClosePanel)
+                {
+                    host.SetEstado("Listo", ActivityKind.Success);
                     continue;
                 }
 
                 if (submitAction == InputAction.OpenCommands)
                 {
-                    var commands = TuiInput.CommandPaletteCommands;
-                    host.AddActivity("Comandos · ↑/↓ cambia · Enter ejecuta · Esc cancela · Tab abre Agentes", ActivityKind.System);
-                    host.AddActivity(string.Join("  ·  ", commands), ActivityKind.Analysis);
                     input.BeginCommandPalette();
                     host.SetEstado("Paleta de comandos", ActivityKind.System);
                     continue;
@@ -398,7 +417,14 @@ public static class CondorTui
                         continue;
                     }
 
-                    if (text.Equals("/modelo", StringComparison.OrdinalIgnoreCase))
+                    if (IsAgentPanelCommand(text))
+                    {
+                        await OpenAgentsPanelAsync(input, host, assessmentService, session, running: false, shutdownToken)
+                            .ConfigureAwait(true);
+                        continue;
+                    }
+
+                    if (IsModelListCommand(text))
                     {
                         var models = await LoadInstalledModelsAsync(assessmentService, shutdownToken).ConfigureAwait(true);
                         if (models.Count == 0)
@@ -413,18 +439,17 @@ public static class CondorTui
                             {
                                 host.AddActivity(model.Name + " · " + DescribeModelCapabilities(model), ActivityKind.Analysis);
                             }
-                            input.BeginModelPicker(models);
+                            input.BeginModelPicker(models, DescribeModelCapabilities);
                             host.SetEstado("Selecciona un modelo local", ActivityKind.System);
                         }
                         continue;
                     }
 
-                    if (text.StartsWith("/modelo ", StringComparison.OrdinalIgnoreCase))
+                    if (TryReadModelArgument(text, out var modelArgument))
                     {
-                        var selectedModel = text[8..].Trim();
-                        if (!string.IsNullOrWhiteSpace(selectedModel))
+                        if (!string.IsNullOrWhiteSpace(modelArgument))
                         {
-                            await SwitchModelAsync(selectedModel, assessmentService, session, host, shutdownToken)
+                            await SwitchModelAsync(modelArgument, assessmentService, session, host, shutdownToken)
                                 .ConfigureAwait(true);
                         }
                         continue;
@@ -486,6 +511,62 @@ public static class CondorTui
         return exitCode;
     }
 
+    private static bool IsAgentPanelCommand(string text)
+        => text.Equals("/agentes", StringComparison.OrdinalIgnoreCase) ||
+           text.Equals("/agents", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsModelListCommand(string text)
+        => text.Equals("/modelo", StringComparison.OrdinalIgnoreCase) ||
+           text.Equals("/model", StringComparison.OrdinalIgnoreCase) ||
+           text.Equals("/models", StringComparison.OrdinalIgnoreCase) ||
+           text.Equals("/modelos", StringComparison.OrdinalIgnoreCase);
+
+    private static bool TryReadModelArgument(string text, out string modelName)
+    {
+        foreach (var command in new[] { "/modelo ", "/model ", "/models ", "/modelos " })
+        {
+            if (text.StartsWith(command, StringComparison.OrdinalIgnoreCase))
+            {
+                modelName = text[command.Length..].Trim();
+                return true;
+            }
+        }
+
+        modelName = "";
+        return false;
+    }
+
+    private static async Task OpenAgentsPanelAsync(
+        TuiInput input,
+        TuiHost host,
+        IAssessmentService assessmentService,
+        LocalModelSession session,
+        bool running,
+        CancellationToken cancellationToken)
+    {
+        var modelName = session.ActiveModel;
+        var capabilities = "sin modelo local";
+        if (!string.IsNullOrWhiteSpace(modelName))
+        {
+            var assessment = await ReadAssessmentAsync(assessmentService, cancellationToken).ConfigureAwait(true);
+            var model = FindInstalledModel(assessment, modelName);
+            capabilities = model is null ? "capacidades no verificadas" : DescribeModelCapabilities(model);
+        }
+
+        var items = new List<string>
+        {
+            "Condor · agente principal",
+            "Estado · " + (running ? "ejecución en curso" : "listo para recibir tareas"),
+            "Modelo · " + (string.IsNullOrWhiteSpace(modelName) ? "sin modelo local" : modelName),
+            "Capacidades · " + capabilities,
+            running ? "Cambio de modelo · disponible al terminar" : "Cambiar modelo · Ctrl+P y elige /models",
+            "Cerrar este panel · Tab o Esc"
+        };
+
+        input.BeginAgentsPanel(items);
+        host.SetEstado(running ? "Agente principal en ejecución" : "Panel de agentes", ActivityKind.System);
+    }
+
     private static async Task<IReadOnlyList<ModelInfo>> LoadInstalledModelsAsync(
         IAssessmentService assessmentService,
         CancellationToken cancellationToken)
@@ -512,65 +593,83 @@ public static class CondorTui
         TuiHost host,
         CancellationToken cancellationToken)
     {
-        var firstAssessment = await ReadAssessmentAsync(assessmentService, cancellationToken).ConfigureAwait(true);
-        var model = FindInstalledModel(firstAssessment, modelName);
-        if (model is null)
-        {
-            host.AddActivity("El modelo ya no aparece en Ollama; se cancelo el cambio.", ActivityKind.Warning);
-            host.SetEstado("Modelo no disponible", ActivityKind.Warning);
-            return false;
-        }
+        host.SetBusy(true);
+        host.SetEstado("Evaluando el cambio de modelo");
+        host.SetProgreso("inventario local y RAM disponibles");
+        host.SetModelStatus(modelName + " · preparando cambio", working: true);
+        host.Repaint();
 
-        if (!ModelFitsCurrentMemory(model, firstAssessment?.Environment?.Memory, out var reason))
+        try
         {
-            host.AddActivity("No se cambio el modelo: " + reason, ActivityKind.Warning);
-            host.SetEstado("RAM insuficiente para ese modelo", ActivityKind.Warning);
-            return false;
-        }
-
-        var previousModel = session.ActiveModel;
-        if (!string.IsNullOrWhiteSpace(previousModel) &&
-            !previousModel.Equals(model.Name, StringComparison.OrdinalIgnoreCase))
-        {
-            await session.ReleaseAsync(cancellationToken).ConfigureAwait(true);
-        }
-
-        // La liberacion del modelo anterior puede cambiar la RAM libre. Se
-        // vuelve a medir justo antes de cambiar el modelo activo.
-        var freshAssessment = await ReadAssessmentAsync(assessmentService, cancellationToken).ConfigureAwait(true);
-        model = FindInstalledModel(freshAssessment, model.Name);
-        if (model is null || !ModelFitsCurrentMemory(model, freshAssessment?.Environment?.Memory, out reason))
-        {
-            if (!string.IsNullOrWhiteSpace(previousModel))
+            var firstAssessment = await ReadAssessmentAsync(assessmentService, cancellationToken).ConfigureAwait(true);
+            var model = FindInstalledModel(firstAssessment, modelName);
+            if (model is null)
             {
-                await session.EnsureAvailableAsync(previousModel, cancellationToken).ConfigureAwait(true);
+                host.AddActivity("El modelo ya no aparece en Ollama; se canceló el cambio.", ActivityKind.Warning);
+                host.SetEstado("Modelo no disponible", ActivityKind.Warning);
+                return false;
             }
-            host.AddActivity("No se cambio el modelo: " + (reason ?? "el inventario local cambio durante la seleccion."), ActivityKind.Warning);
-            host.SetEstado("Cambio de modelo cancelado", ActivityKind.Warning);
-            return false;
-        }
 
-        if (!await session.EnsureAvailableAsync(model.Name, cancellationToken).ConfigureAwait(true))
-        {
-            if (!string.IsNullOrWhiteSpace(previousModel))
+            if (!ModelFitsCurrentMemory(model, firstAssessment?.Environment?.Memory, out var reason))
             {
-                await session.EnsureAvailableAsync(previousModel, cancellationToken).ConfigureAwait(true);
+                host.AddActivity("No se cambió el modelo: " + reason, ActivityKind.Warning);
+                host.SetEstado("RAM insuficiente para ese modelo", ActivityKind.Warning);
+                return false;
             }
-            host.AddActivity("Ollama no responde; se conserva el modelo anterior.", ActivityKind.Warning);
-            host.SetEstado("Ollama no disponible", ActivityKind.Warning);
-            return false;
-        }
 
-        var budget = BudgetPolicy.Default.Assess(freshAssessment?.Environment?.Memory);
-        session.LastSelectionBudgetGb = budget.BudgetGb;
-        session.LastSelectionFreeRamGb = freshAssessment?.Environment?.Memory is { } memory
-            ? memory.FreeBytes / ModelMemoryBudget.BytesPerGb
-            : 0;
-        host.SetModel(model.Name);
-        host.AddActivity("Modelo seleccionado: " + model.Name + " · " + DescribeModelCapabilities(model), ActivityKind.Success);
-        host.SetEstado("Modelo seleccionado", ActivityKind.Success);
-        host.SetProgreso("—");
-        return true;
+            var previousModel = session.ActiveModel;
+            if (!string.IsNullOrWhiteSpace(previousModel) &&
+                !previousModel.Equals(model.Name, StringComparison.OrdinalIgnoreCase))
+            {
+                await session.ReleaseAsync(cancellationToken).ConfigureAwait(true);
+            }
+
+            // La liberación del modelo anterior puede cambiar la RAM libre. Se
+            // vuelve a medir justo antes de cambiar el modelo activo.
+            var freshAssessment = await ReadAssessmentAsync(assessmentService, cancellationToken).ConfigureAwait(true);
+            model = FindInstalledModel(freshAssessment, model.Name);
+            if (model is null || !ModelFitsCurrentMemory(model, freshAssessment?.Environment?.Memory, out reason))
+            {
+                if (!string.IsNullOrWhiteSpace(previousModel))
+                {
+                    await session.EnsureAvailableAsync(previousModel, cancellationToken).ConfigureAwait(true);
+                }
+                host.AddActivity("No se cambió el modelo: " + (reason ?? "el inventario local cambió durante la selección."), ActivityKind.Warning);
+                host.SetEstado("Cambio de modelo cancelado", ActivityKind.Warning);
+                return false;
+            }
+
+            if (!await session.EnsureAvailableAsync(model.Name, cancellationToken).ConfigureAwait(true))
+            {
+                if (!string.IsNullOrWhiteSpace(previousModel))
+                {
+                    await session.EnsureAvailableAsync(previousModel, cancellationToken).ConfigureAwait(true);
+                }
+                host.AddActivity("Ollama no responde; se conserva el modelo anterior.", ActivityKind.Warning);
+                host.SetEstado("Ollama no disponible", ActivityKind.Warning);
+                return false;
+            }
+
+            var budget = BudgetPolicy.Default.Assess(freshAssessment?.Environment?.Memory);
+            session.LastSelectionBudgetGb = budget.BudgetGb;
+            session.LastSelectionFreeRamGb = freshAssessment?.Environment?.Memory is { } memory
+                ? memory.FreeBytes / ModelMemoryBudget.BytesPerGb
+                : 0;
+            host.SetModel(model.Name);
+            host.AddActivity("Modelo seleccionado: " + model.Name + " · " + DescribeModelCapabilities(model), ActivityKind.Success);
+            host.SetEstado("Modelo seleccionado", ActivityKind.Success);
+            return true;
+        }
+        finally
+        {
+            host.SetBusy(false);
+            host.SetProgreso("—");
+            var activeModel = session.ActiveModel;
+            host.SetModelStatus(
+                string.IsNullOrWhiteSpace(activeModel) ? "Modelo local · sin cambios" : activeModel + " · listo",
+                working: false);
+            host.Repaint();
+        }
     }
 
     private static async Task<AssessmentResult?> ReadAssessmentAsync(

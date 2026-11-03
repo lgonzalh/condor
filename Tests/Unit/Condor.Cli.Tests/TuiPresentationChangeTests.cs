@@ -15,12 +15,34 @@ public sealed class TuiPresentationChangeTests
         host.SetModelStatus("Ollama · Verificando RAM y modelos locales", working: true);
         host.SetBusy(true);
 
-        var frame = Ansi.StripSgr(host.SnapshotFullFrame());
+        var frame = host.SnapshotFullFrame();
 
-        Assert.Contains("Condor · Preparando dependencias · Verificando RAM y modelos locales", frame);
-        Assert.Contains("Ollama · Verificando RAM y modelos locales", frame);
+        var rowStart = frame.IndexOf(Ansi.At(18, 3), StringComparison.Ordinal);
+        var nextRow = frame.IndexOf(Ansi.At(19, 3), rowStart + 1, StringComparison.Ordinal);
+        Assert.True(rowStart >= 0 && nextRow > rowStart);
+        var statusRow = Ansi.StripSgr(frame[rowStart..nextRow]);
+        Assert.Contains("Condor · Preparando dependencias", statusRow);
+        Assert.Contains("Ollama · Verificando RAM", statusRow);
         Assert.DoesNotContain("Iniciando ...", frame);
         Assert.Contains("©Condor 2026", frame);
+    }
+
+    [Fact]
+    public void Trabajo_CombinaCondorYModeloEnUnSoloEstadoConAtajos()
+    {
+        using var host = new TuiHost(forceInteractive: true);
+        host.Enter();
+        host.ShowSession("qwen2.5-coder:3b");
+        host.SetEstado("Construyendo index.html");
+        host.SetProgreso("Iteración 1");
+        host.SetModelStatus("qwen2.5-coder:3b · creando archivo", working: true);
+        host.SetBusy(true);
+
+        var frame = Ansi.StripSgr(host.SnapshotFullFrame());
+
+        Assert.Contains("Condor: Construyendo index.html", frame);
+        Assert.Contains("Modelo: creando archivo", frame);
+        Assert.Contains("tab agentes  ctrl+p comandos", frame);
     }
 
     [Fact]
@@ -46,4 +68,5 @@ public sealed class TuiPresentationChangeTests
         Assert.Contains("respuesta", frame);
         Assert.Contains("pregunta", frame);
     }
+
 }

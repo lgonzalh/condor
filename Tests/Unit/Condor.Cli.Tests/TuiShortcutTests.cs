@@ -27,13 +27,48 @@ public class TuiShortcutTests
         Assert.Equal(InputAction.OpenCommands,
             input.Handle(new ConsoleKeyInfo('\0', ConsoleKey.P, false, false, true)));
         input.BeginCommandPalette();
-        var first = input.Buffer;
+        var first = input.SelectedCommand;
 
         input.Handle(new ConsoleKeyInfo((char)0, ConsoleKey.DownArrow, false, false, false));
 
-        Assert.NotEqual(first, input.Buffer);
+        Assert.NotEqual(first, input.SelectedCommand);
         Assert.Equal(InputAction.Submit,
             input.Handle(new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false)));
+        Assert.Equal("/analizar", input.Buffer);
+    }
+
+    [Fact]
+    public void CtrlP_MuestraComandosFiltrablesYModelsEjecutaElSelectorLocal()
+    {
+        using var host = new TuiHost(forceInteractive: true);
+        host.Enter();
+        host.ShowSession("granite4.2:3b");
+        var input = new TuiInput(host);
+        input.BeginCommandPalette();
+
+        var initialFrame = Ansi.StripSgr(host.SnapshotFullFrame());
+        Assert.Contains("Comandos", initialFrame);
+        Assert.Contains("/agentes", initialFrame);
+
+        foreach (var character in "models")
+        {
+            var key = character switch
+            {
+                'm' => ConsoleKey.M,
+                'o' => ConsoleKey.O,
+                'd' => ConsoleKey.D,
+                'e' => ConsoleKey.E,
+                'l' => ConsoleKey.L,
+                's' => ConsoleKey.S,
+                _ => ConsoleKey.NoName
+            };
+            input.Handle(new ConsoleKeyInfo(character, key, false, false, false));
+        }
+
+        Assert.Equal("/models", input.SelectedCommand);
+        Assert.Equal(InputAction.Submit,
+            input.Handle(new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false)));
+        Assert.Equal("/models", input.Buffer);
     }
 
     [Fact]
@@ -55,12 +90,17 @@ public class TuiShortcutTests
     public void SelectorDeModelos_PermiteCambiarYConfirmarModelo()
     {
         using var host = new TuiHost(forceInteractive: true);
+        host.Enter();
+        host.ShowSession("granite4.2:3b");
         var input = new TuiInput(host);
         input.BeginModelPicker(new[]
         {
             new ModelInfo { Name = "modelo-a" },
             new ModelInfo { Name = "modelo-b" }
-        });
+        }, _ => "Código · Herramientas");
+
+        Assert.Contains("modelo-a · Código · Herramientas",
+            Ansi.StripSgr(host.SnapshotFullFrame()));
 
         var initial = input.SelectedModel;
         input.Handle(new ConsoleKeyInfo((char)0, ConsoleKey.DownArrow, false, false, false));
@@ -69,6 +109,30 @@ public class TuiShortcutTests
         Assert.Equal(InputAction.ModelSelected,
             input.Handle(new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false)));
         Assert.Equal("modelo-b", input.SelectedModel);
+        Assert.Contains("Modelos locales", Ansi.StripSgr(host.SnapshotFullFrame()));
+    }
+
+    [Fact]
+    public void PanelAgentes_MuestraElAgenteActivoYSeCierraConEscape()
+    {
+        using var host = new TuiHost(forceInteractive: true);
+        host.Enter();
+        host.ShowSession("granite4.2:3b");
+        var input = new TuiInput(host);
+        input.BeginAgentsPanel(new[]
+        {
+            "Condor · agente principal",
+            "Estado · listo para recibir tareas",
+            "Modelo · granite4.2:3b"
+        });
+
+        var frame = Ansi.StripSgr(host.SnapshotFullFrame());
+        Assert.Contains("Agentes", frame);
+        Assert.Contains("agente principal", frame);
+        Assert.Equal(InputAction.ClosePanel,
+            input.Handle(new ConsoleKeyInfo((char)0, ConsoleKey.Escape, false, false, false)));
+        Assert.DoesNotContain("Estado · listo para recibir tareas",
+            Ansi.StripSgr(host.SnapshotFullFrame()));
     }
 
     [Fact]

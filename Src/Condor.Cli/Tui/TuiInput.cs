@@ -26,6 +26,9 @@ public enum InputAction
     /// <summary>Confirma el modelo elegido en el selector.</summary>
     ModelSelected,
 
+    /// <summary>Cierra el panel abierto y vuelve a la entrada principal.</summary>
+    ClosePanel,
+
     /// <summary>Tecla ignorada (no aplica en el estado actual).</summary>
     Ignored
 }
@@ -39,10 +42,12 @@ public sealed class TuiInput
 {
     private static readonly string[] KnownCommands =
     {
-        "/analizar", "/contexto", "/planear", "/construir", "/verificar",
-        "/verificar-semantico", "/avanzar", "/examinar", "/recomendar",
-        "/consultar", "/preparar", "/modelo", "/ayuda", "/version", "/salir"
+        "/agentes", "/analizar", "/avanzar", "/ayuda", "/construir", "/consultar",
+        "/contexto", "/examinar", "/model", "/modelo", "/models", "/planear",
+        "/preparar", "/recomendar", "/verificar", "/verificar-semantico", "/version", "/salir"
     };
+
+    private static readonly string[] BusyCommands = { "/agentes", "/ayuda", "/models" };
 
     private readonly TuiHost _host;
     private readonly List<string> _history = new();
@@ -54,10 +59,15 @@ public sealed class TuiInput
     private string _draft = "";
     private bool _escapePressed; // Para detectar Esc + Esc
     private List<ModelInfo> _modelChoices = new();
+    private Func<ModelInfo, string>? _describeModelCapabilities;
     private int _modelChoiceIndex;
     private bool _modelPickerActive;
+    private List<string> _commandChoices = new(KnownCommands);
     private int _commandChoiceIndex;
+    private string _commandQuery = "";
     private bool _commandPaletteActive;
+    private List<string> _agentPanelItems = new();
+    private bool _agentPanelActive;
 
     public TuiInput(TuiHost host, IEnumerable<string>? extraCompletions = null)
     {
@@ -70,13 +80,36 @@ public sealed class TuiInput
     public string? SelectedModel => _modelPickerActive || _modelChoices.Count > 0
         ? _modelChoices.ElementAtOrDefault(_modelChoiceIndex)?.Name
         : null;
+    public string? SelectedCommand => _commandPaletteActive
+        ? FilteredCommands().ElementAtOrDefault(_commandChoiceIndex)
+        : null;
 
     public static IReadOnlyList<string> CommandPaletteCommands => KnownCommands;
+    public static IReadOnlyList<string> BusyCommandPaletteCommands => BusyCommands;
 
     /// <summary>Dibuja la linea de entrada en su region.</summary>
     public void Render()
     {
-        _host.RenderInput(_buffer, _caret);
+        var title = _commandPaletteActive
+            ? "Comandos · ↑/↓ elegir · Enter ejecutar · Esc cerrar"
+            : _modelPickerActive
+                ? "Modelos locales · ↑/↓ elegir · Enter cambiar · Esc cerrar"
+                : _agentPanelActive
+                    ? "Agentes · Tab o Esc vuelve a la tarea"
+                    : null;
+        IReadOnlyList<string>? items = _commandPaletteActive
+            ? FilteredCommands().Select(FormatCommandChoice).ToList()
+            : _modelPickerActive
+                ? _modelChoices.Select(FormatModelChoice).ToList()
+                : _agentPanelActive
+                    ? _agentPanelItems
+                    : null;
+        var selectedIndex = _commandPaletteActive
+            ? _commandChoiceIndex
+            : _modelPickerActive
+                ? _modelChoiceIndex
+                : -1;
+        _host.RenderInput(_buffer, _caret, title, items, selectedIndex);
     }
 
     /// <summary>Limpia el editor y redibuja.</summary>
@@ -84,7 +117,10 @@ public sealed class TuiInput
     {
         _modelPickerActive = false;
         _commandPaletteActive = false;
+        _agentPanelActive = false;
         _modelChoices.Clear();
+        _commandChoices.Clear();
+        _agentPanelItems.Clear();
         _buffer = "";
         _caret = 0;
         _historyIndex = _history.Count;
@@ -97,7 +133,10 @@ public sealed class TuiInput
     {
         _modelPickerActive = false;
         _commandPaletteActive = false;
+        _agentPanelActive = false;
         _modelChoices.Clear();
+        _commandChoices.Clear();
+        _agentPanelItems.Clear();
         _buffer = text ?? "";
         _caret = _buffer.Length;
         Render();
@@ -107,16 +146,33 @@ public sealed class TuiInput
     {
         if ((key.Modifiers & ConsoleModifiers.Control) != 0 && key.Key == ConsoleKey.P)
         {
+            if (_commandPaletteActive)
+            {
+                _commandPaletteActive = false;
+                _commandChoices.Clear();
+                SetTextInternal("");
+                return InputAction.ClosePanel;
+            }
+
             return InputAction.OpenCommands;
         }
 
         if (key.Key == ConsoleKey.Tab)
         {
+            if (_agentPanelActive)
+            {
+                _agentPanelActive = false;
+                _agentPanelItems.Clear();
+                SetTextInternal("");
+                return InputAction.ClosePanel;
+            }
+
             if (_modelPickerActive || _commandPaletteActive)
             {
                 _modelPickerActive = false;
                 _commandPaletteActive = false;
                 _modelChoices.Clear();
+                _commandChoices.Clear();
                 SetTextInternal("");
             }
 
@@ -137,6 +193,11 @@ public sealed class TuiInput
         if (_commandPaletteActive)
         {
             return HandleCommandPalette(key);
+        }
+
+        if (_agentPanelActive)
+        {
+            return HandleAgentPanel(key);
         }
 
         switch (key.Key)
@@ -245,8 +306,11 @@ public sealed class TuiInput
         }
     }
 
-    public void BeginModelPicker(IEnumerable<ModelInfo> models)
+    public void BeginModelPicker(
+        IEnumerable<ModelInfo> models,
+        Func<ModelInfo, string>? describeCapabilities = null)
     {
+        _describeModelCapabilities = describeCapabilities;
         _modelChoices = models
             .Where(model => !string.IsNullOrWhiteSpace(model.Name))
             .GroupBy(model => model.Name, StringComparer.OrdinalIgnoreCase)
@@ -256,19 +320,52 @@ public sealed class TuiInput
         _modelChoiceIndex = 0;
         _modelPickerActive = _modelChoices.Count > 0;
         _commandPaletteActive = false;
+        _commandChoices.Clear();
+        _agentPanelActive = false;
+        _agentPanelItems.Clear();
         if (_modelPickerActive)
         {
             SetTextInternal(_modelChoices[0].Name);
         }
+        else
+        {
+            Render();
+        }
     }
 
-    public void BeginCommandPalette()
+    private string FormatModelChoice(ModelInfo model)
+    {
+        var capabilities = _describeModelCapabilities?.Invoke(model);
+        return string.IsNullOrWhiteSpace(capabilities)
+            ? model.Name
+            : model.Name + " · " + capabilities;
+    }
+
+    public void BeginCommandPalette(IEnumerable<string>? commands = null)
     {
         _modelPickerActive = false;
         _modelChoices.Clear();
+        _agentPanelActive = false;
+        _agentPanelItems.Clear();
+        _commandChoices = (commands ?? KnownCommands)
+            .Where(command => !string.IsNullOrWhiteSpace(command))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
         _commandPaletteActive = true;
         _commandChoiceIndex = 0;
-        SetTextInternal(KnownCommands[_commandChoiceIndex]);
+        _commandQuery = "/";
+        SetTextInternal(_commandQuery);
+    }
+
+    public void BeginAgentsPanel(IEnumerable<string> items)
+    {
+        _modelPickerActive = false;
+        _commandPaletteActive = false;
+        _modelChoices.Clear();
+        _commandChoices.Clear();
+        _agentPanelItems = items.Where(item => !string.IsNullOrWhiteSpace(item)).ToList();
+        _agentPanelActive = true;
+        SetTextInternal("");
     }
 
     private InputAction HandleModelPicker(ConsoleKeyInfo key)
@@ -299,7 +396,17 @@ public sealed class TuiInput
         switch (key.Key)
         {
             case ConsoleKey.Enter:
+                var selected = FilteredCommands().ElementAtOrDefault(_commandChoiceIndex);
+                if (selected is null)
+                {
+                    return InputAction.None;
+                }
+
                 _commandPaletteActive = false;
+                _commandChoices.Clear();
+                _buffer = selected;
+                _caret = _buffer.Length;
+                Render();
                 return InputAction.Submit;
             case ConsoleKey.UpArrow:
                 MoveCommandChoice(-1);
@@ -309,12 +416,42 @@ public sealed class TuiInput
                 return InputAction.None;
             case ConsoleKey.Escape:
                 _commandPaletteActive = false;
+                _commandChoices.Clear();
                 SetTextInternal("");
                 return InputAction.None;
+            case ConsoleKey.Backspace:
+                if (_commandQuery.Length > 0)
+                {
+                    _commandQuery = _commandQuery[..^1];
+                    _commandChoiceIndex = 0;
+                    SetTextInternal(_commandQuery);
+                }
+                return InputAction.None;
             default:
-                _commandPaletteActive = false;
+                if (!char.IsControl(key.KeyChar))
+                {
+                    if (key.KeyChar != '/' || _commandQuery.Length == 0)
+                    {
+                        _commandQuery += key.KeyChar;
+                        _commandChoiceIndex = 0;
+                        SetTextInternal(_commandQuery);
+                    }
+                }
                 return InputAction.None;
         }
+    }
+
+    private InputAction HandleAgentPanel(ConsoleKeyInfo key)
+    {
+        if (key.Key is ConsoleKey.Enter or ConsoleKey.Escape)
+        {
+            _agentPanelActive = false;
+            _agentPanelItems.Clear();
+            SetTextInternal("");
+            return InputAction.ClosePanel;
+        }
+
+        return InputAction.None;
     }
 
     private void MoveModelChoice(int delta)
@@ -331,8 +468,42 @@ public sealed class TuiInput
 
     private void MoveCommandChoice(int delta)
     {
-        _commandChoiceIndex = (_commandChoiceIndex + delta + KnownCommands.Length) % KnownCommands.Length;
-        SetTextInternal(KnownCommands[_commandChoiceIndex]);
+        var choices = FilteredCommands();
+        if (choices.Count == 0)
+        {
+            _commandChoiceIndex = 0;
+            Render();
+            return;
+        }
+
+        _commandChoiceIndex = (_commandChoiceIndex + delta + choices.Count) % choices.Count;
+        Render();
+    }
+
+    private List<string> FilteredCommands()
+    {
+        if (_commandChoices.Count == 0)
+        {
+            return new List<string>();
+        }
+
+        return _commandChoices
+            .Where(command => string.IsNullOrWhiteSpace(_commandQuery) ||
+                              command.Contains(_commandQuery, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
+
+    private static string FormatCommandChoice(string command)
+    {
+        var description = command.ToLowerInvariant() switch
+        {
+            "/agentes" => "Panel de agentes",
+            "/modelo" or "/model" or "/models" => "Cambiar modelo local",
+            "/ayuda" => "Ver ayuda",
+            "/salir" => "Cerrar Condor",
+            _ => "Ejecutar comando Condor"
+        };
+        return command.PadRight(23) + description;
     }
 
     private void Insert(string text)
