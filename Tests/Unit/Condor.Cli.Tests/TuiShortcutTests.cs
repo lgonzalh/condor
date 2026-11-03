@@ -109,7 +109,58 @@ public class TuiShortcutTests
         Assert.Equal(InputAction.ModelSelected,
             input.Handle(new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false)));
         Assert.Equal("modelo-b", input.SelectedModel);
-        Assert.Contains("Modelos locales", Ansi.StripSgr(host.SnapshotFullFrame()));
+        Assert.DoesNotContain("Modelos locales", Ansi.StripSgr(host.SnapshotFullFrame()));
+    }
+
+    [Fact]
+    public void SelectorDeModelos_DeshabilitaYOmiteLosQueNoCabenEnElPresupuesto()
+    {
+        using var host = new TuiHost(forceInteractive: true);
+        host.Enter();
+        host.ShowSession("modelo-b");
+        var input = new TuiInput(host);
+        input.BeginModelPicker(
+            new[]
+            {
+                new ModelInfo { Name = "modelo-a" },
+                new ModelInfo { Name = "modelo-b" },
+                new ModelInfo { Name = "modelo-c" }
+            },
+            _ => "Código",
+            model => model.Name == "modelo-b");
+
+        var rawFrame = host.SnapshotFullFrame();
+        var frame = Ansi.StripSgr(rawFrame);
+        Assert.Contains("modelo-a · presupuesto no disponible", frame);
+        Assert.Contains("modelo-c · presupuesto no disponible", frame);
+        Assert.Contains(Ansi.Dim + Ansi.FgGris, rawFrame);
+        Assert.Equal("modelo-b", input.SelectedModel);
+
+        input.Handle(new ConsoleKeyInfo((char)0, ConsoleKey.DownArrow, false, false, false));
+        input.Handle(new ConsoleKeyInfo((char)0, ConsoleKey.UpArrow, false, false, false));
+        Assert.Equal("modelo-b", input.SelectedModel);
+        Assert.Equal(InputAction.ModelSelected,
+            input.Handle(new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false)));
+        Assert.Equal("modelo-b", input.SelectedModel);
+    }
+
+    [Fact]
+    public void SelectorDeModelos_SinPresupuestoNoPermiteConfirmar()
+    {
+        using var host = new TuiHost(forceInteractive: true);
+        host.Enter();
+        host.ShowSession("granite4.2:3b");
+        var input = new TuiInput(host);
+        input.BeginModelPicker(
+            new[] { new ModelInfo { Name = "modelo-a" } },
+            isSelectable: _ => false);
+
+        Assert.Null(input.SelectedModel);
+        Assert.Equal(InputAction.None,
+            input.Handle(new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false)));
+        Assert.Null(input.SelectedModel);
+        Assert.Contains("presupuesto no disponible",
+            Ansi.StripSgr(host.SnapshotFullFrame()));
     }
 
     [Fact]

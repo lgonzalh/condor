@@ -428,7 +428,8 @@ public static class CondorTui
 
                     if (IsModelListCommand(text))
                     {
-                        var models = await LoadInstalledModelsAsync(assessmentService, shutdownToken).ConfigureAwait(true);
+                        var inventory = await LoadInstalledModelsAsync(assessmentService, shutdownToken).ConfigureAwait(true);
+                        var models = inventory.Models;
                         if (models.Count == 0)
                         {
                             host.AddActivity("Ollama no reporta modelos locales instalados.", ActivityKind.Warning);
@@ -439,9 +440,16 @@ public static class CondorTui
                             host.AddActivity("Modelos locales · ↑/↓ cambia · Enter selecciona · Esc cancela · Tab abre Agentes", ActivityKind.System);
                             foreach (var model in models)
                             {
-                                host.AddActivity(model.Name + " · " + DescribeModelCapabilities(model), ActivityKind.Analysis);
+                                var available = ModelFitsCurrentMemory(model, inventory.Memory, out _);
+                                var capabilities = DescribeModelCapabilities(model);
+                                var availability = available ? "" : " · presupuesto no disponible";
+                                host.AddActivity(model.Name + " · " + capabilities + availability,
+                                    available ? ActivityKind.Analysis : ActivityKind.Warning);
                             }
-                            input.BeginModelPicker(models, DescribeModelCapabilities);
+                            input.BeginModelPicker(
+                                models,
+                                DescribeModelCapabilities,
+                                model => ModelFitsCurrentMemory(model, inventory.Memory, out _));
                             host.SetEstado("Selecciona un modelo local", ActivityKind.System);
                         }
                         continue;
@@ -590,7 +598,7 @@ public static class CondorTui
         host.SetEstado(running ? "Agente principal en ejecución" : "Panel de agentes", ActivityKind.System);
     }
 
-    private static async Task<IReadOnlyList<ModelInfo>> LoadInstalledModelsAsync(
+    private static async Task<(IReadOnlyList<ModelInfo> Models, MemoryInfo? Memory)> LoadInstalledModelsAsync(
         IAssessmentService assessmentService,
         CancellationToken cancellationToken)
     {
@@ -599,13 +607,14 @@ public static class CondorTui
             var assessment = await assessmentService.ExecuteAsync(
                 new AssessmentRequest { WorkingDirectory = Environment.CurrentDirectory },
                 cancellationToken).ConfigureAwait(true);
-            return (assessment.Tools?.Ollama?.Models ?? new List<ModelInfo>())
+            var models = (assessment.Tools?.Ollama?.Models ?? new List<ModelInfo>())
                 .OrderBy(model => model.Name, StringComparer.OrdinalIgnoreCase)
                 .ToList();
+            return (models, assessment.Environment?.Memory);
         }
         catch
         {
-            return Array.Empty<ModelInfo>();
+            return (Array.Empty<ModelInfo>(), null);
         }
     }
 

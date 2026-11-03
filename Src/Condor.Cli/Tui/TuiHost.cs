@@ -75,6 +75,7 @@ public sealed class TuiHost : IDisposable
     private readonly List<(string Line, ActivityKind Kind)> _wrapped = new();
     private string? _overlayTitle;
     private List<string> _overlayItems = new();
+    private List<bool> _overlayDisabledItems = new();
     private int _overlaySelectedIndex = -1;
 
     private int _width;
@@ -752,11 +753,17 @@ public sealed class TuiHost : IDisposable
         for (var row = 0; row < visibleItems; row++)
         {
             var itemIndex = firstItem + row;
-            var selected = itemIndex == _overlaySelectedIndex;
-            var text = (selected ? "▸ " : "  ") + Clip(_overlayItems[itemIndex], Math.Max(1, maxTextWidth - 2));
+            var disabled = itemIndex < _overlayDisabledItems.Count && _overlayDisabledItems[itemIndex];
+            var selected = itemIndex == _overlaySelectedIndex && !disabled;
+            var prefix = selected ? "▸ " : disabled ? "× " : "  ";
+            var text = prefix + Clip(_overlayItems[itemIndex], Math.Max(1, maxTextWidth - 2));
             sb.Append(Ansi.At(firstRow + row + 2, 1));
             sb.Append(Ansi.ClearLine);
-            if (selected)
+            if (disabled)
+            {
+                sb.Append(Ansi.Dim + Ansi.FgGris + text + Ansi.Reset);
+            }
+            else if (selected)
             {
                 sb.Append(Ansi.Esc + "48;5;250m" + Ansi.Esc + "38;5;16m" + text + Ansi.Reset);
             }
@@ -908,17 +915,21 @@ public sealed class TuiHost : IDisposable
         int caret,
         string? overlayTitle = null,
         IReadOnlyList<string>? overlayItems = null,
-        int overlaySelectedIndex = -1)
+        int overlaySelectedIndex = -1,
+        IReadOnlyList<bool>? overlayDisabledItems = null)
     {
         string? snapshot = null;
         lock (_gate)
         {
             var nextItems = overlayItems?.ToList() ?? new List<string>();
+            var nextDisabledItems = overlayDisabledItems?.ToList() ?? new List<bool>();
             var overlayChanged = !string.Equals(_overlayTitle, overlayTitle, StringComparison.Ordinal) ||
                                  _overlaySelectedIndex != overlaySelectedIndex ||
-                                 !_overlayItems.SequenceEqual(nextItems, StringComparer.Ordinal);
+                                 !_overlayItems.SequenceEqual(nextItems, StringComparer.Ordinal) ||
+                                 !_overlayDisabledItems.SequenceEqual(nextDisabledItems);
             _overlayTitle = overlayTitle;
             _overlayItems = nextItems;
+            _overlayDisabledItems = nextDisabledItems;
             _overlaySelectedIndex = overlaySelectedIndex;
             if (overlayChanged && _mode == HostMode.Session)
             {

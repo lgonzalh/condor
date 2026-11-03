@@ -59,6 +59,7 @@ public sealed class TuiInput
     private string _draft = "";
     private bool _escapePressed; // Para detectar Esc + Esc
     private List<ModelInfo> _modelChoices = new();
+    private List<bool> _modelSelectable = new();
     private Func<ModelInfo, string>? _describeModelCapabilities;
     private int _modelChoiceIndex;
     private bool _modelPickerActive;
@@ -77,8 +78,8 @@ public sealed class TuiInput
     }
 
     public string Buffer => _buffer;
-    public string? SelectedModel => _modelPickerActive || _modelChoices.Count > 0
-        ? _modelChoices.ElementAtOrDefault(_modelChoiceIndex)?.Name
+    public string? SelectedModel => IsModelSelectable(_modelChoiceIndex)
+        ? _modelChoices[_modelChoiceIndex].Name
         : null;
     public string? SelectedCommand => _commandPaletteActive
         ? FilteredCommands().ElementAtOrDefault(_commandChoiceIndex)
@@ -100,16 +101,19 @@ public sealed class TuiInput
         IReadOnlyList<string>? items = _commandPaletteActive
             ? FilteredCommands().Select(FormatCommandChoice).ToList()
             : _modelPickerActive
-                ? _modelChoices.Select(FormatModelChoice).ToList()
+                ? _modelChoices.Select((model, index) => FormatModelChoice(model, index)).ToList()
                 : _agentPanelActive
                     ? _agentPanelItems
                     : null;
+        IReadOnlyList<bool>? disabledItems = _modelPickerActive
+            ? _modelSelectable.Select(selectable => !selectable).ToList()
+            : null;
         var selectedIndex = _commandPaletteActive
             ? _commandChoiceIndex
             : _modelPickerActive
                 ? _modelChoiceIndex
                 : -1;
-        _host.RenderInput(_buffer, _caret, title, items, selectedIndex);
+        _host.RenderInput(_buffer, _caret, title, items, selectedIndex, disabledItems);
     }
 
     /// <summary>Limpia el editor y redibuja.</summary>
@@ -119,6 +123,7 @@ public sealed class TuiInput
         _commandPaletteActive = false;
         _agentPanelActive = false;
         _modelChoices.Clear();
+        _modelSelectable.Clear();
         _commandChoices.Clear();
         _agentPanelItems.Clear();
         _buffer = "";
@@ -135,6 +140,7 @@ public sealed class TuiInput
         _commandPaletteActive = false;
         _agentPanelActive = false;
         _modelChoices.Clear();
+        _modelSelectable.Clear();
         _commandChoices.Clear();
         _agentPanelItems.Clear();
         _buffer = text ?? "";
@@ -172,6 +178,7 @@ public sealed class TuiInput
                 _modelPickerActive = false;
                 _commandPaletteActive = false;
                 _modelChoices.Clear();
+                _modelSelectable.Clear();
                 _commandChoices.Clear();
                 SetTextInternal("");
             }
@@ -308,7 +315,8 @@ public sealed class TuiInput
 
     public void BeginModelPicker(
         IEnumerable<ModelInfo> models,
-        Func<ModelInfo, string>? describeCapabilities = null)
+        Func<ModelInfo, string>? describeCapabilities = null,
+        Func<ModelInfo, bool>? isSelectable = null)
     {
         _describeModelCapabilities = describeCapabilities;
         _modelChoices = models
@@ -317,7 +325,10 @@ public sealed class TuiInput
             .Select(group => group.First())
             .OrderBy(model => model.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
-        _modelChoiceIndex = 0;
+        _modelSelectable = _modelChoices
+            .Select(model => isSelectable?.Invoke(model) ?? true)
+            .ToList();
+        _modelChoiceIndex = -1;
         _modelPickerActive = _modelChoices.Count > 0;
         _commandPaletteActive = false;
         _commandChoices.Clear();
@@ -325,7 +336,8 @@ public sealed class TuiInput
         _agentPanelItems.Clear();
         if (_modelPickerActive)
         {
-            SetTextInternal(_modelChoices[0].Name);
+            _modelChoiceIndex = FindNextSelectableModel(1);
+            SetTextInternal(SelectedModel ?? "");
         }
         else
         {
@@ -333,18 +345,23 @@ public sealed class TuiInput
         }
     }
 
-    private string FormatModelChoice(ModelInfo model)
+    private string FormatModelChoice(ModelInfo model, int index)
     {
         var capabilities = _describeModelCapabilities?.Invoke(model);
-        return string.IsNullOrWhiteSpace(capabilities)
+        var description = string.IsNullOrWhiteSpace(capabilities)
             ? model.Name
             : model.Name + " · " + capabilities;
+        return IsModelSelectable(index)
+            ? description
+            : model.Name + " · presupuesto no disponible" +
+              (string.IsNullOrWhiteSpace(capabilities) ? "" : " · " + capabilities);
     }
 
     public void BeginCommandPalette(IEnumerable<string>? commands = null)
     {
         _modelPickerActive = false;
         _modelChoices.Clear();
+        _modelSelectable.Clear();
         _agentPanelActive = false;
         _agentPanelItems.Clear();
         _commandChoices = (commands ?? KnownCommands)
@@ -362,6 +379,7 @@ public sealed class TuiInput
         _modelPickerActive = false;
         _commandPaletteActive = false;
         _modelChoices.Clear();
+        _modelSelectable.Clear();
         _commandChoices.Clear();
         _agentPanelItems = items.Where(item => !string.IsNullOrWhiteSpace(item)).ToList();
         _agentPanelActive = true;
@@ -373,7 +391,13 @@ public sealed class TuiInput
         switch (key.Key)
         {
             case ConsoleKey.Enter:
+                if (SelectedModel is null)
+                {
+                    return InputAction.None;
+                }
+
                 _modelPickerActive = false;
+                Render();
                 return InputAction.ModelSelected;
             case ConsoleKey.UpArrow:
                 MoveModelChoice(-1);
@@ -384,6 +408,8 @@ public sealed class TuiInput
             case ConsoleKey.Escape:
                 _modelPickerActive = false;
                 _modelChoices.Clear();
+                _modelSelectable.Clear();
+                _modelChoiceIndex = -1;
                 SetTextInternal("");
                 return InputAction.None;
             default:
@@ -456,15 +482,40 @@ public sealed class TuiInput
 
     private void MoveModelChoice(int delta)
     {
-        if (_modelChoices.Count == 0)
+        var next = FindNextSelectableModel(delta);
+        if (next < 0)
         {
-            _modelPickerActive = false;
             return;
         }
 
-        _modelChoiceIndex = (_modelChoiceIndex + delta + _modelChoices.Count) % _modelChoices.Count;
-        SetTextInternal(_modelChoices[_modelChoiceIndex].Name);
+        _modelChoiceIndex = next;
+        SetTextInternal(SelectedModel ?? "");
     }
+
+    private int FindNextSelectableModel(int delta)
+    {
+        if (_modelChoices.Count == 0)
+        {
+            return -1;
+        }
+
+        var start = _modelChoiceIndex < 0 ? (delta > 0 ? -1 : 0) : _modelChoiceIndex;
+        for (var step = 1; step <= _modelChoices.Count; step++)
+        {
+            var candidate = (start + delta * step) % _modelChoices.Count;
+            if (candidate < 0) candidate += _modelChoices.Count;
+            if (IsModelSelectable(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return -1;
+    }
+
+    private bool IsModelSelectable(int index)
+        => index >= 0 && index < _modelChoices.Count &&
+           (index >= _modelSelectable.Count || _modelSelectable[index]);
 
     private void MoveCommandChoice(int delta)
     {
