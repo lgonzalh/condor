@@ -48,6 +48,16 @@ public sealed record SelectListState(
 
     public SelectListState MovePrev() => Move(-1);
 
+    public SelectListState SelectIndex(int filteredIndex)
+    {
+        if (filteredIndex < 0 || filteredIndex >= Filtered.Count || Items[Filtered[filteredIndex]].Disabled)
+        {
+            return this;
+        }
+
+        return SelectList.EnsureVisible(this with { SelectedIndex = filteredIndex });
+    }
+
     private SelectListState Move(int delta)
     {
         if (delta == 0 || Filtered.Count == 0)

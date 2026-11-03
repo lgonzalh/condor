@@ -97,14 +97,17 @@ public sealed class TuiInput
         {
             var options = _overlayState switch
             {
-                OverlayState.Slash => new SelectListRenderOptions(TwoColumns: true),
-                OverlayState.Modelos => new SelectListRenderOptions(Title: "Modelo local"),
+                OverlayState.Slash => new SelectListRenderOptions(
+                    Title: "Comandos · clic ejecutar · Tab completar · rueda desplazar · Esc cerrar",
+                    TwoColumns: true),
+                OverlayState.Modelos => new SelectListRenderOptions(
+                    Title: "Modelo local · clic o Enter elegir · rueda desplazar · Esc cerrar"),
                 OverlayState.Paleta => new SelectListRenderOptions(
-                    Title: "Comandos",
+                    Title: "Comandos · clic o Enter elegir · rueda desplazar · Esc cerrar",
                     IncludeSearchField: true,
                     ShowShortcuts: true),
                 OverlayState.Agentes => new SelectListRenderOptions(
-                    Title: "Modos de trabajo · arriba/abajo · Enter elegir · Esc cerrar"),
+                    Title: "Modos de trabajo · clic o Enter elegir · rueda desplazar · Esc cerrar"),
                 _ => new SelectListRenderOptions()
             };
             var overlay = new SelectListOverlay(
@@ -119,6 +122,64 @@ public sealed class TuiInput
         }
 
         _host.RenderInput(_buffer, _caret, placeholder: _inputPlaceholder);
+    }
+
+    public InputAction HandleMouse(TuiMouseEvent mouseEvent)
+    {
+        if (_selectList is not null && mouseEvent.Kind == TuiMouseEventKind.Wheel &&
+            _host.TryGetSelectListItemIndexAt(mouseEvent.Row, mouseEvent.Column, out _))
+        {
+            var steps = Math.Clamp(Math.Abs(mouseEvent.WheelDelta), 1, 5);
+            for (var step = 0; step < steps; step++)
+            {
+                _selectList = mouseEvent.WheelDelta > 0
+                    ? _selectList.MovePrev()
+                    : _selectList.MoveNext();
+            }
+
+            SyncSelectionBuffer();
+            Render();
+            return InputAction.None;
+        }
+
+        if (mouseEvent.Kind != TuiMouseEventKind.LeftClick)
+        {
+            return InputAction.None;
+        }
+
+        if (_selectList is not null &&
+            _host.TryGetSelectListItemIndexAt(mouseEvent.Row, mouseEvent.Column, out var filteredIndex))
+        {
+            var item = _selectList.Items[_selectList.Filtered[filteredIndex]];
+            if (item.Disabled)
+            {
+                return InputAction.None;
+            }
+
+            _selectList = _selectList.SelectIndex(filteredIndex);
+            return HandleSelectList(new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false));
+        }
+
+        var keepCurrentBuffer = _selectList is null || _overlayState == OverlayState.Slash;
+        var bufferForCaret = keepCurrentBuffer ? _buffer : _returnBuffer;
+        var caretForBuffer = keepCurrentBuffer ? _caret : _returnCaret;
+        if (_host.TryGetInputCaretIndexAt(
+                mouseEvent.Row,
+                mouseEvent.Column,
+                bufferForCaret,
+                caretForBuffer,
+                out var nextCaret))
+        {
+            if (_selectList is not null)
+            {
+                CloseSelectList(restoreBuffer: !keepCurrentBuffer);
+            }
+
+            _caret = Math.Clamp(nextCaret, 0, _buffer.Length);
+            Render();
+        }
+
+        return InputAction.None;
     }
 
     /// <summary>Limpia el editor y redibuja.</summary>

@@ -43,6 +43,8 @@ public static class Ansi
     public const string ShowCursor = Esc + "?25h";
     public const string EnterAltScreen = Esc + "?1049h";
     public const string LeaveAltScreen = Esc + "?1049l";
+    public const string EnableMouseTracking = Esc + "?1000h" + Esc + "?1006h";
+    public const string DisableMouseTracking = Esc + "?1006l" + Esc + "?1000l";
 
     private const int StdOutputHandle = -11;
     private const uint EnableVirtualTerminalProcessing = 0x0004;

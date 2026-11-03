@@ -80,6 +80,7 @@ public sealed class TuiHost : IDisposable
     private SelectListOverlay? _selectListModel;
     private RenderedSelectListOverlay? _selectListOverlay;
     private readonly Dictionary<(int Row, int Column), string> _paintedSelectListRows = new();
+    private readonly TuiMouseTrackingMode _mouseTrackingMode = new();
     private TuiTheme _tuiTheme = TuiTheme.Default;
 
     private int _width;
@@ -208,6 +209,7 @@ public sealed class TuiHost : IDisposable
     /// <summary>Pantalla de bienvenida: Condor Grande da la bienvenida (mockup inicio).</summary>
     public void ShowWelcome()
     {
+        _mouseTrackingMode.Disable();
         lock (_gate)
         {
             if (!_entered)
@@ -249,6 +251,8 @@ public sealed class TuiHost : IDisposable
             _modelWorking = false;
             _dirtyAll = true;
         }
+
+        _mouseTrackingMode.Enable();
     }
 
     public void SetModel(string? model)
@@ -454,6 +458,7 @@ public sealed class TuiHost : IDisposable
                 return;
             }
 
+            _mouseTrackingMode.Disable();
             Console.Write(Ansi.ShowCursor + Ansi.LeaveAltScreen);
         }
     }
@@ -468,6 +473,7 @@ public sealed class TuiHost : IDisposable
             }
 
             Console.Write(Ansi.EnterAltScreen + Ansi.HideCursor);
+            _mouseTrackingMode.Enable();
             _dirtyAll = true;
         }
     }
@@ -1209,6 +1215,131 @@ public sealed class TuiHost : IDisposable
         Console.Write(snapshot);
     }
 
+    internal bool TryGetSelectListItemIndexAt(int screenRow, int screenColumn, out int filteredIndex)
+    {
+        lock (_gate)
+        {
+            filteredIndex = -1;
+            if (_selectListModel is null || _selectListOverlay is null || screenRow < 1 || screenColumn < 1)
+            {
+                return false;
+            }
+
+            var state = _selectListModel.State;
+            var visible = Math.Min(state.VisibleRows, state.Filtered.Count);
+            if (visible == 0)
+            {
+                return false;
+            }
+
+            var contentHeight = Math.Max(0, ContentBottom - ContentTop + 1);
+            var firstRow = _selectListOverlay.Placement == SelectListPlacement.Centered
+                ? ContentTop + Math.Max(0, (contentHeight - _selectListOverlay.Lines.Count) / 2)
+                : Math.Max(ContentTop, ContentBottom - _selectListOverlay.Lines.Count + 1);
+            var firstColumn = Math.Clamp(
+                _selectListOverlay.Column + 1,
+                1,
+                Math.Max(1, _width - _selectListOverlay.Width + 1));
+            var firstItemRow = firstRow + 1 +
+                (string.IsNullOrWhiteSpace(_selectListModel.Options.Title) ? 0 : 1) +
+                (_selectListModel.Options.IncludeSearchField ? 1 : 0);
+            var rowOffset = screenRow - firstItemRow;
+            if (rowOffset < 0 || rowOffset >= visible || screenColumn < firstColumn ||
+                screenColumn >= firstColumn + _selectListOverlay.Width)
+            {
+                return false;
+            }
+
+            filteredIndex = state.ScrollOffset + rowOffset;
+            return filteredIndex < state.Filtered.Count;
+        }
+    }
+
+    internal bool TryGetInputCaretIndexAt(
+        int screenRow,
+        int screenColumn,
+        string buffer,
+        int currentCaret,
+        out int caret)
+    {
+        lock (_gate)
+        {
+            caret = 0;
+            if (!_entered || _mode != HostMode.Session || screenRow != InputRow + 1 ||
+                screenColumn < 1 || screenColumn > _width)
+            {
+                return false;
+            }
+
+            const int prefixWidth = 5;
+            const int textStartColumn = prefixWidth + 1;
+            var budget = Math.Max(1, _width - prefixWidth - 1);
+            if (buffer.Length == 0 || screenColumn < textStartColumn)
+            {
+                return true;
+            }
+
+            var runes = new List<(int Start, int Length, int Width)>();
+            var utf16Offset = 0;
+            foreach (var rune in buffer.EnumerateRunes())
+            {
+                var runeText = rune.ToString();
+                runes.Add((utf16Offset, rune.Utf16SequenceLength, Math.Max(0, Ansi.VisibleWidth(runeText))));
+                utf16Offset += rune.Utf16SequenceLength;
+            }
+
+            currentCaret = Math.Clamp(currentCaret, 0, buffer.Length);
+            var caretRune = runes.FindIndex(rune => rune.Start >= currentCaret);
+            if (caretRune < 0) caretRune = runes.Count;
+            var startRune = caretRune;
+            var used = 0;
+            if (caretRune == runes.Count)
+            {
+                var textBudget = Math.Max(0, budget - 1);
+                while (startRune > 0 && used + runes[startRune - 1].Width <= textBudget)
+                {
+                    startRune--;
+                    used += runes[startRune].Width;
+                }
+            }
+            else
+            {
+                while (startRune > 0 && used < budget / 2)
+                {
+                    startRune--;
+                    used += runes[startRune].Width;
+                }
+            }
+
+            var targetWidth = Math.Clamp(screenColumn - textStartColumn, 0, budget);
+            var visibleWidth = 0;
+            for (var index = startRune; index < runes.Count; index++)
+            {
+                var rune = runes[index];
+                if (visibleWidth + rune.Width > budget)
+                {
+                    break;
+                }
+
+                if (targetWidth < visibleWidth + rune.Width / 2d)
+                {
+                    caret = rune.Start;
+                    return true;
+                }
+
+                visibleWidth += rune.Width;
+                if (targetWidth < visibleWidth)
+                {
+                    caret = rune.Start + rune.Length;
+                    return true;
+                }
+            }
+
+            caret = buffer.Length;
+            return true;
+        }
+    }
+
     private string BuildInputLocked(string buffer, int caret, string? placeholder)
     {
         var sb = new System.Text.StringBuilder();
@@ -1400,6 +1531,7 @@ public sealed class TuiHost : IDisposable
             _disposed = true;
             if (_entered)
             {
+                _mouseTrackingMode.Dispose();
                 Console.Write(Ansi.ShowCursor + Ansi.LeaveAltScreen);
                 _entered = false;
             }

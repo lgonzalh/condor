@@ -191,6 +191,7 @@ public static class CondorTui
         // ---- Bucle principal: teclado + repintado por regiones ------------------
         using var controlInput = new ConsoleControlInputScope();
         var input = new TuiInput(host);
+        var terminalInput = new TuiConsoleInputReader();
         host.Repaint();  // transición limpia: ClearScreen + TUI 2 (Ave) antes de cualquier elemento de TUI 2
         input.Render();
 
@@ -326,11 +327,12 @@ public static class CondorTui
                 input.Render();
             }
 
-            if (Console.KeyAvailable)
+            if (terminalInput.TryRead(out var inputEvent))
             {
-                var key = Console.ReadKey(intercept: true);
+                var key = inputEvent.Key;
 
-                if ((key.Modifiers & ConsoleModifiers.Control) != 0 && key.Key == ConsoleKey.C)
+                if (inputEvent.Mouse is null &&
+                    (key.Modifiers & ConsoleModifiers.Control) != 0 && key.Key == ConsoleKey.C)
                 {
                     // Ctrl+C solo sale de la sesion cuando no hay tarea en curso
                     if (running is null)
@@ -343,7 +345,9 @@ public static class CondorTui
 
                 if (running is not null)
                 {
-                    var interruptAction = input.Handle(key);
+                    var interruptAction = inputEvent.Mouse is { } mouseEvent
+                        ? input.HandleMouse(mouseEvent)
+                        : input.Handle(key);
                     if (interruptAction == InputAction.Interrupt)
                     {
                         // Interrupcion cooperativa de la tarea en curso (Esc + Esc).
@@ -393,7 +397,9 @@ public static class CondorTui
                     continue; // teclado reservado mientras Condor trabaja
                 }
 
-                var submitAction = input.Handle(key);
+                var submitAction = inputEvent.Mouse is { } clickEvent
+                    ? input.HandleMouse(clickEvent)
+                    : input.Handle(key);
                 if (submitAction == InputAction.OpenAgents)
                 {
                     OpenAgentPicker(taskRunning: false);
