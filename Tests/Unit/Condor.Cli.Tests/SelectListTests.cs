@@ -6,7 +6,7 @@ namespace Condor.Cli.Tests;
 
 public class SelectListTests
 {
-    private static readonly SelectListTheme Theme = new(
+    private static readonly TuiTheme Theme = new(
         Ansi.FgDorado,
         Ansi.FgBlanco,
         Ansi.FgGris,
@@ -15,20 +15,33 @@ public class SelectListTests
         Ansi.Esc + "48;5;179m",
         Ansi.Esc + "38;5;16m");
 
+    private static SelectItem Item(
+        string id,
+        string label,
+        string description = "",
+        bool disabled = false,
+        string? disabledReason = null,
+        string? shortcut = null,
+        bool isCurrent = false) =>
+        new SelectItem(id, label, description, Array.Empty<string>(), disabled, disabledReason, shortcut)
+        {
+            IsCurrent = isCurrent
+        };
+
     [Fact]
     public void FiltraPorSubsecuenciaEnNombreYDescripcionSinDistinguirAcentos()
     {
         var state = SelectList.Create(new[]
         {
-            new SelectListItem("models", "/models", "Cambiar modelo"),
-            new SelectListItem("build", "/construir", "Generar Código")
+            Item("models", "/models", "Cambiar modelo"),
+            Item("build", "/construir", "Generar Código")
         });
 
-        var models = SelectList.SetQuery(state, "mdl");
-        Assert.Equal("models", models.SelectedItem?.Id);
+        var models = state.SetQuery("mdl");
+        Assert.Equal("models", models.Selected?.Id);
 
-        var code = SelectList.SetQuery(state, "codigo");
-        Assert.Equal("build", code.SelectedItem?.Id);
+        var code = state.SetQuery("codigo");
+        Assert.Equal("build", code.Selected?.Id);
     }
 
     [Fact]
@@ -66,29 +79,29 @@ public class SelectListTests
     public void NavegacionEnvuelveOmiteDeshabilitadosYMantieneLaSeleccionVisible()
     {
         var items = Enumerable.Range(0, 30)
-            .Select(index => new SelectListItem(
+            .Select(index => Item(
                 $"item-{index}",
                 $"Elemento {index}",
-                Disabled: index == 1,
-                DisabledReason: index == 1 ? "presupuesto no disponible" : null))
+                disabled: index == 1,
+                disabledReason: index == 1 ? "presupuesto no disponible" : null))
             .ToArray();
 
         Assert.Equal(8, SelectList.Create(items).VisibleRows);
         var state = SelectList.Create(items, visibleRows: 8, selectedId: "item-0");
         state = state.MoveNext();
-        Assert.Equal("item-2", state.SelectedItem?.Id);
+        Assert.Equal("item-2", state.Selected?.Id);
         Assert.Equal(0, state.ScrollOffset);
 
-        state = SelectList.MoveTo(state, 29);
-        Assert.Equal("item-29", state.SelectedItem?.Id);
+        state = SelectList.Create(items, visibleRows: 8, selectedId: "item-29");
+        Assert.Equal("item-29", state.Selected?.Id);
         Assert.Equal(22, state.ScrollOffset);
 
         state = state.MoveNext();
-        Assert.Equal("item-0", state.SelectedItem?.Id);
+        Assert.Equal("item-0", state.Selected?.Id);
         Assert.Equal(0, state.ScrollOffset);
 
         state = state.MovePrev();
-        Assert.Equal("item-29", state.SelectedItem?.Id);
+        Assert.Equal("item-29", state.Selected?.Id);
         Assert.Equal(22, state.ScrollOffset);
     }
 
@@ -111,7 +124,7 @@ public class SelectListTests
     public void RenderizadorMantieneElAnchoCompletoYMuestraBarraConTreintaElementos()
     {
         var items = Enumerable.Range(0, 30)
-            .Select(index => new SelectListItem($"item-{index}", $"Elemento {index}", "Agente · Herramientas"))
+            .Select(index => Item($"item-{index}", $"Elemento {index}", "Agente · Herramientas"))
             .ToArray();
         var state = SelectList.Create(items, visibleRows: 9, selectedId: "item-15");
 
@@ -128,7 +141,7 @@ public class SelectListTests
     [Fact]
     public void ListaVaciaRenderizaUnaFilaDeSinResultados()
     {
-        var state = SelectList.Create(Array.Empty<SelectListItem>(), "inexistente");
+        var state = SelectList.Create(Array.Empty<SelectItem>(), "inexistente");
 
         var lines = SelectListRenderer.Render(state, 32, new SelectListRenderOptions(), Theme);
 
@@ -143,7 +156,7 @@ public class SelectListTests
     {
         var state = SelectList.Create(new[]
         {
-            new SelectListItem("/models", "/models", "Cambiar modelo", Shortcut: "Enter")
+            Item("/models", "/models", "Cambiar modelo", shortcut: "Enter")
         });
 
         var lines = SelectListRenderer.Render(
@@ -261,7 +274,7 @@ public class SelectListTests
     {
         var state = SelectList.Create(new[]
         {
-            new SelectListItem("current", "modelo-local", IsCurrent: true)
+            Item("current", "modelo-local", isCurrent: true)
         }, selectedId: "current");
 
         var line = SelectListRenderer.Render(state, 40, new SelectListRenderOptions(), Theme).Single();

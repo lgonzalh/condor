@@ -77,9 +77,10 @@ public sealed class TuiHost : IDisposable
     private List<string> _overlayItems = new();
     private List<bool> _overlayDisabledItems = new();
     private int _overlaySelectedIndex = -1;
-    private SelectListOverlay? _selectListOverlay;
+    private SelectListOverlay? _selectListModel;
+    private RenderedSelectListOverlay? _selectListOverlay;
     private readonly Dictionary<(int Row, int Column), string> _paintedSelectListRows = new();
-    private SelectListTheme _selectListTheme = SelectListTheme.Default;
+    private TuiTheme _tuiTheme = TuiTheme.Default;
 
     private int _width;
     private int _height;
@@ -269,12 +270,19 @@ public sealed class TuiHost : IDisposable
         }
     }
 
-    public void SetSelectListTheme(SelectListTheme theme)
+    public void SetTuiTheme(TuiTheme theme)
     {
         ArgumentNullException.ThrowIfNull(theme);
         lock (_gate)
         {
-            _selectListTheme = theme;
+            _tuiTheme = theme;
+            var rendered = _selectListModel is null ? null : RenderSelectListOverlayLocked(_selectListModel);
+            if (!SelectListOverlayEquals(_selectListOverlay, rendered))
+            {
+                _selectListOverlay = rendered;
+                _dirtyOverlay = true;
+            }
+
             _dirtyInput = true;
             _dirtyMetadata = true;
         }
@@ -858,6 +866,19 @@ public sealed class TuiHost : IDisposable
         return lines;
     }
 
+    private RenderedSelectListOverlay RenderSelectListOverlayLocked(SelectListOverlay overlay)
+    {
+        var terminalWidth = Math.Max(MinWidth, _width);
+        var widthLimit = overlay.MaximumWidth.HasValue
+            ? Math.Min(terminalWidth, Math.Max(1, overlay.MaximumWidth.Value))
+            : terminalWidth;
+        var column = overlay.Placement == SelectListPlacement.Centered
+            ? Math.Max(0, (terminalWidth - widthLimit) / 2)
+            : 0;
+        var lines = SelectListRenderer.Render(overlay.State, widthLimit, overlay.Options, _tuiTheme).ToArray();
+        return new RenderedSelectListOverlay(lines, overlay.Placement, widthLimit, column);
+    }
+
     private void PaintActivityRowLocked(System.Text.StringBuilder sb, int row)
     {
         if (row < ContentTop || row > ContentBottom)
@@ -878,7 +899,7 @@ public sealed class TuiHost : IDisposable
         }
     }
 
-    private static bool SelectListOverlayEquals(SelectListOverlay? left, SelectListOverlay? right)
+    private static bool SelectListOverlayEquals(RenderedSelectListOverlay? left, RenderedSelectListOverlay? right)
     {
         if (ReferenceEquals(left, right)) return true;
         if (left is null || right is null) return false;
@@ -1028,7 +1049,7 @@ public sealed class TuiHost : IDisposable
             if (index > 0) sb.Append(Ansi.FgGris + separator + Ansi.Reset);
             if (index == 1)
             {
-                sb.Append(_selectListTheme.Accent + Ansi.Bold + displayed[index] + Ansi.Reset);
+                sb.Append(_tuiTheme.Accent + Ansi.Bold + displayed[index] + Ansi.Reset);
             }
             else
             {
@@ -1088,7 +1109,7 @@ public sealed class TuiHost : IDisposable
         {
             sb.Append(Ansi.At(InputRow + 1, 1));
             sb.Append(Ansi.ClearLine);
-            sb.Append(" ").Append(_selectListTheme.Accent).Append("┃").Append(Ansi.Reset).Append(" ")
+            sb.Append(" ").Append(_tuiTheme.Accent).Append("┃").Append(Ansi.Reset).Append(" ")
                 .Append(Ansi.FgAmarillo).Append("Condor esta trabajando...  Esc + Esc interrumpe la tarea")
                 .Append(Ansi.Reset);
         }
@@ -1113,6 +1134,7 @@ public sealed class TuiHost : IDisposable
         {
             if (_selectListOverlay is not null)
             {
+                _selectListModel = null;
                 _selectListOverlay = null;
                 _dirtyOverlay = true;
                 _dirtyActivity = true;
@@ -1164,9 +1186,11 @@ public sealed class TuiHost : IDisposable
                 _dirtyActivity = true;
             }
 
-            var changed = !SelectListOverlayEquals(_selectListOverlay, overlay);
-            var closing = _selectListOverlay is not null && overlay is null;
-            _selectListOverlay = overlay;
+            var renderedOverlay = overlay is null ? null : RenderSelectListOverlayLocked(overlay);
+            var changed = !SelectListOverlayEquals(_selectListOverlay, renderedOverlay);
+            var closing = _selectListOverlay is not null && renderedOverlay is null;
+            _selectListModel = overlay;
+            _selectListOverlay = renderedOverlay;
             _inputPlaceholder = placeholder ?? Placeholder;
             if (changed)
             {
@@ -1196,7 +1220,7 @@ public sealed class TuiHost : IDisposable
 
         var prefixWidth = 5; // margen, barra, separador y prompt
         var budget = Math.Max(1, _width - prefixWidth - 1);
-        sb.Append(" ").Append(_selectListTheme.Accent).Append("┃").Append(Ansi.Reset).Append(" ");
+        sb.Append(" ").Append(_tuiTheme.Accent).Append("┃").Append(Ansi.Reset).Append(" ");
         sb.Append(Ansi.Bold).Append(Ansi.FgDorado).Append("> ").Append(Ansi.Reset);
 
         if (buffer.Length == 0)
@@ -1386,6 +1410,12 @@ public sealed class TuiHost : IDisposable
 
         GC.SuppressFinalize(this);
     }
+
+    private sealed record RenderedSelectListOverlay(
+        IReadOnlyList<string> Lines,
+        SelectListPlacement Placement,
+        int Width,
+        int Column);
 
     private enum HostMode
     {

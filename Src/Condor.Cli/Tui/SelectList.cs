@@ -16,24 +16,6 @@ public record SelectItem(
     public bool IsCurrent { get; init; }
 }
 
-/// <summary>Compatibilidad temporal mientras TuiInput migra al nuevo modelo.</summary>
-public sealed record SelectListItem : SelectItem
-{
-    public SelectListItem(
-        string Id,
-        string Label,
-        string Description = "",
-        IReadOnlyList<string>? Tags = null,
-        bool Disabled = false,
-        string? DisabledReason = null,
-        string? Shortcut = null,
-        bool IsCurrent = false)
-        : base(Id, Label, Description, Tags ?? Array.Empty<string>(), Disabled, DisabledReason, Shortcut)
-    {
-        this.IsCurrent = IsCurrent;
-    }
-}
-
 /// <summary>Estado inmutable de filtro, seleccion y desplazamiento de una lista.</summary>
 public sealed record SelectListState(
     IReadOnlyList<SelectItem> Items,
@@ -48,13 +30,50 @@ public sealed record SelectListState(
             ? Items[Filtered[SelectedIndex]]
             : null;
 
-    public SelectItem? SelectedItem => Selected;
+    public SelectListState SetQuery(string query)
+    {
+        var nextQuery = query ?? "";
+        var filtered = SelectList.Filter(Items, nextQuery);
+        var selected = SelectList.FindInitialSelection(Items, filtered, Selected?.Id);
+        return SelectList.EnsureVisible(this with
+        {
+            Query = nextQuery,
+            Filtered = filtered,
+            SelectedIndex = selected,
+            ScrollOffset = 0
+        });
+    }
 
-    public SelectListState SetQuery(string query) => SelectList.SetQuery(this, query);
+    public SelectListState MoveNext() => Move(1);
 
-    public SelectListState MoveNext() => SelectList.Move(this, 1);
+    public SelectListState MovePrev() => Move(-1);
 
-    public SelectListState MovePrev() => SelectList.Move(this, -1);
+    private SelectListState Move(int delta)
+    {
+        if (delta == 0 || Filtered.Count == 0)
+        {
+            return this;
+        }
+
+        var start = SelectedIndex;
+        if (start < 0 || start >= Filtered.Count)
+        {
+            start = delta > 0 ? -1 : 0;
+        }
+
+        for (var step = 1; step <= Filtered.Count; step++)
+        {
+            var candidate = Mod(start + delta * step, Filtered.Count);
+            if (!Items[Filtered[candidate]].Disabled)
+            {
+                return SelectList.EnsureVisible(this with { SelectedIndex = candidate });
+            }
+        }
+
+        return this with { SelectedIndex = -1, ScrollOffset = 0 };
+    }
+
+    private static int Mod(int value, int length) => (value % length + length) % length;
 }
 
 public enum SelectListPlacement
@@ -128,31 +147,6 @@ public record TuiTheme(
     }
 }
 
-/// <summary>Alias temporal para los consumidores anteriores al tema comun.</summary>
-public sealed record SelectListTheme : TuiTheme
-{
-    public SelectListTheme(
-        string Accent,
-        string Text,
-        string Muted,
-        string Disabled,
-        string PopupBackground,
-        string SelectionBackground,
-        string SelectionForeground)
-        : base(Accent, Text, Muted, Disabled, PopupBackground, SelectionBackground, SelectionForeground)
-    {
-    }
-
-    public static new SelectListTheme Default { get; } = new(
-        TuiTheme.Default.Accent,
-        TuiTheme.Default.Text,
-        TuiTheme.Default.Muted,
-        TuiTheme.Default.Disabled,
-        TuiTheme.Default.PopupBackground,
-        TuiTheme.Default.SelectionBackground,
-        TuiTheme.Default.SelectionForeground);
-}
-
 public sealed record SelectListRenderOptions(
     string? Title = null,
     bool IncludeSearchField = false,
@@ -161,12 +155,12 @@ public sealed record SelectListRenderOptions(
     bool ShowShortcuts = false,
     bool ShowScrollbar = true);
 
-/// <summary>Lineas ya formateadas para que TuiHost las posicione y pinte por diff.</summary>
+/// <summary>Estado y disposicion del menu; TuiHost se encarga de renderizarlo.</summary>
 public sealed record SelectListOverlay(
-    IReadOnlyList<string> Lines,
+    SelectListState State,
+    SelectListRenderOptions Options,
     SelectListPlacement Placement,
-    int Width,
-    int Column);
+    int? MaximumWidth = null);
 
 /// <summary>Operaciones puras para filtrar y navegar listas reutilizables.</summary>
 public static class SelectList
@@ -185,58 +179,6 @@ public static class SelectList
         var rows = Math.Clamp(visibleRows, 1, MaximumVisibleRows);
         var selected = FindInitialSelection(materialized, filtered, selectedId);
         return EnsureVisible(new SelectListState(materialized, query ?? "", filtered, selected, 0, rows));
-    }
-
-    public static SelectListState SetQuery(SelectListState state, string query)
-    {
-        ArgumentNullException.ThrowIfNull(state);
-        var filtered = Filter(state.Items, query);
-        var previousId = state.Selected?.Id;
-        var selected = FindInitialSelection(state.Items, filtered, previousId);
-        return EnsureVisible(state with
-        {
-            Query = query ?? "",
-            Filtered = filtered,
-            SelectedIndex = selected,
-            ScrollOffset = 0
-        });
-    }
-
-    public static SelectListState Move(SelectListState state, int delta)
-    {
-        ArgumentNullException.ThrowIfNull(state);
-        if (delta == 0 || state.Filtered.Count == 0)
-        {
-            return state;
-        }
-
-        var start = state.SelectedIndex;
-        if (start < 0 || start >= state.Filtered.Count)
-        {
-            start = delta > 0 ? -1 : 0;
-        }
-
-        for (var step = 1; step <= state.Filtered.Count; step++)
-        {
-            var candidate = Mod(start + delta * step, state.Filtered.Count);
-            if (!state.Items[state.Filtered[candidate]].Disabled)
-            {
-                return EnsureVisible(state with { SelectedIndex = candidate });
-            }
-        }
-
-        return state with { SelectedIndex = -1 };
-    }
-
-    public static SelectListState MoveTo(SelectListState state, int index)
-    {
-        ArgumentNullException.ThrowIfNull(state);
-        if (index < 0 || index >= state.Filtered.Count || state.Items[state.Filtered[index]].Disabled)
-        {
-            return state;
-        }
-
-        return EnsureVisible(state with { SelectedIndex = index });
     }
 
     public static IReadOnlyList<int> Filter(IReadOnlyList<SelectItem> items, string? query)
@@ -265,7 +207,7 @@ public static class SelectList
             .ToArray();
     }
 
-    private static SelectListState EnsureVisible(SelectListState state)
+    internal static SelectListState EnsureVisible(SelectListState state)
     {
         if (state.Filtered.Count == 0 || state.SelectedIndex < 0)
         {
@@ -286,7 +228,7 @@ public static class SelectList
         return state with { ScrollOffset = Math.Clamp(offset, 0, maxOffset) };
     }
 
-    private static int FindInitialSelection(
+    internal static int FindInitialSelection(
         IReadOnlyList<SelectItem> items,
         IReadOnlyList<int> filtered,
         string? selectedId)
@@ -329,7 +271,6 @@ public static class SelectList
             string.Join(' ', item.Tags)
         }.Where(value => !string.IsNullOrWhiteSpace(value)));
 
-    private static int Mod(int value, int length) => (value % length + length) % length;
 }
 
 /// <summary>Coincidencia difusa pura con puntajes mas bajos para coincidencias mejores.</summary>

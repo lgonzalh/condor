@@ -50,7 +50,6 @@ public sealed class TuiInput
     private readonly TuiHost _host;
     private readonly List<string> _history = new();
     private readonly List<string> _knownExtra;
-    private readonly SelectListTheme _theme;
 
     private string _buffer = "";
     private int _caret;
@@ -58,7 +57,7 @@ public sealed class TuiInput
     private string _draft = "";
     private bool _escapePressed; // Para detectar Esc + Esc
     private SelectListState? _selectList;
-    private SelectListMode _selectListMode;
+    private OverlayState _overlayState;
     private string _returnBuffer = "";
     private int _returnCaret;
     private string? _selectedModel;
@@ -70,20 +69,19 @@ public sealed class TuiInput
     public TuiInput(
         TuiHost host,
         IEnumerable<string>? extraCompletions = null,
-        SelectListTheme? theme = null)
+        TuiTheme? theme = null)
     {
         _host = host;
         _knownExtra = extraCompletions?.ToList() ?? new List<string>();
-        _theme = theme ?? SelectListTheme.Default;
-        _host.SetSelectListTheme(_theme);
+        _host.SetTuiTheme(theme ?? TuiTheme.Default);
         _historyIndex = 0;
     }
 
     public string Buffer => _buffer;
     public string? SelectedModel => _selectedModel ??
-        (_selectListMode == SelectListMode.Models ? _selectList?.SelectedItem?.Id : null);
-    public string? SelectedCommand => _selectListMode == SelectListMode.Commands
-        ? _selectList?.SelectedItem?.Id
+        (_overlayState == OverlayState.Modelos ? _selectList?.Selected?.Id : null);
+    public string? SelectedCommand => _overlayState == OverlayState.Paleta
+        ? _selectList?.Selected?.Id
         : null;
 
     public static IReadOnlyList<string> CommandPaletteCommands => KnownCommands;
@@ -94,28 +92,23 @@ public sealed class TuiInput
     {
         if (_selectList is not null)
         {
-            var width = Math.Max(TuiHost.MinWidth, _host.TerminalWidth);
-            var centered = _selectListMode == SelectListMode.Commands;
-            var popupWidth = centered ? Math.Min(90, width - 8) : width;
-            var column = centered ? Math.Max(0, (width - popupWidth) / 2) : 0;
-            var options = _selectListMode switch
+            var options = _overlayState switch
             {
-                SelectListMode.Slash => new SelectListRenderOptions(
-                    TwoColumns: true,
-                    LabelColumnWidth: CommandNameColumnWidth(_selectList)),
-                SelectListMode.Models => new SelectListRenderOptions(Title: "Modelos locales"),
-                SelectListMode.Commands => new SelectListRenderOptions(
+                OverlayState.Slash => new SelectListRenderOptions(TwoColumns: true),
+                OverlayState.Modelos => new SelectListRenderOptions(Title: "Modelos locales"),
+                OverlayState.Paleta => new SelectListRenderOptions(
                     Title: "Comandos",
                     IncludeSearchField: true,
                     ShowShortcuts: true),
                 _ => new SelectListRenderOptions()
             };
-            var lines = SelectListRenderer.Render(_selectList, popupWidth, options, _theme);
             var overlay = new SelectListOverlay(
-                lines,
-                centered ? SelectListPlacement.Centered : SelectListPlacement.AboveInput,
-                popupWidth,
-                column);
+                _selectList,
+                options,
+                _overlayState == OverlayState.Paleta
+                    ? SelectListPlacement.Centered
+                    : SelectListPlacement.AboveInput,
+                MaximumWidth: _overlayState == OverlayState.Paleta ? 90 : null);
             _host.RenderInputWithSelectList(_buffer, _caret, overlay, _inputPlaceholder);
             return;
         }
@@ -129,7 +122,7 @@ public sealed class TuiInput
     public void Clear()
     {
         _selectList = null;
-        _selectListMode = SelectListMode.None;
+        _overlayState = OverlayState.None;
         _agentPanelActive = false;
         _agentPanelItems.Clear();
         _buffer = "";
@@ -146,7 +139,7 @@ public sealed class TuiInput
     public void SetText(string text)
     {
         _selectList = null;
-        _selectListMode = SelectListMode.None;
+        _overlayState = OverlayState.None;
         _agentPanelActive = false;
         _agentPanelItems.Clear();
         _buffer = text ?? "";
@@ -159,14 +152,37 @@ public sealed class TuiInput
 
     public InputAction Handle(ConsoleKeyInfo key)
     {
-        if ((key.Modifiers & ConsoleModifiers.Control) != 0 && key.Key == ConsoleKey.P)
+        if (_selectList is not null)
         {
-            if (_selectListMode == SelectListMode.Commands)
+            if ((key.Modifiers & ConsoleModifiers.Control) != 0 && key.Key == ConsoleKey.P)
             {
-                CloseSelectList(restoreBuffer: true);
-                return InputAction.None;
+                if (_overlayState == OverlayState.Paleta)
+                {
+                    CloseSelectList(restoreBuffer: true);
+                    Render();
+                    return InputAction.None;
+                }
+
+                return InputAction.OpenCommands;
             }
 
+            if (key.Key == ConsoleKey.Tab)
+            {
+                if (_overlayState == OverlayState.Slash)
+                {
+                    CompleteSelectedCommand();
+                    return InputAction.None;
+                }
+
+                CloseSelectList(restoreBuffer: true);
+                return InputAction.OpenAgents;
+            }
+
+            return HandleSelectList(key);
+        }
+
+        if ((key.Modifiers & ConsoleModifiers.Control) != 0 && key.Key == ConsoleKey.P)
+        {
             return InputAction.OpenCommands;
         }
 
@@ -177,17 +193,6 @@ public sealed class TuiInput
                 return HandleAgentPanel(key);
             }
 
-            if (_selectListMode == SelectListMode.Slash)
-            {
-                CompleteSelectedCommand();
-                return InputAction.None;
-            }
-
-            if (_selectList is not null)
-            {
-                CloseSelectList(restoreBuffer: true);
-            }
-
             return InputAction.OpenAgents;
         }
 
@@ -195,11 +200,6 @@ public sealed class TuiInput
         {
             Complete();
             return InputAction.None;
-        }
-
-        if (_selectList is not null)
-        {
-            return HandleSelectList(key);
         }
 
         if (_agentPanelActive)
@@ -333,18 +333,21 @@ public sealed class TuiInput
             .Select(model =>
             {
                 var selectable = isSelectable?.Invoke(model) ?? true;
-                return new SelectListItem(
+                return new SelectItem(
                     model.Name,
                     model.Name,
                     describeCapabilities?.Invoke(model) ?? "",
+                    Array.Empty<string>(),
                     Disabled: !selectable,
                     DisabledReason: selectable ? null : "presupuesto no disponible",
-                    Shortcut: "Enter",
-                    IsCurrent: string.Equals(model.Name, activeModel, StringComparison.OrdinalIgnoreCase));
+                    Shortcut: null)
+                {
+                    IsCurrent = string.Equals(model.Name, activeModel, StringComparison.OrdinalIgnoreCase)
+                };
             })
             .ToList();
         CaptureReturnBuffer();
-        _selectListMode = SelectListMode.Models;
+        _overlayState = OverlayState.Modelos;
         _selectList = SelectList.Create(items, selectedId: activeModel);
         _buffer = "";
         _caret = 0;
@@ -363,7 +366,7 @@ public sealed class TuiInput
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Select(BuildCommandItem)
             .ToList();
-        _selectListMode = SelectListMode.Commands;
+        _overlayState = OverlayState.Paleta;
         _selectList = SelectList.Create(items);
         _buffer = "";
         _caret = 0;
@@ -374,7 +377,7 @@ public sealed class TuiInput
     public void BeginAgentsPanel(IEnumerable<string> items)
     {
         _selectList = null;
-        _selectListMode = SelectListMode.None;
+        _overlayState = OverlayState.None;
         _inputPlaceholder = null;
         _selectedModel = null;
         _agentPanelItems = items.Where(item => !string.IsNullOrWhiteSpace(item)).ToList();
@@ -392,13 +395,13 @@ public sealed class TuiInput
         switch (key.Key)
         {
             case ConsoleKey.Enter:
-                var selected = _selectList.SelectedItem;
+                var selected = _selectList.Selected;
                 if (selected is null || selected.Disabled)
                 {
                     return InputAction.None;
                 }
 
-                if (_selectListMode == SelectListMode.Models)
+                if (_overlayState == OverlayState.Modelos)
                 {
                     _selectedModel = selected.Id;
                     _buffer = "";
@@ -416,19 +419,19 @@ public sealed class TuiInput
                 return InputAction.Submit;
 
             case ConsoleKey.UpArrow:
-                _selectList = SelectList.Move(_selectList, -1);
+                _selectList = _selectList.MovePrev();
                 SyncSelectionBuffer();
                 Render();
                 return InputAction.None;
 
             case ConsoleKey.DownArrow:
-                _selectList = SelectList.Move(_selectList, 1);
+                _selectList = _selectList.MoveNext();
                 SyncSelectionBuffer();
                 Render();
                 return InputAction.None;
 
             case ConsoleKey.Escape:
-                if (_selectListMode == SelectListMode.Slash)
+                if (_overlayState == OverlayState.Slash)
                 {
                     _slashSuggestionsDismissed = true;
                     CloseSelectList(restoreBuffer: false);
@@ -442,48 +445,48 @@ public sealed class TuiInput
                 return InputAction.None;
 
             case ConsoleKey.Backspace:
-                if (_selectListMode == SelectListMode.Slash || _selectListMode == SelectListMode.Models)
+                if (_overlayState == OverlayState.Slash || _overlayState == OverlayState.Modelos)
                 {
                     if (_caret > 0)
                     {
                         _caret--;
                         _buffer = _buffer.Remove(_caret, 1);
-                        if (_selectListMode == SelectListMode.Slash)
+                        if (_overlayState == OverlayState.Slash)
                         {
                             UpdateSlashSuggestionsFromBuffer();
                         }
                         else
                         {
-                            _selectList = SelectList.SetQuery(_selectList, _buffer);
+                            _selectList = _selectList.SetQuery(_buffer);
                         }
                     }
                 }
                 else if (_selectList.Query.Length > 0)
                 {
-                    _selectList = SelectList.SetQuery(_selectList, _selectList.Query[..^1]);
+                    _selectList = _selectList.SetQuery(_selectList.Query[..^1]);
                 }
 
                 Render();
                 return InputAction.None;
 
             case ConsoleKey.Delete:
-                if ((_selectListMode is SelectListMode.Slash or SelectListMode.Models) && _caret < _buffer.Length)
+                if ((_overlayState is OverlayState.Slash or OverlayState.Modelos) && _caret < _buffer.Length)
                 {
                     _buffer = _buffer.Remove(_caret, 1);
-                    if (_selectListMode == SelectListMode.Slash)
+                    if (_overlayState == OverlayState.Slash)
                     {
                         UpdateSlashSuggestionsFromBuffer();
                     }
                     else
                     {
-                        _selectList = SelectList.SetQuery(_selectList, _buffer);
+                        _selectList = _selectList.SetQuery(_buffer);
                     }
                     Render();
                 }
                 return InputAction.None;
 
             case ConsoleKey.Tab:
-                if (_selectListMode == SelectListMode.Slash)
+                if (_overlayState == OverlayState.Slash)
                 {
                     CompleteSelectedCommand();
                     return InputAction.None;
@@ -493,7 +496,7 @@ public sealed class TuiInput
                 return InputAction.OpenAgents;
 
             case ConsoleKey.LeftArrow:
-                if ((_selectListMode is SelectListMode.Slash or SelectListMode.Models) && _caret > 0)
+                if ((_overlayState is OverlayState.Slash or OverlayState.Modelos) && _caret > 0)
                 {
                     _caret--;
                     Render();
@@ -501,7 +504,7 @@ public sealed class TuiInput
                 return InputAction.None;
 
             case ConsoleKey.RightArrow:
-                if ((_selectListMode is SelectListMode.Slash or SelectListMode.Models) && _caret < _buffer.Length)
+                if ((_overlayState is OverlayState.Slash or OverlayState.Modelos) && _caret < _buffer.Length)
                 {
                     _caret++;
                     Render();
@@ -509,7 +512,7 @@ public sealed class TuiInput
                 return InputAction.None;
 
             case ConsoleKey.Home:
-                if (_selectListMode is SelectListMode.Slash or SelectListMode.Models)
+                if (_overlayState is OverlayState.Slash or OverlayState.Modelos)
                 {
                     _caret = 0;
                     Render();
@@ -517,7 +520,7 @@ public sealed class TuiInput
                 return InputAction.None;
 
             case ConsoleKey.End:
-                if (_selectListMode is SelectListMode.Slash or SelectListMode.Models)
+                if (_overlayState is OverlayState.Slash or OverlayState.Modelos)
                 {
                     _caret = _buffer.Length;
                     Render();
@@ -527,16 +530,16 @@ public sealed class TuiInput
             default:
                 if (!char.IsControl(key.KeyChar))
                 {
-                    if (_selectListMode == SelectListMode.Commands)
+                    if (_overlayState == OverlayState.Paleta)
                     {
-                        _selectList = SelectList.SetQuery(_selectList, _selectList.Query + key.KeyChar);
+                        _selectList = _selectList.SetQuery(_selectList.Query + key.KeyChar);
                         Render();
                     }
-                    else if (_selectListMode == SelectListMode.Models)
+                    else if (_overlayState == OverlayState.Modelos)
                     {
                         _buffer = _buffer.Insert(_caret, key.KeyChar.ToString());
                         _caret++;
-                        _selectList = SelectList.SetQuery(_selectList, _buffer);
+                        _selectList = _selectList.SetQuery(_buffer);
                         Render();
                     }
                     else
@@ -565,7 +568,7 @@ public sealed class TuiInput
 
     private void CompleteSelectedCommand()
     {
-        var selected = _selectList?.SelectedItem;
+        var selected = _selectList?.Selected;
         if (selected is null || selected.Disabled)
         {
             return;
@@ -580,7 +583,7 @@ public sealed class TuiInput
 
     private void SyncSelectionBuffer()
     {
-        if (_selectListMode == SelectListMode.Slash)
+        if (_overlayState == OverlayState.Slash)
         {
             _caret = _buffer.Length;
         }
@@ -588,7 +591,7 @@ public sealed class TuiInput
 
     private void UpdateSlashSuggestionsFromBuffer()
     {
-        if (_selectListMode == SelectListMode.Slash)
+        if (_overlayState == OverlayState.Slash)
         {
             if (!_buffer.StartsWith("/", StringComparison.Ordinal) || _buffer.Contains(' '))
             {
@@ -597,11 +600,11 @@ public sealed class TuiInput
                 return;
             }
 
-            _selectList = SelectList.SetQuery(_selectList!, _buffer[1..]);
+            _selectList = _selectList!.SetQuery(_buffer[1..]);
             return;
         }
 
-        if (_selectListMode != SelectListMode.None)
+        if (_overlayState != OverlayState.None)
         {
             return;
         }
@@ -612,11 +615,13 @@ public sealed class TuiInput
             return;
         }
 
-        if (!_slashSuggestionsDismissed && _buffer.StartsWith("/", StringComparison.Ordinal))
+        if (!_slashSuggestionsDismissed &&
+            _buffer.StartsWith("/", StringComparison.Ordinal) &&
+            !_buffer.Contains(' '))
         {
-            _selectListMode = SelectListMode.Slash;
+            _overlayState = OverlayState.Slash;
             _selectList = SelectList.Create(BuildCommandItems(KnownCommands.Concat(_knownExtra)));
-            _selectList = SelectList.SetQuery(_selectList, _buffer[1..]);
+            _selectList = _selectList.SetQuery(_buffer[1..]);
         }
     }
 
@@ -629,7 +634,7 @@ public sealed class TuiInput
     private void CloseSelectList(bool restoreBuffer)
     {
         _selectList = null;
-        _selectListMode = SelectListMode.None;
+        _overlayState = OverlayState.None;
         _inputPlaceholder = null;
         if (restoreBuffer)
         {
@@ -639,17 +644,20 @@ public sealed class TuiInput
         }
     }
 
-    private static IReadOnlyList<SelectListItem> BuildCommandItems(IEnumerable<string> commands) =>
+    private static IReadOnlyList<SelectItem> BuildCommandItems(IEnumerable<string> commands) =>
         commands
             .Where(command => !string.IsNullOrWhiteSpace(command))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Select(BuildCommandItem)
             .ToArray();
 
-    private static SelectListItem BuildCommandItem(string command) => new(
+    private static SelectItem BuildCommandItem(string command) => new(
         command,
         command,
         CommandDescription(command),
+        Array.Empty<string>(),
+        Disabled: false,
+        DisabledReason: null,
         Shortcut: "Enter");
 
     private static string CommandDescription(string command) => command.ToLowerInvariant() switch
@@ -673,15 +681,12 @@ public sealed class TuiInput
         _ => "Ejecutar comando Condor"
     };
 
-    private static int CommandNameColumnWidth(SelectListState state) =>
-        Math.Max(1, state.Items.Select(item => Ansi.VisibleWidth(item.Label)).DefaultIfEmpty(0).Max() + 2);
-
-    private enum SelectListMode
+    private enum OverlayState
     {
         None,
         Slash,
-        Models,
-        Commands
+        Paleta,
+        Modelos
     }
 
     private void Insert(string text)
@@ -690,7 +695,7 @@ public sealed class TuiInput
         _buffer = _buffer.Insert(_caret, text);
         _caret += text.Length;
         _historyIndex = _history.Count;
-        if (startsSlash || _selectListMode == SelectListMode.Slash)
+        if (startsSlash || _overlayState == OverlayState.Slash)
         {
             UpdateSlashSuggestionsFromBuffer();
         }
