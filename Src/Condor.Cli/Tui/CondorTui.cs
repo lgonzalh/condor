@@ -80,11 +80,16 @@ public static class CondorTui
         CancellationToken shutdownToken,
         int? tuiWidth = null,
         int? tuiHeight = null,
-        string? initialInput = null)
+        string? initialInput = null,
+        bool sinAnimacion = false)
     {
         using var host = tuiWidth.HasValue && tuiHeight.HasValue
             ? new TuiHost(tuiWidth.Value, tuiHeight.Value)
             : new TuiHost();
+        using var ticker = new StatusTicker(
+            host.SetTickerMessage,
+            sinAnimacion: sinAnimacion,
+            widthProvider: () => host.TerminalWidth);
         host.Enter();
         host.ShowWelcome();
         host.SetWorkspace(Environment.CurrentDirectory);
@@ -94,7 +99,7 @@ public static class CondorTui
         // Corre en segundo plano MIENTRAS el bucle de render repinta la pantalla:
         // el progreso es real (TuiStartupView publica estados reales) y el usuario
         // ve la TUI de inmediato, sin bloqueo previo.
-        var startup = new TuiStartupView(host);
+        var startup = new TuiStartupView(host, ticker);
         var startupBridge = new StartupProgressObserverBridge(startup);
         startup.Start();
 
@@ -134,6 +139,9 @@ public static class CondorTui
         }
         catch (OperationCanceledException)
         {
+            ticker.Complete(conservar: false);
+            await ticker.CompletionTask.ConfigureAwait(true);
+            host.Repaint();
             host.Dispose();
             PrintExitBanner();
             return 130;
@@ -143,6 +151,7 @@ public static class CondorTui
         {
             return await FatalExitAsync(
                 host,
+                ticker,
                 "No se pudo dejar el entorno listo automaticamente.",
                 DescribeBootstrapFailure(bootstrap));
         }
@@ -153,6 +162,7 @@ public static class CondorTui
             startup.Stop(false);
             return await FatalExitAsync(
                 host,
+                ticker,
                 "Condor no puede iniciar: no hay un modelo utilizable ahora.",
                 new[] { prep.Reason ?? "Se intento preparar un modelo compatible sin exito." });
         }
@@ -334,6 +344,9 @@ public static class CondorTui
 
                 if (result is not null)
                 {
+                    ticker.Publish(result.Success
+                        ? "Respuesta del modelo recibida"
+                        : "Interacción con el modelo detenida");
                     AddAgentResultToHistory(host, result);
 
                     host.SetEstado(result.Success ? "Tarea completada" : "No se pudo completar la tarea",
@@ -341,11 +354,13 @@ public static class CondorTui
                 }
                 else if (failure is not null)
                 {
+                    ticker.Publish("No se pudo completar la interacción");
                     host.AddActivity("No se pudo completar la tarea: " + failure, ActivityKind.Error);
                     host.SetEstado("Error durante la tarea", ActivityKind.Error);
                 }
                 else
                 {
+                    ticker.Publish("Interacción cancelada");
                     host.AddActivity("Tarea cancelada por el usuario.", ActivityKind.Warning);
                     host.SetEstado("Tarea cancelada", ActivityKind.Warning);
                 }
@@ -549,7 +564,7 @@ public static class CondorTui
                         case SlashRoute slash when slash.Kind == SlashCommandKind.Consultar:
                             host.AddActivity(text, ActivityKind.User);
                             exitCode = await ConsultInTuiAsync(
-                                host, session.Llm, session.ActiveModel, slash.Arguments, shutdownToken);
+                                host, session.Llm, session.ActiveModel, slash.Arguments, shutdownToken, ticker);
                             input.Render();
                             break;
 
@@ -561,7 +576,8 @@ public static class CondorTui
                                 new VisionService(stateStore, session: session),
                                 session.ActiveModel,
                                 slash.Arguments,
-                                shutdownToken);
+                                shutdownToken,
+                                ticker);
                             input.Render();
                             break;
 
@@ -572,7 +588,8 @@ public static class CondorTui
                                 new PlanService(stateStore),
                                 stateStore,
                                 slash.Arguments,
-                                shutdownToken);
+                                shutdownToken,
+                                ticker);
                             input.Render();
                             break;
 
@@ -596,7 +613,7 @@ public static class CondorTui
                                 if (modeSlash.Kind == SlashCommandKind.Consultar)
                                 {
                                     exitCode = await ConsultInTuiAsync(
-                                        host, session.Llm, session.ActiveModel, modeSlash.Arguments, shutdownToken);
+                                        host, session.Llm, session.ActiveModel, modeSlash.Arguments, shutdownToken, ticker);
                                     input.Render();
                                     break;
                                 }
@@ -609,7 +626,8 @@ public static class CondorTui
                                         new VisionService(stateStore, session: session),
                                         session.ActiveModel,
                                         modeSlash.Arguments,
-                                        shutdownToken);
+                                        shutdownToken,
+                                        ticker);
                                     input.Render();
                                     break;
                                 }
@@ -621,12 +639,14 @@ public static class CondorTui
                                         new PlanService(stateStore),
                                         stateStore,
                                         modeSlash.Arguments,
-                                        shutdownToken);
+                                        shutdownToken,
+                                        ticker);
                                     input.Render();
                                     break;
                                 }
 
                                 host.SetBusy(true);
+                                ticker.Publish("Condor procesa la solicitud");
                                 host.SetEstado(modeSlash.Kind switch
                                 {
                                     SlashCommandKind.Planear => "Creando plan con Condor",
@@ -661,13 +681,14 @@ public static class CondorTui
                                 ? routedFree.Intention
                                 : free.Intention;
                             host.SetBusy(true);
+                            ticker.Publish("Condor comprende la solicitud");
                             host.SetEstado("Preparando análisis de la tarea");
                             host.SetProgreso("0 s");
                             host.SetModelStatus(
                                 (string.IsNullOrWhiteSpace(session.ActiveModel) ? "Modelo local" : session.ActiveModel) + " · preparando análisis",
                                 working: true);
                             runningCts = CancellationTokenSource.CreateLinkedTokenSource(shutdownToken);
-                            var agentBridge = new AgentProgressObserverBridge(new TuiAgentProgressView(host));
+                            var agentBridge = new AgentProgressObserverBridge(new TuiAgentProgressView(host, ticker));
                             var agent = new DocumentingAgentService(
                                 new AgentService(stateStore, assessmentService, session: session),
                                 new DocumenterService());
@@ -697,6 +718,9 @@ public static class CondorTui
         }
 
         runningCts?.Cancel();
+        ticker.Complete(conservar: false);
+        await ticker.CompletionTask.ConfigureAwait(true);
+        host.Repaint();
         host.Dispose();
         PrintExitBanner();
         return exitCode;
@@ -707,7 +731,8 @@ public static class CondorTui
         ILlmClient llmClient,
         string? activeModel,
         string[] args,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        StatusTicker? ticker = null)
     {
         var queryArgs = args.ToList();
         var modelOption = queryArgs.FindIndex(argument =>
@@ -748,6 +773,7 @@ public static class CondorTui
         }
 
         host.SetBusy(true);
+        ticker?.Publish("Condor piensa con el modelo activo");
         host.SetEstado("Consultando al modelo activo", ActivityKind.System);
         host.SetModelStatus(activeModel + " · consultando", working: true);
         host.AddActivity("Condor consulta al modelo local...", ActivityKind.System);
@@ -784,17 +810,20 @@ public static class CondorTui
                 }
             }
 
+            ticker?.Publish("Respuesta del modelo recibida");
             host.SetEstado("Consulta completada", ActivityKind.Success);
             return 0;
         }
         catch (OperationCanceledException)
         {
+            ticker?.Publish("Consulta cancelada");
             host.AddActivity("Consulta cancelada.", ActivityKind.Warning);
             host.SetEstado("Consulta cancelada", ActivityKind.Warning);
             return 130;
         }
         catch (Exception ex)
         {
+            ticker?.Publish("No se pudo obtener la respuesta del modelo");
             host.AddActivity("No se pudo consultar el modelo: " + ShortReason(ex), ActivityKind.Error);
             host.SetEstado("Fallo en la consulta", ActivityKind.Error);
             return 1;
@@ -813,7 +842,8 @@ public static class CondorTui
         IPlanService planService,
         IStateStore stateStore,
         string[] args,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        StatusTicker? ticker = null)
     {
         var request = string.Join(" ", args).Trim();
         if (string.IsNullOrWhiteSpace(request))
@@ -824,6 +854,7 @@ public static class CondorTui
         }
 
         host.SetBusy(true);
+        ticker?.Publish("Condor piensa en el plan de trabajo");
         host.SetEstado("Creando plan con Condor", ActivityKind.System);
         host.SetProgreso("—");
 
@@ -832,16 +863,19 @@ public static class CondorTui
             var plan = await WaitWithTuiAsync(host, planService.BuildPlanAsync(request, cancellationToken))
                 .ConfigureAwait(true);
             await stateStore.SavePlanAsync(plan, cancellationToken).ConfigureAwait(true);
+            ticker?.Publish("Respuesta del modelo recibida");
             return RenderPlanInTui(host, plan);
         }
         catch (OperationCanceledException)
         {
+            ticker?.Publish("Creación del plan cancelada");
             host.AddActivity("Creación del plan cancelada.", ActivityKind.Warning);
             host.SetEstado("Plan cancelado", ActivityKind.Warning);
             return 130;
         }
         catch (Exception ex)
         {
+            ticker?.Publish("No se pudo completar el plan");
             host.AddActivity("No se pudo crear el plan: " + ShortReason(ex), ActivityKind.Error);
             host.SetEstado("No se pudo crear el plan", ActivityKind.Error);
             return 1;
@@ -918,7 +952,8 @@ public static class CondorTui
         IVisionService visionService,
         string? activeModel,
         string[] args,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        StatusTicker? ticker = null)
     {
         var imagePath = string.Join(" ", args.Where(argument =>
             !argument.Equals("--json", StringComparison.OrdinalIgnoreCase))).Trim();
@@ -930,6 +965,7 @@ public static class CondorTui
         }
 
         host.SetBusy(true);
+        ticker?.Publish("Condor examina la imagen con el modelo local");
         host.SetEstado("Examinando imagen con el modelo local", ActivityKind.System);
         host.SetModelStatus((activeModel ?? "Modelo local") + " · examinando imagen", working: true);
         host.AddActivity("Condor examina la imagen con el modelo local...", ActivityKind.System);
@@ -940,16 +976,19 @@ public static class CondorTui
         {
             var result = await visionService.ExamineAsync(imagePath, cancellationToken).ConfigureAwait(true);
             await stateStore.SaveVisionAsync(result, cancellationToken).ConfigureAwait(true);
+            ticker?.Publish("Respuesta del modelo recibida");
             return RenderVisionResultInTui(host, result, imagePath);
         }
         catch (OperationCanceledException)
         {
+            ticker?.Publish("Examen de imagen cancelado");
             host.AddActivity("Examen de imagen cancelado.", ActivityKind.Warning);
             host.SetEstado("Examen cancelado", ActivityKind.Warning);
             return 130;
         }
         catch (Exception ex)
         {
+            ticker?.Publish("No se pudo obtener la respuesta del modelo");
             host.AddActivity("No se pudo examinar la imagen: " + ShortReason(ex), ActivityKind.Error);
             host.SetEstado("Fallo al examinar la imagen", ActivityKind.Error);
             return 1;
@@ -1336,8 +1375,10 @@ public static class CondorTui
         return string.Join(" · ", labels);
     }
 
-    private static async Task<int> FatalExitAsync(TuiHost host, string headline, string[] details)
+    private static async Task<int> FatalExitAsync(TuiHost host, StatusTicker ticker, string headline, string[] details)
     {
+        ticker.Complete(conservar: false);
+        await ticker.CompletionTask.ConfigureAwait(true);
         host.SetEstado(headline, ActivityKind.Error);
         host.SetProgreso("—");
         foreach (var detail in details.Where(d => !string.IsNullOrWhiteSpace(d)))

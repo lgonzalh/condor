@@ -243,10 +243,10 @@ public class SelectListTests
         input.BeginModelPicker(
             new[] { new ModelInfo { Name = "modelo-a" }, new ModelInfo { Name = "modelo-b" } },
             activeModel: "modelo-a");
-        Assert.Equal((35, 1), PositionOf(host.SnapshotFullFrame(), "Modelo local"));
+        Assert.Equal((34, 1), PositionOf(host.SnapshotFullFrame(), "Modelo local"));
 
         input.BeginCommandPalette(new[] { "/models" });
-        Assert.Equal((21, 16), PositionOf(host.SnapshotFullFrame(), "Comandos"));
+        Assert.Equal((20, 16), PositionOf(host.SnapshotFullFrame(), "Comandos"));
     }
 
     [Fact]

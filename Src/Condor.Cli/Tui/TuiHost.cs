@@ -65,7 +65,7 @@ public sealed class TuiHost : IDisposable
     internal const int MinWidth = 80;
     internal const int MinHeight = 24;
 
-    private const int BottomRows = 3;             // separador + entrada + estado/hints
+    private const int BottomRows = 4;             // separador + entrada + ticker + estado/hints
     private const int HeaderRows = 5;             // cuatro líneas de mascota + separador inferior
     private const string AgentsHint = "tab agentes";
     private const string CommandsHint = "ctrl+p comandos";
@@ -102,6 +102,8 @@ public sealed class TuiHost : IDisposable
     private ActivityKind _estadoKind = ActivityKind.System;
     private string _progreso = "";
     private string _duracion = "";
+    private string? _tickerText;
+    private bool _tickerFinal;
     private string _modelStatus = "Modelo local · esperando una tarea";
     private ActivityKind _modelStatusKind = ActivityKind.System;
     private int? _ramLibrePorcentaje;
@@ -114,6 +116,7 @@ public sealed class TuiHost : IDisposable
     private bool _dirtyActivity;
     private bool _dirtyStatus;
     private bool _dirtyInput;
+    private bool _dirtyTicker;
     private bool _dirtyOverlay;
     private bool _showEmptyInputCursor;
 
@@ -122,7 +125,8 @@ public sealed class TuiHost : IDisposable
     private int ContentTop => HeaderRows + 1;
     private int SepInputRow => _height - BottomRows;         // separador antes de la entrada
     public int InputRow => _height - BottomRows + 1;         // fila de entrada
-    private int EstadoRow => _height - BottomRows + 2;        // estado, equipo, ruta y atajos
+    private int TickerRow => _height - BottomRows + 2;        // estado transitorio de una fila
+    private int EstadoRow => _height - BottomRows + 3;        // estado, equipo, ruta y atajos
     private int ContentBottom => SepInputRow - 1;            // ultima fila utilizable de contenido
 
     // Composicion de referencia: la mascota se ancla a la IZQUIERDA del area de
@@ -205,8 +209,8 @@ public sealed class TuiHost : IDisposable
         sb.Append(Ansi.EnterAltScreen);
         sb.Append(Ansi.ClearScreen);
         sb.Append(Ansi.HideCursor);
-        Console.Write(sb.ToString());
         _entered = true;
+        Console.Write(sb.ToString());
     }
 
     /// <summary>Pantalla de bienvenida: Condor Grande da la bienvenida (mockup inicio).</summary>
@@ -393,6 +397,24 @@ public sealed class TuiHost : IDisposable
         }
     }
 
+    internal void SetTickerMessage(string? mensaje, bool final)
+    {
+        lock (_gate)
+        {
+            _tickerText = mensaje;
+            _tickerFinal = final;
+            _dirtyTicker = true;
+        }
+    }
+
+    internal string SnapshotTickerLine()
+    {
+        lock (_gate)
+        {
+            return GetTickerLineLocked();
+        }
+    }
+
     /// <summary>Avanza el indicador de actividad (solo cuando hay trabajo real).</summary>
     public void Tick()
     {
@@ -552,7 +574,7 @@ public sealed class TuiHost : IDisposable
         lock (_gate)
         {
             if (!_entered || (!_dirtyAll && !_dirtyHeader && !_dirtyActivity && !_dirtyStatus &&
-                              !_dirtyInput && !_dirtyOverlay))
+                              !_dirtyInput && !_dirtyTicker && !_dirtyOverlay))
             {
                 return "";
             }
@@ -570,6 +592,7 @@ public sealed class TuiHost : IDisposable
                 {
                     PaintWelcomeHeaderLocked(sb);
                     PaintWelcomeStatusLocked(sb);
+                    PaintTickerLocked(sb);
                 }
                 else
                 {
@@ -578,6 +601,7 @@ public sealed class TuiHost : IDisposable
                     PaintSelectListOverlayDiffLocked(sb, force: true, underlayPainted: true);
                     PaintEstadoLocked(sb);
                     PaintInputRegionLocked(sb);
+                    PaintTickerLocked(sb);
                 }
             }
             else
@@ -614,10 +638,16 @@ public sealed class TuiHost : IDisposable
                 {
                     PaintInputRegionLocked(sb);
                 }
+
+                if (_dirtyTicker)
+                {
+                    PaintTickerLocked(sb);
+                }
             }
 
             AppendInputCursorStateLocked(sb);
-            _dirtyAll = _dirtyHeader = _dirtyActivity = _dirtyStatus = _dirtyInput = _dirtyOverlay = false;
+            _dirtyAll = _dirtyHeader = _dirtyActivity = _dirtyStatus = _dirtyInput =
+                _dirtyTicker = _dirtyOverlay = false;
             return sb.ToString();
         }
     }
@@ -1044,6 +1074,26 @@ public sealed class TuiHost : IDisposable
         sb.Append(Ansi.At(EstadoRow + 1, shortcutsCol));
         sb.Append(Ansi.FgGris + Shortcuts + Ansi.Reset);
     }
+
+    private void PaintTickerLocked(System.Text.StringBuilder sb)
+    {
+        sb.Append(Ansi.At(TickerRow + 1, 1));
+        sb.Append(Ansi.ClearLine);
+        var message = GetTickerLineLocked();
+        if (message.Length == 0)
+        {
+            sb.Append(Ansi.Reset);
+            return;
+        }
+
+        var color = _tickerFinal ? _tuiTheme.Texto : _tuiTheme.TextoAtenuado;
+        sb.Append(color).Append(message).Append(Ansi.Reset);
+    }
+
+    private string GetTickerLineLocked()
+        => string.IsNullOrWhiteSpace(_tickerText)
+            ? ""
+            : StatusTicker.TruncateVisible(_tickerText, Math.Max(0, _width - 1));
 
     private static bool EsDuracionEnSegundos(string value)
     {
@@ -1589,9 +1639,21 @@ public sealed class TuiHost : IDisposable
             _disposed = true;
             if (_entered)
             {
-                _mouseTrackingMode.Dispose();
-                Console.Write(Ansi.ShowCursor + Ansi.LeaveAltScreen);
-                _entered = false;
+                try
+                {
+                    _mouseTrackingMode.Dispose();
+                }
+                finally
+                {
+                    try
+                    {
+                        Console.Write(Ansi.ShowCursor + Ansi.LeaveAltScreen);
+                    }
+                    finally
+                    {
+                        _entered = false;
+                    }
+                }
             }
         }
 

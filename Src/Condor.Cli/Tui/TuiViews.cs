@@ -13,17 +13,20 @@ namespace Condor.Cli.Tui;
 public sealed class TuiStartupView : IStartupProgressView
 {
     private readonly TuiHost _host;
+    private readonly StatusTicker? _ticker;
     private readonly System.Diagnostics.Stopwatch _clock = System.Diagnostics.Stopwatch.StartNew();
     private readonly HashSet<StartupStage> _archived = new();
     private string? _lastCompleted;
 
-    public TuiStartupView(TuiHost host)
+    public TuiStartupView(TuiHost host, StatusTicker? ticker = null)
     {
         _host = host;
+        _ticker = ticker;
     }
 
     public void Start()
     {
+        _ticker?.Publish("Preparando el entorno local");
         _host.SetBusy(true);
         _host.SetEstado("Preparando el entorno local");
         _host.SetProgreso("Iniciando Condor…");
@@ -37,6 +40,7 @@ public sealed class TuiStartupView : IStartupProgressView
         if (progress.Completed)
         {
             var done = StageCompleted(progress.Stage);
+            _ticker?.Publish(done);
             _host.SetModelStatus("Ollama · " + done, working: false, kind: ActivityKind.Success);
             if (_host.IsWelcome)
             {
@@ -55,6 +59,7 @@ public sealed class TuiStartupView : IStartupProgressView
 
         if (progress.DownloadPercent is { } percent)
         {
+            _ticker?.Publish(label + " · " + Math.Round(percent) + "%");
             _host.SetEstado(label);
             var tail = _host.IsWelcome && _lastCompleted is not null ? "✓ " + _lastCompleted + " · " : "";
             _host.SetProgreso(tail + Bar(percent) + " " + Math.Round(percent) + "% · " + Elapsed());
@@ -63,6 +68,7 @@ public sealed class TuiStartupView : IStartupProgressView
         }
 
         _host.SetEstado(label + (string.IsNullOrWhiteSpace(progress.Message) ? "" : " — " + progress.Message));
+        _ticker?.Publish(label + (string.IsNullOrWhiteSpace(progress.Message) ? "" : " · " + progress.Message));
         var progreso = _host.IsWelcome && _lastCompleted is not null ? "✓ " + _lastCompleted + " · " : "";
         _host.SetProgreso(progreso + Elapsed());
         _host.SetModelStatus(StartupModelStatus(progress), working: IsModelStage(progress.Stage));
@@ -70,6 +76,7 @@ public sealed class TuiStartupView : IStartupProgressView
 
     public void Stop(bool success, string? finalLine = null)
     {
+        _ticker?.Publish(success ? "Dependencias locales preparadas" : "Preparación local detenida");
         _host.SetBusy(false);
         _host.SetEstado(success ? "Entorno listo" : "Preparación detenida", success ? ActivityKind.Success : ActivityKind.Error);
         _host.SetProgreso(Elapsed());
@@ -106,16 +113,19 @@ public sealed class TuiStartupView : IStartupProgressView
 public sealed class TuiAgentProgressView : IAgentProgressView
 {
     private readonly TuiHost _host;
+    private readonly StatusTicker? _ticker;
     private readonly System.Diagnostics.Stopwatch _clock = new();
 
-    public TuiAgentProgressView(TuiHost host)
+    public TuiAgentProgressView(TuiHost host, StatusTicker? ticker = null)
     {
         _host = host;
+        _ticker = ticker;
     }
 
     public void Start(string intention)
     {
         _clock.Restart();
+        _ticker?.Publish("Condor comprende la solicitud");
         _host.SetBusy(true);
         _host.AddActivity(intention, ActivityKind.User);
         _host.SetEstado("Comprendiendo la solicitud", ActivityKind.System);
@@ -143,6 +153,7 @@ public sealed class TuiAgentProgressView : IAgentProgressView
         if (!string.IsNullOrWhiteSpace(progress.Action))
             _host.AddActivity(detalle + (string.IsNullOrWhiteSpace(progress.Path) ? "" : " · " + progress.Path),
                 progress.Phase == AgentPhase.Building ? ActivityKind.CodeEdit : ActivityKind.Analysis);
+        _ticker?.Publish(detalle + (string.IsNullOrWhiteSpace(progress.Action) ? "" : " · " + progress.Action));
     }
 
     public void Stop(bool success, string? finalLine = null)

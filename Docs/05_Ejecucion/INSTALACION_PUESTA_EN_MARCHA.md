@@ -74,11 +74,14 @@ que Condor realiza al iniciar.
 
 ## Diagnostico del servidor local
 
-La comprobacion normal no requiere que ejecutes comandos: al iniciar, Condor
-comprueba si Ollama esta instalado y consulta el servidor local en
+La comprobación normal no requiere que ejecutes comandos: al iniciar, Condor
+comprueba si Ollama está instalado y consulta el servidor local en
 `http://127.0.0.1:11434/api/version`. Si el servidor no responde, Condor intenta
 iniciarlo y vuelve a comprobarlo. La pantalla de arranque informa si Ollama y el
-modelo quedaron listos. `condor /preparar` vuelve a ejecutar esa preparacion.
+modelo quedaron listos. `condor /preparar` vuelve a ejecutar esa preparación.
+Durante el arranque y las interacciones del modelo, una sola línea de estado se
+actualiza en la pantalla de Condor. Para imprimir esos estados como líneas
+normales, sin secuencias ANSI, inicia con `condor --sin-animacion`.
 
 Si Condor aun informa que Ollama Server no esta disponible, la comprobacion
 directa en PowerShell es:
@@ -87,11 +90,11 @@ directa en PowerShell es:
 Invoke-RestMethod -Uri http://127.0.0.1:11434/api/version -TimeoutSec 5
 ```
 
-Una respuesta con `version` confirma que el servidor atiende en la direccion
-local. Un error de conexion significa que no esta escuchando alli. Esta prueba
+Una respuesta con `version` confirma que el servidor atiende en la dirección
+local. Un error de conexión significa que no está escuchando allí. Esta prueba
 solo diagnostica el servidor; que Ollama responda no confirma que un modelo haya
 terminado una respuesta. Condor registra por separado el modelo utilizado y el
-resultado de cada interaccion.
+resultado de cada interacción.
 
 # Preparacion del entorno
 

@@ -35,6 +35,14 @@ public static class Program
             // Si el entorno no permite cambiarlo, seguir con la codificacion activa.
         }
 
+        var sinAnimacion = args.Any(argument =>
+            argument.Equals("--sin-animacion", StringComparison.OrdinalIgnoreCase));
+        if (sinAnimacion)
+        {
+            args = args.Where(argument =>
+                !argument.Equals("--sin-animacion", StringComparison.OrdinalIgnoreCase)).ToArray();
+        }
+
         var assessmentService = new AssessmentService();
         var stateStore = new LocalStateStore();
 
@@ -82,7 +90,7 @@ public static class Program
             if (args.Length == 0)
             {
                 return await RunTuiOrExplainAsync(
-                    assessmentService, stateStore, session, shutdownCts.Token, initialInput: null);
+                    assessmentService, stateStore, session, shutdownCts.Token, initialInput: null, sinAnimacion: sinAnimacion);
             }
 
             // Entrada con parametros (one-shot).
@@ -94,7 +102,7 @@ public static class Program
                 if (slash.Kind is SlashCommandKind.Consultar or SlashCommandKind.Examinar)
                 {
                     return await RunTuiOrExplainAsync(
-                        assessmentService, stateStore, session, shutdownCts.Token, first);
+                        assessmentService, stateStore, session, shutdownCts.Token, first, sinAnimacion);
                 }
 
                 if (slash.Kind != SlashCommandKind.Ayuda)
@@ -121,11 +129,11 @@ public static class Program
             {
                 // Las tareas con modelo se confirman y ejecutan dentro de la TUI.
                 return await RunTuiOrExplainAsync(
-                    assessmentService, stateStore, session, shutdownCts.Token, free.Intention);
+                    assessmentService, stateStore, session, shutdownCts.Token, free.Intention, sinAnimacion);
             }
 
             return await RunTuiOrExplainAsync(
-                assessmentService, stateStore, session, shutdownCts.Token, first);
+                assessmentService, stateStore, session, shutdownCts.Token, first, sinAnimacion);
         }
         finally
         {
@@ -140,7 +148,8 @@ public static class Program
         IStateStore stateStore,
         LocalModelSession session,
         System.Threading.CancellationToken shutdownToken,
-        string? initialInput)
+        string? initialInput,
+        bool sinAnimacion)
     {
         if (!Tui.CondorTui.CanRun(out var tuiWidth, out var tuiHeight))
         {
@@ -150,7 +159,7 @@ public static class Program
         }
 
         return Tui.CondorTui.RunAsync(
-            assessmentService, stateStore, session, shutdownToken, tuiWidth, tuiHeight, initialInput);
+            assessmentService, stateStore, session, shutdownToken, tuiWidth, tuiHeight, initialInput, sinAnimacion);
     }
 
     private static async Task<StartupPrepResult> PrepareOnceAsync(
@@ -388,6 +397,7 @@ public static class Program
         Terminal.WriteLine("Contracciones:");
         WriteHelpCommand("-v, --version", "Muestra la version.");
         WriteHelpCommand("-h, --help", "Muestra esta ayuda.");
+        WriteHelpCommand("--sin-animacion", "Muestra el progreso en líneas simples.");
         Terminal.WriteLine();
         Terminal.WriteDim("No necesitas conocer modelos, herramientas, fases internas ni rutas.");
         Terminal.WriteDim("Escribe lo que necesitas y Condor se encarga del resto.");
