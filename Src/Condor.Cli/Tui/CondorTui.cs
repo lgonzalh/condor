@@ -999,6 +999,8 @@ public static class CondorTui
         return succeeded ? 0 : 1;
     }
 
+    internal const string ExitThanksLine = "Gracias por usar ©Condor 2026.";
+
     private static void PrintExitBanner()
     {
         try
@@ -1016,7 +1018,7 @@ public static class CondorTui
             Console.WriteLine(row);
         }
 
-        Console.WriteLine(Ansi.FgBlanco + "Gracias por usar Condor." + Ansi.Reset);
+        Console.WriteLine(Ansi.FgBlanco + ExitThanksLine + Ansi.Reset);
         Console.WriteLine(Ansi.FgGris + "Hasta pronto." + Ansi.Reset);
     }
 

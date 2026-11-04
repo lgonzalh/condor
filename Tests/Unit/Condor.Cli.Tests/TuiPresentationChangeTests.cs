@@ -79,4 +79,10 @@ public sealed class TuiPresentationChangeTests
         Assert.Equal(2, CondorArt.ExitWordmark[0].Count(pixel => pixel == '█'));
         Assert.All(CondorArt.ExitWordmark.Skip(1), row => Assert.Contains("█", row));
     }
+
+    [Fact]
+    public void Salida_MuestraElCopyrightCompleto()
+    {
+        Assert.Equal("Gracias por usar ©Condor 2026.", CondorTui.ExitThanksLine);
+    }
 }
