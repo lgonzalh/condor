@@ -400,8 +400,8 @@ public class FotogramasTuiTests
         Assert.Contains("CONDOR", frame);
         Assert.Contains("Observa · Comprende · Planifica · Construye · Verifica", frame);
         Assert.Contains("Hecho en Colombia · Modo Local 100%", frame);
-        Assert.Contains("v1.0.0-gamma (Build Gamma) · ©Condor 2026", frame);
-        var versionLine = "v1.0.0-gamma (Build Gamma) · ©Condor 2026";
+        Assert.Contains("v1.0.0-delta (Build Delta) · ©Condor 2026", frame);
+        var versionLine = "v1.0.0-delta (Build Delta) · ©Condor 2026";
         var versionRow = Grid(host.SnapshotFullFrame()).Single(line => line.Contains(versionLine));
         Assert.InRange(Math.Abs(versionRow.IndexOf(versionLine, StringComparison.Ordinal) -
                                 (110 - versionLine.Length) / 2), 0, 0);

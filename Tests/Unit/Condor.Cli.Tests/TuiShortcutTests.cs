@@ -341,8 +341,8 @@ public class TuiShortcutTests
     }
 
     [Fact]
-    public void VersionVisible_IdentificaBuildGamma()
+    public void VersionVisible_IdentificaBuildDelta()
     {
-        Assert.Equal("v1.0.0-gamma (Build Gamma)", Condor.Cli.VersionInfo.DisplayName);
+        Assert.Equal("v1.0.0-delta (Build Delta)", Condor.Cli.VersionInfo.DisplayName);
     }
 }
