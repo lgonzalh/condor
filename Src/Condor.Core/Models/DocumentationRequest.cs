@@ -6,6 +6,7 @@ namespace Condor.Core.Models;
 public sealed class DocumentationRequest
 {
     public string TaskType { get; init; } = "";
+    public string? Model { get; init; }
     public string Intention { get; init; } = "";
     public string WorkingDirectory { get; init; } = "";
     public DateTime StartedAtUtc { get; init; }

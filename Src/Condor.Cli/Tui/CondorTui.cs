@@ -334,15 +334,7 @@ public static class CondorTui
 
                 if (result is not null)
                 {
-                    foreach (var line in SplitLines(AgentRenderer.BuildResultText(result)))
-                    {
-                        if (IsInternalResultLine(line))
-                        {
-                            continue;
-                        }
-
-                        host.AddActivity(line, result.Success ? ResultActivityKind(line) : ActivityKind.Error);
-                    }
+                    AddAgentResultToHistory(host, result);
 
                     host.SetEstado(result.Success ? "Tarea completada" : "No se pudo completar la tarea",
                         result.Success ? ActivityKind.Success : ActivityKind.Error);
@@ -1430,6 +1422,22 @@ public static class CondorTui
         if (text.EndsWith("?", StringComparison.Ordinal))
             return ActivityKind.Question;
         return ActivityKind.Response;
+    }
+
+    internal static void AddAgentResultToHistory(TuiHost host, AgentResult result)
+    {
+        var model = string.IsNullOrWhiteSpace(result.Model) ? "no identificado" : result.Model;
+        host.AddActivity("Modelo usado: " + model, ActivityKind.System);
+
+        foreach (var line in SplitLines(AgentRenderer.BuildResultText(result)))
+        {
+            if (IsInternalResultLine(line))
+            {
+                continue;
+            }
+
+            host.AddActivity(line, result.Success ? ResultActivityKind(line) : ActivityKind.Error);
+        }
     }
 
     private static bool IsInternalResultLine(string line)

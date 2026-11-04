@@ -17,6 +17,7 @@ public class DocumentingAgentServiceTests
             var original = new AgentResult
             {
                 Success = true,
+                Model = "qwen2.5-coder:7b",
                 Objective = "actualizar una clase",
                 Reason = "La tarea termino.",
                 Steps = new List<AgentStep>
@@ -45,6 +46,7 @@ public class DocumentingAgentServiceTests
             var reportPath = Path.Combine(root, result.Documentation.RelativePath!.Replace('/', Path.DirectorySeparatorChar));
             Assert.True(File.Exists(reportPath));
             var content = await File.ReadAllTextAsync(reportPath, new System.Text.UTF8Encoding(false, true));
+            Assert.Contains("Modelo usado: qwen2.5-coder:7b", content);
             Assert.Contains("## Antes", content);
             Assert.Contains("## Durante", content);
             Assert.Contains("## Despues", content);

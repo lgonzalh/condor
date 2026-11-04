@@ -8,6 +8,26 @@ namespace Condor.Cli.Tests;
 public class TuiModelInteractionTests
 {
     [Fact]
+    public void HistorialDeTarea_MuestraElModeloQueGeneroLaRespuesta()
+    {
+        using var host = new TuiHost(110, 34);
+        host.Enter();
+        host.ShowSession("granite4.2:3b");
+
+        CondorTui.AddAgentResultToHistory(host, new AgentResult
+        {
+            Success = true,
+            Model = "granite4.2:3b",
+            Reason = "Respuesta generada por el modelo."
+        });
+
+        var frame = Ansi.StripSgr(host.SnapshotFullFrame());
+
+        Assert.Contains("Modelo usado: granite4.2:3b", frame);
+        Assert.Contains("Respuesta generada por el modelo.", frame);
+    }
+
+    [Fact]
     public async Task ConsultInTuiAsync_MuestraLaRespuestaDentroDeLaPantallaYUsaElModeloActivo()
     {
         using var host = new TuiHost(110, 34);

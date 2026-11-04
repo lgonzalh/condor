@@ -45,6 +45,7 @@ public sealed class DocumentingAgentService : IAgentService
         var request = new DocumentationRequest
         {
             TaskType = "Agente en lenguaje natural",
+            Model = result.Model,
             Intention = intention,
             WorkingDirectory = workingDirectory,
             StartedAtUtc = startedAtUtc,

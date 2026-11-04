@@ -142,6 +142,7 @@ public sealed class DocumenterService : IDocumenter
         builder.AppendLine("# Informe de tarea de Condor");
         builder.AppendLine();
         builder.AppendLine($"- Tipo: {Escape(request.TaskType)}");
+        builder.AppendLine($"- Modelo usado: {Escape(string.IsNullOrWhiteSpace(request.Model) ? "no identificado" : request.Model)}");
         builder.AppendLine($"- Resultado: {Escape(request.Outcome)}");
         builder.AppendLine($"- Generado UTC: {generatedAtUtc:O}");
         builder.AppendLine();
