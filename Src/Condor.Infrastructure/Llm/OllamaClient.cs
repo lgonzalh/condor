@@ -134,16 +134,17 @@ public class OllamaClient : ILlmClient, ILlmProviderDiagnostics
             }
 
             var body = await response.Content.ReadFromJsonAsync<OllamaChatResponse>(cancellationToken);
-            if (body?.Message?.Content is null)
+            var responseContent = body?.Message?.Content;
+            if (string.IsNullOrWhiteSpace(responseContent))
             {
-                return Failed(LlmOutcome.InvalidResponse, "El servidor de Ollama no devolvio contenido");
+                return Failed(LlmOutcome.InvalidResponse, "El servidor de Ollama no devolvio contenido de texto para este modelo.");
             }
 
             return new LlmResponse
             {
                 Success = true,
-                Content = body.Message.Content,
-                Model = body.Model,
+                Content = responseContent,
+                Model = body?.Model,
                 Outcome = LlmOutcome.Ok
             };
         }

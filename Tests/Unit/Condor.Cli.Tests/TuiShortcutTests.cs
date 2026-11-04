@@ -309,6 +309,18 @@ public class TuiShortcutTests
     }
 
     [Fact]
+    public void ModeloSinCapacidadesDeclaradas_IniciaEnPreguntarYPermiteSeleccionarlo()
+    {
+        var model = new ModelInfo { Name = "granite4.2:3b" };
+
+        var options = CondorTui.BuildAgentOptions(model).ToDictionary(option => option.Id);
+
+        Assert.False(options["preguntar"].Disabled);
+        Assert.Equal("preguntar", CondorTui.ResolveAgentModeForModel("codificar", model));
+        Assert.Equal("preguntar", CondorTui.ResolveAgentModeForModel("codificar", null));
+    }
+
+    [Fact]
     public void CapacidadesSeMuestranConEtiquetasBreves()
     {
         var labels = CondorTui.DescribeModelCapabilities(new ModelInfo

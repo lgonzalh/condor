@@ -12,6 +12,7 @@ using Condor.Infrastructure.DependencyBootstrap;
 using Condor.Infrastructure.Detection;
 using Condor.Infrastructure.Documentation;
 using Condor.Infrastructure.Llm;
+using Condor.Infrastructure.Planning;
 using Condor.Infrastructure.Setup;
 using Condor.Infrastructure.Vision;
 
@@ -572,6 +573,17 @@ public static class CondorTui
                             input.Render();
                             break;
 
+                        case SlashRoute slash when slash.Kind == SlashCommandKind.Planear:
+                            host.AddActivity(text, ActivityKind.User);
+                            exitCode = await PlanInTuiAsync(
+                                host,
+                                new PlanService(stateStore),
+                                stateStore,
+                                slash.Arguments,
+                                shutdownToken);
+                            input.Render();
+                            break;
+
                         case SlashRoute slash:
                             // Los demas comandos "/" conservan su presentacion establecida:
                             // la pantalla TUI se suspende y retoma intacta.
@@ -604,6 +616,18 @@ public static class CondorTui
                                         stateStore,
                                         new VisionService(stateStore, session: session),
                                         session.ActiveModel,
+                                        modeSlash.Arguments,
+                                        shutdownToken);
+                                    input.Render();
+                                    break;
+                                }
+
+                                if (modeSlash.Kind == SlashCommandKind.Planear)
+                                {
+                                    exitCode = await PlanInTuiAsync(
+                                        host,
+                                        new PlanService(stateStore),
+                                        stateStore,
                                         modeSlash.Arguments,
                                         shutdownToken);
                                     input.Render();
@@ -740,9 +764,10 @@ public static class CondorTui
 
         try
         {
-            var response = await llmClient.CompleteAsync(
+            var pendingResponse = llmClient.CompleteAsync(
                 new LlmRequest { Model = activeModel, Prompt = prompt },
-                cancellationToken).ConfigureAwait(true);
+                cancellationToken);
+            var response = await WaitWithTuiAsync(host, pendingResponse).ConfigureAwait(true);
 
             if (!response.Success)
             {
@@ -752,17 +777,19 @@ public static class CondorTui
             }
 
             var content = response.Content ?? "";
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                host.AddActivity("El modelo no devolvió contenido de texto para esta consulta.", ActivityKind.Error);
+                host.SetEstado("El modelo no devolvió una respuesta", ActivityKind.Error);
+                return 1;
+            }
+
             foreach (var line in SplitLines(content))
             {
                 if (!string.IsNullOrWhiteSpace(line))
                 {
                     host.AddActivity(line, ActivityKind.Response);
                 }
-            }
-
-            if (string.IsNullOrWhiteSpace(content))
-            {
-                host.AddActivity("El modelo no devolvio contenido.", ActivityKind.Warning);
             }
 
             host.SetEstado("Consulta completada", ActivityKind.Success);
@@ -787,6 +814,110 @@ public static class CondorTui
             host.SetProgreso(FormatoTiempo(watch.Elapsed));
             host.SetModelStatus(activeModel + " · listo", working: false);
         }
+    }
+
+    internal static async Task<int> PlanInTuiAsync(
+        TuiHost host,
+        IPlanService planService,
+        IStateStore stateStore,
+        string[] args,
+        CancellationToken cancellationToken)
+    {
+        var request = string.Join(" ", args).Trim();
+        if (string.IsNullOrWhiteSpace(request))
+        {
+            host.AddActivity("Uso: /planear <objetivo>", ActivityKind.Warning);
+            host.SetEstado("Falta el objetivo del plan", ActivityKind.Warning);
+            return 1;
+        }
+
+        host.SetBusy(true);
+        host.SetEstado("Creando plan con Condor", ActivityKind.System);
+        host.SetProgreso("—");
+
+        try
+        {
+            var plan = await WaitWithTuiAsync(host, planService.BuildPlanAsync(request, cancellationToken))
+                .ConfigureAwait(true);
+            await stateStore.SavePlanAsync(plan, cancellationToken).ConfigureAwait(true);
+            return RenderPlanInTui(host, plan);
+        }
+        catch (OperationCanceledException)
+        {
+            host.AddActivity("Creación del plan cancelada.", ActivityKind.Warning);
+            host.SetEstado("Plan cancelado", ActivityKind.Warning);
+            return 130;
+        }
+        catch (Exception ex)
+        {
+            host.AddActivity("No se pudo crear el plan: " + ShortReason(ex), ActivityKind.Error);
+            host.SetEstado("No se pudo crear el plan", ActivityKind.Error);
+            return 1;
+        }
+        finally
+        {
+            host.SetBusy(false);
+            host.SetProgreso("—");
+        }
+    }
+
+    internal static int RenderPlanInTui(TuiHost host, WorkPlan plan)
+    {
+        var succeeded = plan.Status != DetectionStatus.NotDetected;
+        var resultKind = succeeded ? ActivityKind.Response : ActivityKind.Error;
+        host.AddActivity(succeeded ? "Condor generó el plan de trabajo." : "No hay plan disponible.", resultKind);
+        host.AddActivity("PLAN", ActivityKind.System);
+        host.AddActivity("Estado: " + (plan.Status switch
+        {
+            DetectionStatus.Detected => "detectado",
+            DetectionStatus.NotDetected => "no detectado",
+            DetectionStatus.Limited => "limitado",
+            _ => "error"
+        }), resultKind);
+        host.AddActivity("Proyecto: " + (string.IsNullOrWhiteSpace(plan.RootName)
+            ? "(sin proyecto)"
+            : plan.RootName + " - " + plan.WorkingDirectory), ActivityKind.System);
+        host.AddActivity("Intención: " + plan.Intention, ActivityKind.System);
+        host.AddActivity("Objetivo: " + (string.IsNullOrWhiteSpace(plan.Objective) ? "(sin objetivo)" : plan.Objective), ActivityKind.System);
+        host.AddActivity("Tareas: " + (plan.Tasks.Count > 0 ? plan.Tasks.Count.ToString() : "ninguna"), ActivityKind.System);
+
+        foreach (var task in plan.Tasks)
+        {
+            var depends = task.DependsOn.Count > 0 ? " (después de " + string.Join(", ", task.DependsOn) + ")" : "";
+            host.AddActivity("- [" + task.Priority + "] " + task.Id + " " + task.Title + depends, ActivityKind.Response);
+            if (!string.IsNullOrWhiteSpace(task.Detail))
+            {
+                host.AddActivity("  detalle: " + task.Detail, ActivityKind.System);
+            }
+        }
+
+        host.AddActivity("Recomendaciones: " + (plan.Evidence.Count > 0 ? plan.Evidence.Count.ToString() : "ninguna"), ActivityKind.System);
+        host.AddActivity("Riesgos: " + (plan.RisksConsidered.Count > 0 ? plan.RisksConsidered.Count.ToString() : "ninguno"), ActivityKind.System);
+        host.AddActivity("Límites aplicados: " + (plan.LimitsApplied.Count > 0
+            ? string.Join(", ", plan.LimitsApplied)
+            : "ninguno"), ActivityKind.System);
+
+        if (plan.Status != DetectionStatus.Detected && !string.IsNullOrWhiteSpace(plan.Reason))
+        {
+            host.AddActivity("Plan: " + plan.Reason, succeeded ? ActivityKind.Warning : ActivityKind.Error);
+        }
+
+        host.SetEstado(succeeded ? "Plan creado" : "No hay plan disponible",
+            succeeded ? ActivityKind.Success : ActivityKind.Error);
+        return succeeded ? 0 : 1;
+    }
+
+    private static async Task<T> WaitWithTuiAsync<T>(TuiHost host, Task<T> operation)
+    {
+        while (!operation.IsCompleted)
+        {
+            host.HandleResizeIfNeeded();
+            host.Tick();
+            host.Repaint();
+            await Task.WhenAny(operation, Task.Delay(40)).ConfigureAwait(true);
+        }
+
+        return await operation.ConfigureAwait(true);
     }
 
     private static async Task<int> ExamineInTuiAsync(
@@ -947,7 +1078,7 @@ public static class CondorTui
                 Array.Empty<string>(), Disabled: !canCode, DisabledReason: canCode ? null : CodingReason(), Shortcut: "Enter"),
             new SelectItem(
                 AskAgentId, "Preguntar", "Consulta al modelo activo sin ejecutar cambios.",
-                Array.Empty<string>(), Disabled: !hasCompletion, DisabledReason: hasCompletion ? null : CompletionReason(), Shortcut: "Enter"),
+                Array.Empty<string>(), Disabled: false, DisabledReason: null, Shortcut: "Enter"),
             new SelectItem(
                 DebugAgentId, "Depurar", "Investiga el fallo y valida una corrección con herramientas.",
                 Array.Empty<string>(), Disabled: !canCode, DisabledReason: canCode ? null : CodingReason(), Shortcut: "Enter"),

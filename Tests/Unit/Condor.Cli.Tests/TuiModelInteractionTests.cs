@@ -1,6 +1,7 @@
 using Condor.Cli.Tui;
 using Condor.Core.Contracts;
 using Condor.Core.Models;
+using Condor.Infrastructure.State;
 
 namespace Condor.Cli.Tests;
 
@@ -95,6 +96,84 @@ public class TuiModelInteractionTests
     }
 
     [Fact]
+    public async Task ConsultInTuiAsync_ModeloSinContenidoMuestraElErrorDentroDeCondor()
+    {
+        using var host = new TuiHost(110, 34);
+        host.Enter();
+        host.ShowSession("granite4.2:3b");
+        var llm = new RecordingLlmClient(new LlmResponse
+        {
+            Success = true,
+            Model = "granite4.2:3b",
+            Content = "  "
+        });
+
+        var exitCode = await CondorTui.ConsultInTuiAsync(
+            host,
+            llm,
+            "granite4.2:3b",
+            new[] { "¿puedes ayudarme?" },
+            CancellationToken.None);
+
+        var frame = host.SnapshotFullFrame();
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("El modelo no devolvió una respuesta", frame);
+        Assert.DoesNotContain("Consulta completada", frame);
+    }
+
+    [Fact]
+    public async Task PlanInTuiAsync_MuestraYGuardaElResultadoDentroDeCondor()
+    {
+        var stateRoot = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "condor-tui-" + Guid.NewGuid().ToString("N")));
+        var store = new LocalStateStore(stateRoot);
+        var plan = new WorkPlan
+        {
+            Status = DetectionStatus.Detected,
+            Intention = "crear",
+            Objective = "Crear una aplicación mensual",
+            Tasks = new List<PlanTask>
+            {
+                new() { Id = "T0", Priority = "alta", Title = "Preparar el proyecto", Detail = "Crear la estructura inicial." }
+            }
+        };
+        var service = new FixedPlanService(plan);
+
+        using var host = new TuiHost(110, 34);
+        host.Enter();
+        host.ShowSession("granite4.2:3b");
+
+        try
+        {
+            var exitCode = await CondorTui.PlanInTuiAsync(
+                host,
+                service,
+                store,
+                new[] { "crear", "una", "aplicación" },
+                CancellationToken.None);
+
+            host.Repaint();
+            var frame = host.SnapshotFullFrame();
+            var savedPlan = await store.LoadPlanAsync();
+
+            Assert.Equal(0, exitCode);
+            Assert.Equal("crear una aplicación", service.LastRequest);
+            Assert.NotNull(savedPlan);
+            Assert.Contains("Condor generó el plan de trabajo.", frame);
+            Assert.Contains("Crear una aplicación mensual", frame);
+            Assert.Contains("Preparar el proyecto", frame);
+        }
+        finally
+        {
+            var tempRoot = Path.GetFullPath(Path.GetTempPath());
+            if (stateRoot.StartsWith(tempRoot, StringComparison.OrdinalIgnoreCase) && Directory.Exists(stateRoot))
+            {
+                Directory.Delete(stateRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void RenderVisionResultInTui_MuestraLaRespuestaYModeloEnLaPantalla()
     {
         using var host = new TuiHost(110, 34);
@@ -130,6 +209,17 @@ public class TuiModelInteractionTests
         {
             LastRequest = request;
             return Task.FromResult(response);
+        }
+    }
+
+    private sealed class FixedPlanService(WorkPlan plan) : IPlanService
+    {
+        public string? LastRequest { get; private set; }
+
+        public Task<WorkPlan> BuildPlanAsync(string userRequest, CancellationToken cancellationToken = default)
+        {
+            LastRequest = userRequest;
+            return Task.FromResult(plan);
         }
     }
 }

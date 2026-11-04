@@ -97,6 +97,25 @@ public class OllamaClientTestsConSimulacion
         Assert.Equal("modelo", response.Model);
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task CompleteAsync_SinContenidoDeTexto_DevuelveError(string content)
+    {
+        var json = "{\"model\":\"modelo\",\"message\":{\"role\":\"assistant\",\"content\":\"" + content + "\"}}";
+        var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(json, Encoding.UTF8, "application/json")
+        });
+        var client = new OllamaClient(new HttpClient(handler));
+
+        var response = await client.CompleteAsync(new LlmRequest { Model = "modelo", Prompt = "hola" });
+
+        Assert.False(response.Success);
+        Assert.Equal(LlmOutcome.InvalidResponse, response.Outcome);
+        Assert.Contains("contenido de texto", response.Error);
+    }
+
     [Fact]
     public async Task CompleteAsync_EnviaPeticionAlEndpointLocal()
     {
