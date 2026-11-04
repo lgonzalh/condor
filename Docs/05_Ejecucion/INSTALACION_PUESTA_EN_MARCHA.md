@@ -57,7 +57,7 @@ usar una sola linea:
 - `condor "revisa por que no compila este proyecto"`
 - `condor "continua el desarrollo de esta aplicacion"`
 
-Los comandos de control explicitos (diagnostico) usan "/":
+Los comandos de control explicitos para el proyecto usan "/":
 
 - `condor /analizar`      Analiza el proyecto o directorio actual.
 - `condor /contexto`      Reconstruye el contexto del proyecto.
@@ -67,10 +67,31 @@ Los comandos de control explicitos (diagnostico) usan "/":
 - `condor /ayuda`         Muestra los comandos de control.
 - `condor /salir`         Termina la sesion interactiva.
 
-`/analizar` analiza el proyecto/directorio (estructura, contenido y senales).
-El analisis de hardware, RAM, almacenamiento, GPU, Ollama y modelos forma parte
-de la preparacion automatica que Condor realiza al iniciar; no pertenece a
-ningun comando del usuario.
+`/analizar` analiza el proyecto/directorio (estructura, contenido y senales); no
+comprueba el servidor local de Ollama. El analisis de hardware, RAM,
+almacenamiento, GPU, Ollama y modelos forma parte de la preparacion automatica
+que Condor realiza al iniciar.
+
+## Diagnostico del servidor local
+
+La comprobacion normal no requiere que ejecutes comandos: al iniciar, Condor
+comprueba si Ollama esta instalado y consulta el servidor local en
+`http://127.0.0.1:11434/api/version`. Si el servidor no responde, Condor intenta
+iniciarlo y vuelve a comprobarlo. La pantalla de arranque informa si Ollama y el
+modelo quedaron listos. `condor /preparar` vuelve a ejecutar esa preparacion.
+
+Si Condor aun informa que Ollama Server no esta disponible, la comprobacion
+directa en PowerShell es:
+
+```powershell
+Invoke-RestMethod -Uri http://127.0.0.1:11434/api/version -TimeoutSec 5
+```
+
+Una respuesta con `version` confirma que el servidor atiende en la direccion
+local. Un error de conexion significa que no esta escuchando alli. Esta prueba
+solo diagnostica el servidor; que Ollama responda no confirma que un modelo haya
+terminado una respuesta. Condor registra por separado el modelo utilizado y el
+resultado de cada interaccion.
 
 # Preparacion del entorno
 
