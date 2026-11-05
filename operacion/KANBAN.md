@@ -253,3 +253,5 @@ Validación adicional 2026-11-05: la ampliación del TUI simulado con el error d
 **Continuidad T-022 — 2026-11-05:** CAP-040 ya implementada y revalidada: el formato detectó una infracción temporal con errores `WHITESPACE` y código 2; retirado el archivo de prueba, whitespace y style error pasan sobre la solución completa. `git diff --check` también pasa.
 
 **Continuidad T-022 — 2026-11-05:** CAP-041/042 ya implementadas y revalidadas: `CS0029` en el fixture impide el cierre (AgentHarnessTests 9/9), y build Release completo pasa con 0 advertencias/errores en salida aislada. Fase 4 sigue pendiente.
+
+**Continuidad T-022 — 2026-11-05:** CAP-043, secuencia local de CI: formato, estilo, build Release (0 advertencias/errores) y suites 873/873. Infraestructura pasó 417/417 al usar un worktree llamado `condor`, como exige una prueba E2E de detección. La ejecución GitHub sigue pendiente y la protección de rama no se ha podido confirmar.
