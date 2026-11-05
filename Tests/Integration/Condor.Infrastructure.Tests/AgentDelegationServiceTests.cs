@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using Condor.Cli.Tui;
 using Condor.Core.Contracts;
 using Condor.Core.Models;
 using Condor.Infrastructure.Agent;
@@ -108,6 +109,21 @@ public sealed class AgentDelegationServiceTests
                     progress.Message.Contains("s; archivos:", StringComparison.Ordinal) &&
                     progress.Message.Contains("Shared.md", StringComparison.Ordinal));
             }
+            using var host = new TuiHost(forceInteractive: true);
+            host.Enter();
+            host.ShowSession("qwen2.5-coder:3b");
+            var progressView = new TuiAgentProgressView(host);
+            progressView.Start("Validar supervisión de subagentes");
+            foreach (var finalEvent in progressEvents
+                         .Where(progress => progress.Action == "subagente" && progress.Message!.Contains("completado;", StringComparison.Ordinal))
+                         .OrderBy(progress => progress.Path, StringComparer.Ordinal))
+                progressView.Report(finalEvent);
+
+            var renderedProgress = Ansi.StripSgr(host.SnapshotFullFrame());
+            Assert.Contains("Subagente a: completado;", renderedProgress, StringComparison.Ordinal);
+            Assert.Contains("Subagente b: completado;", renderedProgress, StringComparison.Ordinal);
+            Assert.Contains("s; archivos:", renderedProgress, StringComparison.Ordinal);
+            Assert.Contains("Shared.md", renderedProgress, StringComparison.Ordinal);
 
             Assert.Equal("cambio local\n", await File.ReadAllTextAsync(Path.Combine(root, "README.md")));
             Assert.Equal("pendiente A\n", await File.ReadAllTextAsync(Path.Combine(root, "WorkerA.md")));
