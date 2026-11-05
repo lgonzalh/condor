@@ -33,4 +33,19 @@ public sealed class ReviewerBenchmarkCommandTests
         Assert.Contains("Benchmark incompleto por errores de ejecución", message);
         Assert.DoesNotContain("No se guardó una línea base", message);
     }
+
+    [Fact]
+    public void SelectCompatibleBaseline_ExigeMismaVersionYHashDePrompt()
+    {
+        var baseline = new Condor.Core.Models.ReviewerBenchmarkRun
+        {
+            SuiteVersion = "reviewer-v2",
+            PromptHash = "prompt-anterior",
+            Model = "modelo-base"
+        };
+
+        Assert.Null(ReviewerBenchmarkCommand.SelectCompatibleBaseline(baseline, "reviewer-v2", "prompt-nuevo"));
+        Assert.Null(ReviewerBenchmarkCommand.SelectCompatibleBaseline(baseline, "reviewer-v3", "prompt-anterior"));
+        Assert.Same(baseline, ReviewerBenchmarkCommand.SelectCompatibleBaseline(baseline, "reviewer-v2", "prompt-anterior"));
+    }
 }

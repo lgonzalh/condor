@@ -25,6 +25,7 @@ public sealed class ReviewerBenchmarkRunnerTests
             Assert.Equal("modelo-prueba", request.Model);
             Assert.Equal(0, request.Temperature);
             Assert.Contains("reviewFindings", request.Prompt);
+            Assert.Contains("no digas que falta un método, condición o validación si aparece en el código", request.Prompt, StringComparison.OrdinalIgnoreCase);
         });
         Assert.Equal(3, score.TruePositives);
         Assert.Equal(0, score.FalsePositives);

@@ -103,6 +103,7 @@ public class ModelPromptBuilderTests
         Assert.Contains("interfaces, llamadores o dependientes", prompt, System.StringComparison.OrdinalIgnoreCase);
         Assert.Contains("componentes relacionados", prompt, System.StringComparison.OrdinalIgnoreCase);
         Assert.Contains("origen uncertain", prompt, System.StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("no afirmes que falta un método, condición o validación si está presente", prompt, System.StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

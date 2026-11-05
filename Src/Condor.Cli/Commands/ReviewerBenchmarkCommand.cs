@@ -47,6 +47,7 @@ public static class ReviewerBenchmarkCommand
         var run = await new ReviewerBenchmarkRunner(llm)
             .RunAsync(model, Console.WriteLine, cancellationToken)
             .ConfigureAwait(false);
+        baseline = SelectCompatibleBaseline(baseline, run.SuiteVersion, run.PromptHash);
         run.BaselineModel = baseline?.Model;
         run.BaselinePromptHash = baseline?.PromptHash;
         var score = ReviewerBenchmarkEvaluator.Score(ReviewerBenchmarkSuite.Cases, run, baseline);
@@ -93,4 +94,14 @@ public static class ReviewerBenchmarkCommand
             ? message
             : message + Environment.NewLine + "No se guardó una línea base porque el resultado no fue perfecto.";
     }
+
+    internal static ReviewerBenchmarkRun? SelectCompatibleBaseline(
+        ReviewerBenchmarkRun? baseline,
+        string suiteVersion,
+        string promptHash) =>
+        baseline is not null &&
+        string.Equals(baseline.SuiteVersion, suiteVersion, StringComparison.Ordinal) &&
+        string.Equals(baseline.PromptHash, promptHash, StringComparison.Ordinal)
+            ? baseline
+            : null;
 }
