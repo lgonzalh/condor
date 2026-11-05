@@ -10,9 +10,10 @@ namespace Condor.Infrastructure.Agent;
 public sealed class ReviewerBenchmarkRunner(ILlmClient llm)
 {
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(45);
+    private const string RequestContract = "temperature=0;maxTokens=2048;requireJson=true";
 
     private const string PromptTemplate = """
-        Revisa este fragmento de código como revisor de cambios de software. Identifica solo defectos concretos y reproducibles; evita sugerencias de estilo. El código es un caso de evaluación autocontenido: no supongas archivos externos. Comprueba cada afirmación contra el fragmento: no digas que falta un método, condición o validación si aparece en el código. Sigue exactamente las ramas, operadores y cambios de valor; prueba mentalmente entradas concretas antes de concluir. La evidencia debe citar el texto que causa el defecto y la reproducción debe ser coherente con él. Distingue autenticación de autorización y propiedad. Si no puedes demostrar el defecto con el código disponible, devuelve una lista vacía. Devuelve únicamente JSON con esta forma: {"reviewFindings":[{"path":"ruta","line":1,"severity":"critical|high|medium|low","explanation":"defecto e impacto","evidence":"texto literal","reproduction":"paso reproducible","origin":"current-change","status":"open"}]}. Si el caso no tiene defectos, devuelve {"reviewFindings":[]}.
+        Revisa este fragmento de código como revisor de cambios de software. Identifica solo defectos concretos y reproducibles; evita sugerencias de estilo. El código es un caso de evaluación autocontenido y muestra íntegra la implementación examinada; no supongas archivos externos ni métodos omitidos. Comprueba que la evidencia literal respalde y no contradiga cada explicación. No digas que falta un método, condición o validación si aparece en el código. Sigue las ramas, operadores y cambios de valor; evalúa cada rama booleana por separado y prueba valores negativos, cero y límites válidos antes de concluir. La reproducción debe ser coherente con el código. Distingue autenticación de autorización y propiedad. Si no puedes demostrar un defecto concreto con el código disponible, devuelve una lista vacía. Devuelve únicamente JSON con esta forma: {"reviewFindings":[{"path":"ruta","line":1,"severity":"critical|high|medium|low","explanation":"defecto e impacto","evidence":"texto literal","reproduction":"paso reproducible","origin":"current-change","status":"open"}]}. Si el caso no tiene defectos, devuelve {"reviewFindings":[]}.
 
         """;
 
@@ -27,7 +28,7 @@ public sealed class ReviewerBenchmarkRunner(ILlmClient llm)
         {
             SuiteVersion = ReviewerBenchmarkSuite.Version,
             Model = model,
-            PromptHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(ReviewerBenchmarkSuite.Version + AgentProfileCatalog.Reviewer.Instructions + PromptTemplate))),
+            PromptHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(ReviewerBenchmarkSuite.Version + AgentProfileCatalog.Reviewer.Instructions + PromptTemplate + RequestContract))),
             ExecutedAtUtc = DateTimeOffset.UtcNow
         };
 
@@ -49,7 +50,8 @@ public sealed class ReviewerBenchmarkRunner(ILlmClient llm)
                     Model = model,
                     Prompt = prompt,
                     Temperature = 0,
-                    MaxTokens = 2048
+                    MaxTokens = 2048,
+                    RequireJson = true
                 }, requestCts.Token).ConfigureAwait(false);
 
                 if (!response.Success || string.IsNullOrWhiteSpace(response.Content))

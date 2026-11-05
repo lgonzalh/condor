@@ -104,6 +104,7 @@ public class ModelPromptBuilderTests
         Assert.Contains("componentes relacionados", prompt, System.StringComparison.OrdinalIgnoreCase);
         Assert.Contains("origen uncertain", prompt, System.StringComparison.OrdinalIgnoreCase);
         Assert.Contains("no afirmes que falta un método, condición o validación si está presente", prompt, System.StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("la evidencia debe citar el código que produce el comportamiento y no debe contradecir la explicación", prompt, System.StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

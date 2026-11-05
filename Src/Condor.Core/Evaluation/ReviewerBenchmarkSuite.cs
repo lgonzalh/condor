@@ -5,7 +5,10 @@ namespace Condor.Core.Evaluation;
 /// <summary>Casos versionados de defectos conocidos y un caso limpio para calibrar al revisor.</summary>
 public static class ReviewerBenchmarkSuite
 {
-    public const string Version = "reviewer-v3";
+    // La versión representa los casos y las reglas de puntuación. Los cambios
+    // de instrucciones se distinguen mediante PromptHash y se comparan contra
+    // la línea base para medir si mejoran el revisor.
+    public const string Version = "reviewer-v2";
 
     public static IReadOnlyList<ReviewerBenchmarkCase> Cases { get; } = new[]
     {

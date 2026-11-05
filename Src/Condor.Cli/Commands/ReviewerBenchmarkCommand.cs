@@ -32,7 +32,7 @@ public static class ReviewerBenchmarkCommand
                 baseline = JsonSerializer.Deserialize<ReviewerBenchmarkRun>(
                     await File.ReadAllTextAsync(baselinePath, cancellationToken).ConfigureAwait(false),
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                if (baseline?.SuiteVersion != ReviewerBenchmarkSuite.Version) baseline = null;
+                if (!IsBaselineScoringCompatible(baseline, ReviewerBenchmarkSuite.Version)) baseline = null;
             }
             catch (JsonException)
             {
@@ -47,7 +47,6 @@ public static class ReviewerBenchmarkCommand
         var run = await new ReviewerBenchmarkRunner(llm)
             .RunAsync(model, Console.WriteLine, cancellationToken)
             .ConfigureAwait(false);
-        baseline = SelectCompatibleBaseline(baseline, run.SuiteVersion, run.PromptHash);
         run.BaselineModel = baseline?.Model;
         run.BaselinePromptHash = baseline?.PromptHash;
         var score = ReviewerBenchmarkEvaluator.Score(ReviewerBenchmarkSuite.Cases, run, baseline);
@@ -61,8 +60,11 @@ public static class ReviewerBenchmarkCommand
         var temporaryPath = latestPath + ".tmp";
         await File.WriteAllTextAsync(temporaryPath, json, cancellationToken).ConfigureAwait(false);
         File.Move(temporaryPath, latestPath, overwrite: true);
-        var hasPerfectScore = run.Cases.All(result => result.Error is null) && score.FalseNegatives == 0 && score.FalsePositives == 0;
-        if (hasPerfectScore && (baseline is null || args.Contains("--actualizar-base", StringComparer.OrdinalIgnoreCase)))
+        var hasCompleteRun = run.Cases.All(result => result.Error is null);
+        var hasPerfectScore = hasCompleteRun && score.FalseNegatives == 0 && score.FalsePositives == 0;
+        var updateBaselineRequested = args.Contains("--actualizar-base", StringComparer.OrdinalIgnoreCase);
+        var saveBaseline = ShouldSaveBaseline(hasCompleteRun, hasPerfectScore, baseline is not null, updateBaselineRequested);
+        if (saveBaseline)
         {
             var baselineTemporaryPath = baselinePath + ".tmp";
             await File.WriteAllTextAsync(baselineTemporaryPath, json, cancellationToken).ConfigureAwait(false);
@@ -81,27 +83,32 @@ public static class ReviewerBenchmarkCommand
             score.FalsePositives,
             score.FalseNegatives,
             score.Regressions,
-            errors));
+            errors,
+            baselineSaved: saveBaseline));
         Console.Error.WriteLine(reportPath);
         return 1;
     }
 
-    internal static string FormatNonPerfectMessage(int truePositives, int falsePositives, int falseNegatives, int regressions, int errors)
+    internal static string FormatNonPerfectMessage(
+        int truePositives,
+        int falsePositives,
+        int falseNegatives,
+        int regressions,
+        int errors,
+        bool baselineSaved = false)
     {
         var resultStatus = errors > 0 ? "incompleto por errores de ejecución" : "completo, pero no perfecto";
         var message = $"Benchmark {resultStatus}: TP {truePositives}, FP {falsePositives}, FN {falseNegatives}, regresiones {regressions}, errores {errors}.";
         return errors > 0
             ? message
-            : message + Environment.NewLine + "No se guardó una línea base porque el resultado no fue perfecto.";
+            : message + Environment.NewLine + (baselineSaved
+                ? "Se guardó la línea base de comparación solicitada; conserva este puntaje como referencia, no como aprobación de calidad."
+                : "No se guardó una línea base porque el resultado no fue perfecto.");
     }
 
-    internal static ReviewerBenchmarkRun? SelectCompatibleBaseline(
-        ReviewerBenchmarkRun? baseline,
-        string suiteVersion,
-        string promptHash) =>
-        baseline is not null &&
-        string.Equals(baseline.SuiteVersion, suiteVersion, StringComparison.Ordinal) &&
-        string.Equals(baseline.PromptHash, promptHash, StringComparison.Ordinal)
-            ? baseline
-            : null;
+    internal static bool ShouldSaveBaseline(bool complete, bool perfect, bool hasBaseline, bool updateRequested) =>
+        complete && (updateRequested || (perfect && !hasBaseline));
+
+    internal static bool IsBaselineScoringCompatible(ReviewerBenchmarkRun? baseline, string currentSuiteVersion) =>
+        baseline is not null && string.Equals(baseline.SuiteVersion, currentSuiteVersion, StringComparison.Ordinal);
 }

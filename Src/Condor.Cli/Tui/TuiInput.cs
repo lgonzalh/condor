@@ -752,6 +752,7 @@ public sealed class TuiInput
         "/consultar" => "Consultar al modelo local",
         "/contexto" => "Consultar el contexto del proyecto",
         "/examinar" => "Analizar una imagen local",
+        "/evaluar-revisor" => "Comparar revisión; --actualizar-base guarda referencia",
         "/model" or "/modelo" or "/models" => "Cambiar el modelo local",
         "/planear" => "Crear un plan de trabajo",
         "/preparar" => "Comprobar dependencias y modelo",
