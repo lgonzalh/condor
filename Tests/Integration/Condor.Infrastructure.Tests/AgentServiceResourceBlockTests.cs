@@ -1791,6 +1791,7 @@ public class AgentServiceResourceBlockTests
         {
             var store = new LocalStateStore(stateRoot);
             const string changeId = "CAP064-SERVICE-LINK";
+            const string incidentId = "CAP064-SERVICE-INCIDENT";
             await store.SaveDeliveryMetricsAsync(projectRoot, new DeliveryMetricsState
             {
                 Changes =
@@ -1799,6 +1800,12 @@ public class AgentServiceResourceBlockTests
                     {
                         ChangeId = changeId,
                         StartedAtUtc = DateTimeOffset.UtcNow
+                    },
+                    new DeliveryChangeRecord
+                    {
+                        ChangeId = incidentId,
+                        FailedAtUtc = DateTimeOffset.UtcNow,
+                        FailureReason = "Fallo de prueba"
                     }
                 }
             });
@@ -1828,15 +1835,22 @@ public class AgentServiceResourceBlockTests
                 CreateModelAutoSetup(store, assessment, "qwen2.5-coder:3b"));
 
             var result = await service.RunAsync(
-                "corrige la suma en Calculator.cs [[condor:cambio:" + changeId + "]]");
+                "corrige la suma en Calculator.cs [[condor:cambio:" + changeId + "]] " +
+                "[[condor:incidente:" + incidentId + "]]");
 
             Assert.True(result.Success, result.Reason);
             Assert.False(string.IsNullOrWhiteSpace(result.TaskExecutionId));
-            Assert.Equal(new[] { "cambio:" + changeId }, result.LinkedDeliveryMetricRecords);
-            var savedMetrics = await store.LoadDeliveryMetricsAsync(projectRoot);
             Assert.Equal(
-                new[] { result.TaskExecutionId },
+                new[] { "cambio:" + changeId, "incidente:" + incidentId },
+                result.LinkedDeliveryMetricRecords);
+            var savedMetrics = await store.LoadDeliveryMetricsAsync(projectRoot);
+            var executionId = result.TaskExecutionId!;
+            Assert.Equal(
+                new[] { executionId },
                 Assert.Single(savedMetrics.Changes, change => change.ChangeId == changeId).RelatedTaskExecutionIds);
+            Assert.Equal(
+                new[] { executionId },
+                Assert.Single(savedMetrics.Changes, change => change.ChangeId == incidentId).IncidentTaskExecutionIds);
             var rejectedPlan = Assert.Single(result.Steps, step => step.Action == "plan" && !step.Success);
             Assert.Contains("resultado esperado", rejectedPlan.ResultPreview, StringComparison.OrdinalIgnoreCase);
             var plan = Assert.Single(result.Steps, step => step.Action == "plan" && step.Success);
