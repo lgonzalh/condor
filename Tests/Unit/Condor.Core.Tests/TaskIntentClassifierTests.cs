@@ -29,6 +29,34 @@ public sealed class TaskIntentClassifierTests
     }
 
     [Fact]
+    public void LecturaDeArchivoConProhibicionDeCambio_NoElevaRequisitoDeCodigo()
+    {
+        const string intention = "Lee README.md y devuelve únicamente su primera línea exacta. No modifiques ni crees archivos.";
+
+        var requirement = TaskIntentClassifier.Classify(intention);
+
+        Assert.Equal(TaskIntentKinds.Agent, requirement.IntentKind);
+        Assert.Equal(0, requirement.RequiredCodingLevel);
+        Assert.Equal(0, requirement.RequiredMultiFileLevel);
+        Assert.True(requirement.RequiresToolUse);
+        Assert.True(requirement.RequiresStructuredOutput);
+        Assert.True(requirement.PreferSmallestSufficient);
+        Assert.False(TaskIntentClassifier.RequiresModification(intention));
+    }
+
+    [Fact]
+    public void CreacionDeArchivo_MantieneRequisitoDeCodigo()
+    {
+        var requirement = TaskIntentClassifier.Classify("Crea un archivo README.md con una sección de instalación.");
+
+        Assert.Equal(TaskIntentKinds.Agent, requirement.IntentKind);
+        Assert.Equal(3, requirement.RequiredCodingLevel);
+        Assert.True(requirement.RequiresToolUse);
+        Assert.True(requirement.RequiresStructuredOutput);
+        Assert.False(requirement.PreferSmallestSufficient);
+    }
+
+    [Fact]
     public void PaginaWebEstaticaEnUnArchivo_NoExigeCapacidadMultifile()
     {
         var requirement = TaskIntentClassifier.Classify(

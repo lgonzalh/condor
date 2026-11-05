@@ -24,7 +24,8 @@ public static class TaskIntentClassifier
     {
         var text = (intention ?? "").ToLowerInvariant();
 
-        var requiresCoding = ContainsAny(text, CodingSignals);
+        var hasExplicitFileOperation = ContainsAny(text, FileSignals) && RequiresModification(text);
+        var requiresCoding = ContainsAny(text, CodingSignalsWithoutFileMention) || hasExplicitFileOperation;
         var requiresWebMarkup = ContainsAny(text, WebMarkupSignals);
         var readsMultipleFiles = ContainsAny(text, MultiFileSignals);
         var requiresVision = ContainsAny(text, VisionSignals);
@@ -76,7 +77,7 @@ public static class TaskIntentClassifier
             RequiredMultiFileLevel = multiFile,
             RequiresToolUse = true,
             RequiresStructuredOutput = true,
-            PreferSmallestSufficient = false,
+            PreferSmallestSufficient = !requiresCoding && !requiresWebMarkup && !readsMultipleFiles,
             Label = requiresCoding
                 ? "agente de ingenieria (coding + herramientas)"
                 : "agente de comprension/analisis"
@@ -105,8 +106,10 @@ public static class TaskIntentClassifier
         return false;
     }
 
-    private static readonly string[] CodingSignals =
-        { "codi", "compila", "build", "bug", "corrig", "funcion", "programa", "archivo", "archivos", "refactor", "escribe el" };
+    private static readonly string[] CodingSignalsWithoutFileMention =
+        { "codi", "compila", "build", "bug", "corrig", "funcion", "programa", "refactor", "escribe el" };
+
+    private static readonly string[] FileSignals = { "archivo", "archivos" };
 
     private static readonly string[] WebMarkupSignals =
         { "html", "pagina web", "página web", "sitio web estático", "sitio web estatico" };

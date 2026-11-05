@@ -116,6 +116,28 @@ public class ModelSelectorReproTests
     }
 
     [Fact]
+    public void LecturaDeArchivo_SeleccionaModeloPequenoConHerramientasDentroDelPresupuesto()
+    {
+        var intention = "Lee README.md y devuelve únicamente su primera línea exacta. No modifiques ni crees archivos.";
+        var assessment = Assessment("qwen2.5-coder:0.5b", ramTotalGb: 16, ramFreeGb: 5.6);
+        var requirement = TaskIntentClassifier.Classify(intention);
+
+        var selection = ModelSelector.SelectForTask(
+            assessment,
+            ModelCatalog.Default,
+            requirement,
+            BudgetPolicy.Default);
+
+        Assert.Equal(0, requirement.RequiredCodingLevel);
+        Assert.True(requirement.RequiresToolUse);
+        Assert.True(requirement.PreferSmallestSufficient);
+        Assert.NotNull(selection.Desired);
+        Assert.Equal("qwen2.5-coder:0.5b", selection.Desired.PullName);
+        Assert.True(selection.AlreadyInstalled);
+        Assert.False(selection.BlockedByResources);
+    }
+
+    [Fact]
     public void HolaConTresGBLibres_UsaPresupuestoMinimoSinBloquearse()
     {
         var assessment = Assessment("qwen2.5-coder:0.5b", ramTotalGb: 16, ramFreeGb: 3.4);
