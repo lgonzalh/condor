@@ -33,9 +33,16 @@ public sealed class AgentDelegationServiceTests
             var maximumActive = 0;
             var bothStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             var observed = new ConcurrentBag<(string WorkingDirectory, AgentSubtask Subtask)>();
-            var service = new AgentDelegationService(async (workingDirectory, subtask, _, cancellationToken) =>
+            var progressObserver = new CollectingAgentProgressObserver();
+            var service = new AgentDelegationService(async (workingDirectory, subtask, childProgress, cancellationToken) =>
             {
                 observed.Add((workingDirectory, subtask));
+                childProgress?.Report(AgentProgress.Of(
+                    AgentPhase.Building,
+                    action: "edit_file",
+                    path: "Shared.md",
+                    iteration: 1,
+                    message: "actualizando archivo compartido"));
                 var nowActive = Interlocked.Increment(ref active);
                 UpdateMaximum(ref maximumActive, nowActive);
                 if (nowActive == 2)
@@ -73,7 +80,7 @@ public sealed class AgentDelegationServiceTests
                 }
             };
 
-            var result = await service.ExecuteAsync(action, root, 7, progress: null);
+            var result = await service.ExecuteAsync(action, root, 7, progressObserver);
 
             Assert.True(result.Success, result.ResultPreview);
             Assert.Equal(2, maximumActive);
@@ -86,6 +93,21 @@ public sealed class AgentDelegationServiceTests
             Assert.Contains("WorkerA.md", result.ResultPreview, StringComparison.Ordinal);
             Assert.Contains("WorkerB.md", result.ResultPreview, StringComparison.Ordinal);
             Assert.Contains("cambios permanecen separados", result.ResultPreview, StringComparison.Ordinal);
+            var progressEvents = progressObserver.Events;
+            foreach (var subtaskId in new[] { "a", "b" })
+            {
+                Assert.Contains(progressEvents, progress =>
+                    progress.Action == "subagente" && progress.Path == subtaskId &&
+                    progress.Message!.Contains("creando worktree aislado", StringComparison.Ordinal));
+                Assert.Contains(progressEvents, progress =>
+                    progress.Action == "edit_file" && progress.Path == "Shared.md" &&
+                    progress.Message!.Contains($"Subagente {subtaskId}: actualizando archivo compartido", StringComparison.Ordinal));
+                Assert.Contains(progressEvents, progress =>
+                    progress.Action == "subagente" && progress.Path == subtaskId &&
+                    progress.Message!.Contains("completado;", StringComparison.Ordinal) &&
+                    progress.Message.Contains("s; archivos:", StringComparison.Ordinal) &&
+                    progress.Message.Contains("Shared.md", StringComparison.Ordinal));
+            }
 
             Assert.Equal("cambio local\n", await File.ReadAllTextAsync(Path.Combine(root, "README.md")));
             Assert.Equal("pendiente A\n", await File.ReadAllTextAsync(Path.Combine(root, "WorkerA.md")));
@@ -259,5 +281,14 @@ public sealed class AgentDelegationServiceTests
                Interlocked.CompareExchange(ref maximum, candidate, current) != current)
         {
         }
+    }
+
+    private sealed class CollectingAgentProgressObserver : IAgentProgressObserver
+    {
+        private readonly ConcurrentQueue<AgentProgress> _events = new();
+
+        public IReadOnlyCollection<AgentProgress> Events => _events.ToArray();
+
+        public void Report(AgentProgress progress) => _events.Enqueue(progress);
     }
 }
