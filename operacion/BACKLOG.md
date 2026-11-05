@@ -222,3 +222,5 @@ Validación adicional 2026-11-05: la ampliación del recorrido TUI simulado con 
 **Continuidad T-022 — 2026-11-05:** CAP-038/039 ya implementadas, revalidadas 5/5: un hallazgo crítico abierto impide cerrar y conserva evidencia; la tercera ronda exige replan y cambio, la quinta se detiene, y la revisión final cubre solo cambios nuevos. Se reforzó la prueba para usar severidad `critical`. Release aislado con cliente simulado; la aceptación global de Fase 3 sigue pendiente.
 
 **Continuidad T-022 — 2026-11-05:** CAP-040 ya implementada: una infracción temporal de espaciado produjo errores `WHITESPACE` (código 2) con `dotnet format whitespace --verify-no-changes`; al retirarla, los checks completos de whitespace y style error pasaron sobre `Condor.slnx`, igual que `git diff --check`.
+
+**Continuidad T-022 — 2026-11-05:** CAP-041/042 ya implementadas y revalidadas: el harness detecta una incompatibilidad C# `CS0029` y bloquea el cierre (`AgentHarnessTests`: 9/9); el build Release de toda la solución pasó con 0 advertencias y 0 errores en salida aislada. Fase 4 permanece abierta.

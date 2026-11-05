@@ -251,3 +251,5 @@ Validación adicional 2026-11-05: la ampliación del TUI simulado con el error d
 **Continuidad T-022 — 2026-11-05:** CAP-038/039 ya implementadas; 5/5 escenarios Release: un hallazgo crítico mantiene bloqueado el cierre, la tercera ronda obliga a replantear y cambiar, la quinta detiene el ciclo y la revisión delta queda limitada a los cambios nuevos. La prueba crítica fue reforzada; modelos simulados. Fase 3 global sigue pendiente.
 
 **Continuidad T-022 — 2026-11-05:** CAP-040 ya implementada y revalidada: el formato detectó una infracción temporal con errores `WHITESPACE` y código 2; retirado el archivo de prueba, whitespace y style error pasan sobre la solución completa. `git diff --check` también pasa.
+
+**Continuidad T-022 — 2026-11-05:** CAP-041/042 ya implementadas y revalidadas: `CS0029` en el fixture impide el cierre (AgentHarnessTests 9/9), y build Release completo pasa con 0 advertencias/errores en salida aislada. Fase 4 sigue pendiente.
