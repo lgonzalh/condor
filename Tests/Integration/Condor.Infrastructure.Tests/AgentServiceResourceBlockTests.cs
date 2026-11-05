@@ -2438,6 +2438,8 @@ public class AgentServiceResourceBlockTests
                 """);
             await File.WriteAllTextAsync(Path.Combine(projectRoot, "Sample", "Calculator.cs"),
                 "namespace Sample;\npublic static class Calculator { public static int Add(int left, int right) => left - right; }\n");
+            await File.WriteAllTextAsync(Path.Combine(projectRoot, "Sample", "OrderTotals.cs"),
+                "namespace Sample;\npublic static class OrderTotals { public static int Total(int subtotal, int tax) => Calculator.Add(subtotal, tax); }\n");
             await File.WriteAllTextAsync(Path.Combine(projectRoot, "Sample.Tests", "Sample.Tests.csproj"), """
                 <Project Sdk="Microsoft.NET.Sdk">
                   <PropertyGroup><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><IsPackable>false</IsPackable></PropertyGroup>
@@ -2455,9 +2457,9 @@ public class AgentServiceResourceBlockTests
                 public sealed class CalculatorTests
                 {
                     [Fact]
-                    public void Add_NegativeNumberAndPositiveNumber_ReturnsSum()
+                    public void OrderTotal_WithNegativeSubtotalAndPositiveTax_ReturnsSum()
                     {
-                        Assert.Equal(2, Sample.Calculator.Add(-3, 5));
+                        Assert.Equal(2, Sample.OrderTotals.Total(-3, 5));
                     }
                 }
                 """);
@@ -2466,6 +2468,10 @@ public class AgentServiceResourceBlockTests
             await RunGitAsync(projectRoot, "config", "user.email", "condor-test@example.invalid");
             await RunGitAsync(projectRoot, "add", ".");
             await RunGitAsync(projectRoot, "commit", "-m", "Initial calculator fixture");
+
+            var baseline = await RunDotnetTestAsync(projectRoot, "Sample.slnx");
+            Assert.NotEqual(0, baseline.ExitCode);
+            Assert.Contains("OrderTotal_WithNegativeSubtotalAndPositiveTax_ReturnsSum", baseline.Output, StringComparison.Ordinal);
 
             var store = new LocalStateStore(Path.Combine(TempDir(), "state-" + Guid.NewGuid().ToString("N")));
             var assessment = new StubAssessmentService(ramTotalGb: 16, ramFreeGb: 8, installedModels: new[] { "qwen2.5-coder:3b" });
@@ -2477,7 +2483,8 @@ public class AgentServiceResourceBlockTests
             var llm = new SequenceLlmClient(
                 "{\"action\":\"list_dir\",\"path\":\"Sample\"}",
                 "{\"action\":\"read_file\",\"path\":\"Sample/Calculator.cs\"}",
-                "{\"action\":\"plan\",\"objective\":\"Corregir Calculator.Add y pasar las pruebas existentes\",\"scopePaths\":[\"Sample/Calculator.cs\"],\"excludedPaths\":[\"Sample.Tests/CalculatorTests.cs\"],\"planItems\":[{\"task\":\"Corregir la suma\",\"expectedResult\":\"Add(-3, 5) devuelve 2\",\"verificationStep\":\"Ejecutar build y pruebas del proyecto\"}],\"riskLevel\":\"medium\"}",
+                "{\"action\":\"read_file\",\"path\":\"Sample/OrderTotals.cs\"}",
+                "{\"action\":\"plan\",\"objective\":\"Corregir Calculator.Add y pasar la regresion del total del pedido\",\"scopePaths\":[\"Sample/Calculator.cs\"],\"excludedPaths\":[\"Sample.Tests/CalculatorTests.cs\"],\"planItems\":[{\"task\":\"Corregir la causa de la suma\",\"expectedResult\":\"OrderTotals.Total(-3, 5) devuelve 2\",\"verificationStep\":\"Ejecutar build y prueba de regresion del proyecto\"}],\"riskLevel\":\"medium\"}",
                 "{\"action\":\"edit_file\",\"path\":\"Sample/Calculator.cs\",\"content\":" + System.Text.Json.JsonSerializer.Serialize(correctedSource) + "}",
                 "{\"action\":\"done\",\"reason\":\"La suma corregida pasa las verificaciones del proyecto.\"}",
                 "{\"action\":\"git_diff\"}",
@@ -2509,7 +2516,8 @@ public class AgentServiceResourceBlockTests
             Assert.Contains(result.Steps, step => step.Action == AgentAction.ActionBuild && step.Success);
             Assert.Contains(result.Steps, step => step.Action == AgentAction.ActionTest && step.Success);
             Assert.Contains(result.Steps, step => step.Action == "git_diff" && step.Success);
-            Assert.Equal(7, llm.CallCount);
+            Assert.Contains(result.Steps, step => step.Action == AgentAction.ActionReadFile && step.Success && step.Path == "Sample/OrderTotals.cs");
+            Assert.Equal(8, llm.CallCount);
         }
         finally
         {
@@ -2549,6 +2557,31 @@ public class AgentServiceResourceBlockTests
         if (process.ExitCode != 0)
             throw new InvalidOperationException("git " + string.Join(" ", arguments) + " falló: " + error);
         return output;
+    }
+
+    private static async Task<(int ExitCode, string Output)> RunDotnetTestAsync(string workingDirectory, string solution)
+    {
+        var start = new ProcessStartInfo("dotnet")
+        {
+            WorkingDirectory = workingDirectory,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        start.ArgumentList.Add("test");
+        start.ArgumentList.Add(solution);
+        start.ArgumentList.Add("--configuration");
+        start.ArgumentList.Add("Release");
+        start.ArgumentList.Add("--verbosity");
+        start.ArgumentList.Add("quiet");
+        start.ArgumentList.Add("--nologo");
+
+        using var process = Process.Start(start) ?? throw new InvalidOperationException("No se pudo iniciar dotnet test.");
+        var outputTask = process.StandardOutput.ReadToEndAsync();
+        var errorTask = process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync();
+        return (process.ExitCode, await outputTask + Environment.NewLine + await errorTask);
     }
 
     private static ModelAutoSetupService CreateModelAutoSetup(
