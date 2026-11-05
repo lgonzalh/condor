@@ -108,6 +108,8 @@ public class ModelPromptBuilderTests
         Assert.Contains("contrasta la necesidad del usuario con el flujo que utilizará", prompt, System.StringComparison.OrdinalIgnoreCase);
         Assert.Contains("revisa estados renderizados y pruebas snapshot", prompt, System.StringComparison.OrdinalIgnoreCase);
         Assert.Contains("no afirmes haber hecho una revisión visual", prompt, System.StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("exige una justificación vinculada al objetivo", prompt, System.StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("la biblioteca estándar bastan", prompt, System.StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -152,6 +154,8 @@ public class ModelPromptBuilderTests
         Assert.Contains("un entorno controlado", engineerPrompt, System.StringComparison.OrdinalIgnoreCase);
         Assert.Contains("habilitación gradual con criterios de avance y reversión", engineerPrompt, System.StringComparison.OrdinalIgnoreCase);
         Assert.Contains("no ejecutes la publicación ni la reversión sin autorización humana", engineerPrompt, System.StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("justifica su necesidad frente al objetivo", engineerPrompt, System.StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("elimina piezas nuevas que no aporten valor", engineerPrompt, System.StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("flag desactivado por defecto", testEngineerPrompt, System.StringComparison.OrdinalIgnoreCase);
     }
 
