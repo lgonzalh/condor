@@ -18,6 +18,8 @@ Fecha de actualizacion: 2026-11-05
 
 **CAP-046, 2026-11-05:** La comparación de la rama contra `origin/main` sigue reportando aumentos de ventanas repetidas en `AgentService` (+4), `AgentDelegationService` (+2) y pruebas. Se unificó la creación de `ProcessStartInfo` duplicada dentro de `AgentService`; la prueba focalizada pasó 1/1. Las señales restantes incluyen configuración Git y dobles de prueba; el aumento agregado no se considera resuelto y CAP-046 permanece abierta en T-022.
 
+**CAP-046, revalidación 2026-11-05:** La fábrica compartida de procesos Git eliminó cuatro señales de `AgentService` y una de `AgentDelegationService` en el diff actual; la comparación acumulada ya no muestra duplicación de lógica de producto en `AgentService`. La señal de `AgentDelegationService` corresponde a una firma reflejada por el doble de prueba. Las pruebas pertinentes pasan 5/5; evidencia completa en T-022.
+
 **Validación de TUI 2026-11-04:** CAP-014 se verificó en Condor interactivo mediante PTY: `/ayuda` y `/version` se ejecutaron consecutivamente en una sola sesión; `/salir` la cerró con código 0.
 
 **Evaluación real del revisor 2026-11-04:** CAP-057 completó la suite `reviewer-v1` (4/4 casos, sin errores) con `qwen2.5-coder:1.5b` (F1 0,667) y `qwen2.5-coder:0.5b` (F1 0,857); el 0.5B omitió menos defectos, pero ambos marcaron como defecto el caso limpio, así que Condor no guardó baseline. El arranque frío de `lfm3:1.7b-q4_K_M` venció a los 45 s y el 3B no pasó la puerta de RAM. Corregí el texto para distinguir timeout de evaluación completa con puntaje imperfecto.
