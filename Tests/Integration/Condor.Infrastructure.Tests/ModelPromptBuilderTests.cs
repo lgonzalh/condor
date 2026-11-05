@@ -156,6 +156,9 @@ public class ModelPromptBuilderTests
         Assert.Contains("no ejecutes la publicación ni la reversión sin autorización humana", engineerPrompt, System.StringComparison.OrdinalIgnoreCase);
         Assert.Contains("justifica su necesidad frente al objetivo", engineerPrompt, System.StringComparison.OrdinalIgnoreCase);
         Assert.Contains("elimina piezas nuevas que no aporten valor", engineerPrompt, System.StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("genera como máximo tres alternativas", engineerPrompt, System.StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("compara sus diferencias, ventajas y limitaciones", engineerPrompt, System.StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("recomienda la que mejor cumple el objetivo antes de editar", engineerPrompt, System.StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("flag desactivado por defecto", testEngineerPrompt, System.StringComparison.OrdinalIgnoreCase);
     }
 
