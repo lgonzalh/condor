@@ -1,6 +1,10 @@
 namespace Condor.Core.Models;
 
-public sealed record ReviewerBenchmarkExpectation(string Path, int Line, string MinimumSeverity);
+public sealed record ReviewerBenchmarkExpectation(
+    string Path,
+    int Line,
+    string MinimumSeverity,
+    IReadOnlyList<string[]>? RequiredConceptGroups = null);
 
 public sealed record ReviewerBenchmarkCase(
     string Id,

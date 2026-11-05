@@ -71,7 +71,8 @@ public static class ReviewerBenchmarkEvaluator
                 var finding = actual[actualIndex];
                 if (!SamePath(expectation.Path, finding.Path) ||
                     Math.Abs((long)expectation.Line - finding.Line) > 2 ||
-                    Severity.GetValueOrDefault(finding.Severity) < Severity.GetValueOrDefault(expectation.MinimumSeverity))
+                    Severity.GetValueOrDefault(finding.Severity) < Severity.GetValueOrDefault(expectation.MinimumSeverity) ||
+                    !DescribesExpectedConcepts(expectation, finding))
                 {
                     continue;
                 }
@@ -86,4 +87,13 @@ public static class ReviewerBenchmarkEvaluator
 
     private static bool SamePath(string left, string right) =>
         string.Equals(left.Replace('\\', '/'), right.Replace('\\', '/'), StringComparison.OrdinalIgnoreCase);
+
+    private static bool DescribesExpectedConcepts(ReviewerBenchmarkExpectation expectation, AgentReviewFinding finding)
+    {
+        if (expectation.RequiredConceptGroups is not { Count: > 0 }) return true;
+
+        var description = $"{finding.Explanation}\n{finding.Evidence}\n{finding.Reproduction}";
+        return expectation.RequiredConceptGroups.All(group =>
+            group.Any(concept => description.Contains(concept, StringComparison.OrdinalIgnoreCase)));
+    }
 }

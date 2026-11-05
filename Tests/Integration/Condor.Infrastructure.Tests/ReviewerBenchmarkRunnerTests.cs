@@ -11,7 +11,7 @@ public sealed class ReviewerBenchmarkRunnerTests
     public async Task RunAsync_EjecutaCasosConocidosYCalculaPrecisionYRecall()
     {
         var client = new QueueLlmClient(
-            Finding("src/Sample/AccessControl.cs", 3, "high", "cualquier usuario autenticado puede leer documentos privados"),
+            Finding("src/Sample/AccessControl.cs", 3, "high", "no verifica que el usuario sea propietario; cualquier usuario autenticado puede leer documentos privados"),
             Finding("src/Sample/ArchiveReader.cs", 3, "high", "el nombre puede escapar del directorio raíz"),
             Finding("src/Sample/Cart.cs", 3, "medium", "una cantidad negativa aumenta el inventario"),
             "{\"reviewFindings\":[]}");
@@ -32,6 +32,54 @@ public sealed class ReviewerBenchmarkRunnerTests
         Assert.Equal(1, score.Precision);
         Assert.Equal(1, score.Recall);
         Assert.Equal(0, score.Regressions);
+    }
+
+    [Fact]
+    public void Score_NoCuentaComoAciertoUnHallazgoConExplicacionIncorrecta()
+    {
+        var run = Run(FindingObject(
+            "src/Sample/AccessControl.cs",
+            3,
+            "high",
+            "no se valida que el usuario tenga autenticación"));
+
+        var score = ReviewerBenchmarkEvaluator.Score(ReviewerBenchmarkSuite.Cases, run);
+
+        Assert.Equal(0, score.TruePositives);
+        Assert.Equal(1, score.FalsePositives);
+        Assert.Equal(3, score.FalseNegatives);
+    }
+
+    [Fact]
+    public void Score_NoCuentaExplicacionesRealesQueAtribuyenDefectosInexistentes()
+    {
+        var run = Run(
+            FindingObject("src/Sample/AccessControl.cs", 3, "high", "CanRead está incompleto; debe comprobar el rol o si está autenticado"),
+            FindingObject("src/Sample/ArchiveReader.cs", 3, "high", "Read no está implementado en ArchiveReader"),
+            FindingObject("src/Sample/Cart.cs", 3, "medium", "AddToStock no verifica que requestedQuantity sea menor o igual a stock"),
+            FindingObject("src/Sample/Clamp.cs", 3, "low", "Clamp no verifica el rango antes de usar Math.Min y Math.Max"));
+
+        var score = ReviewerBenchmarkEvaluator.Score(ReviewerBenchmarkSuite.Cases, run);
+
+        Assert.Equal(0, score.TruePositives);
+        Assert.Equal(4, score.FalsePositives);
+        Assert.Equal(3, score.FalseNegatives);
+    }
+
+    [Fact]
+    public void Score_CuentaElHallazgoCuandoDescribeLaFallaDePropiedadYAutenticacion()
+    {
+        var run = Run(FindingObject(
+            "src/Sample/AccessControl.cs",
+            3,
+            "high",
+            "la condición permite que cualquier usuario autenticado lea documentos sin ser propietario"));
+
+        var score = ReviewerBenchmarkEvaluator.Score(ReviewerBenchmarkSuite.Cases, run);
+
+        Assert.Equal(1, score.TruePositives);
+        Assert.Equal(0, score.FalsePositives);
+        Assert.Equal(2, score.FalseNegatives);
     }
 
     [Fact]
@@ -76,12 +124,18 @@ public sealed class ReviewerBenchmarkRunnerTests
         }).ToList()
     };
 
-    private static AgentReviewFinding FindingObject(string path, int line, string severity) => new()
+    private static AgentReviewFinding FindingObject(string path, int line, string severity, string? explanation = null) => new()
     {
         Path = path,
         Line = line,
         Severity = severity,
-        Explanation = "hallazgo esperado",
+        Explanation = explanation ?? (path switch
+        {
+            "src/Sample/AccessControl.cs" => "permite a un usuario autenticado leer documentos ajenos sin ser propietario",
+            "src/Sample/ArchiveReader.cs" => "el nombre con ../ permite escapar del directorio raíz",
+            "src/Sample/Cart.cs" => "una cantidad negativa aumenta el stock",
+            _ => "hallazgo esperado"
+        }),
         Evidence = "evidencia",
         Reproduction = "pasos",
         Origin = "current-change",

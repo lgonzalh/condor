@@ -23,6 +23,8 @@ Fecha de actualizacion: 2026-11-05
 
 **CAP-047 2026-11-05:** Diez iteraciones A/B del escenario de revisión del agente dieron +0,61% de tiempo, +1,21% de CPU y −0,22% de memoria pico respecto al commit base. Build Release y pruebas focalizadas pasan; la medición corresponde al flujo del agente con LLM determinista, no a inferencia real. Detalle: T-022.
 
+**CAP-057 — continuidad 2026-11-05:** El benchmark ahora valida conceptos del defecto además de ruta/línea/gravedad. Pruebas focalizadas 6/6; la corrida TUI real con `qwen2.5-coder:0.5b` completó 4 casos y obtuvo TP 0, FP 4, FN 3. CAP-057 sigue en curso; la baseline no se actualizó. Detalle y limitaciones en T-022.
+
 **CAP-048 2026-11-05:** Se actualizó la referencia remota: `main` no avanzó y sigue siendo la base común de la feature. En el HEAD actual se repitieron las pruebas Release de aprobación, revisión y delegación (5/5); build Release completo del mismo código fuente: 0 advertencias/errores. GitHub canceló el run de código por pushes posteriores; no se cuenta como check exitoso.
 
 **CAP-053/CAP-054 2026-11-05:** La guía del perfil de ingeniería exige activar gradualmente con flag apagado y entorno controlado; se probó que `undo_file` restaura el contenido previo y retira archivos nuevos tras simular una regresión. Pruebas focalizadas 2/2. No se desplegó ni se revirtió ninguna publicación.
