@@ -257,3 +257,5 @@ Validación adicional 2026-11-05: la ampliación del TUI simulado con el error d
 **Continuidad T-022 — 2026-11-05:** CAP-043, secuencia local de CI: formato, estilo, build Release (0 advertencias/errores) y suites 873/873. Infraestructura pasó 417/417 al usar un worktree llamado `condor`, como exige una prueba E2E de detección. La ejecución GitHub sigue pendiente y la protección de rama no se ha podido confirmar.
 
 **Continuidad T-022 — 2026-11-05:** CI remoto 42077018439 para `80368f1` pasó ambos jobs: NuGet Audit, formato, estilo, build, pruebas y Gitleaks del checkout/historial. Se omitieron comparaciones de complejidad/duplicación porque el evento fue push. Protección de rama sin confirmar (API 401); CAP-043/044 siguen en curso.
+
+**Continuidad T-022 — 2026-11-05:** CAP-045 comparó 261 métodos entre `origin/main` y la rama actual mediante worktrees y builds aislados; no hay métodos actuales sobre CA1502=25. La complejidad de la rama queda dentro del límite medido.
