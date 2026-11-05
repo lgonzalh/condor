@@ -27,6 +27,8 @@ Fecha de actualizacion: 2026-11-05
 
 **CAP-053/CAP-054 2026-11-05:** La guía del perfil de ingeniería exige activar gradualmente con flag apagado y entorno controlado; se probó que `undo_file` restaura el contenido previo y retira archivos nuevos tras simular una regresión. Pruebas focalizadas 2/2. No se desplegó ni se revirtió ninguna publicación.
 
+**CAP-055/CAP-056 2026-11-05:** Informe del incidente con impacto, causa no confirmada y rutas: 1/1. La prueba de regresión del benchmark pasó y falló al restaurar la redacción defectuosa en un worktree temporal; el worktree se retiró. CI 42081978249 completó build, pruebas y escaneo de secretos exitosamente. Detalle: T-022.
+
 **Recuperación CAP-028 2026-11-04:** Condor ofrece una corrección al primer plan inválido y detiene la ejecución sin cambios si el modelo repite uno ya rechazado; la huella se conserva solo en memoria y se borra ante nueva instrucción o avance. Build Release sin incremental: 0 errores y 0 advertencias. No se ejecutaron pruebas; Ollama está desconectado y la aceptación real sigue pendiente.
 
 **Validación de TUI 2026-11-04:** CAP-014 se verificó en Condor interactivo mediante PTY: `/ayuda` y `/version` se ejecutaron consecutivamente en una sola sesión; `/salir` la cerró con código 0.
