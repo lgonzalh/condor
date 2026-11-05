@@ -2165,6 +2165,93 @@ public class AgentServiceResourceBlockTests
     }
 
     [Fact]
+    public async Task RunAsync_PerfilReviewer_DetectaRegresionRelacionadaYApruebaTrasCorregirla()
+    {
+        var projectRoot = TempDir();
+        var stateRoot = TempDir();
+        var acceptedStateRoot = TempDir();
+        Directory.CreateDirectory(projectRoot);
+        Directory.CreateDirectory(stateRoot);
+        Directory.CreateDirectory(acceptedStateRoot);
+        var calculatorPath = Path.Combine(projectRoot, "Calculator.cs");
+        var totalsPath = Path.Combine(projectRoot, "OrderTotals.cs");
+        const string calculator = "public static int Sum(int a, int b) => a - b;\n";
+        const string orderTotals = "public static class OrderTotals { public static int Total(int subtotal, int tax) => Calculator.Sum(subtotal, tax); }\n";
+        await File.WriteAllTextAsync(calculatorPath, calculator);
+        await File.WriteAllTextAsync(totalsPath, orderTotals);
+
+        try
+        {
+            var store = new LocalStateStore(stateRoot);
+            var assessment = new StubAssessmentService(16, 8, new[] { "qwen2.5-coder:3b" });
+            using var http = new HttpClient(new StubOllamaHandler());
+            using var session = new LocalModelSession(http);
+            await session.EnsureAvailableAsync("qwen2.5-coder:3b", CancellationToken.None);
+            var llm = new SequenceLlmClient(
+                "{\"action\":\"list_dir\",\"path\":\".\"}",
+                "{\"action\":\"read_file\",\"path\":\"Calculator.cs\"}",
+                "{\"action\":\"read_file\",\"path\":\"OrderTotals.cs\"}",
+                "{\"action\":\"done\",\"reason\":\"Sum rompe el total del pedido.\",\"reviewFindings\":[{\"path\":\"Calculator.cs\",\"line\":1,\"severity\":\"high\",\"explanation\":\"Sum resta aunque OrderTotals.Total depende de una suma.\",\"evidence\":\"public static int Sum(int a, int b) => a - b;\",\"reproduction\":\"OrderTotals.Total(1, 2) devuelve -1 en lugar de 3.\",\"origin\":\"uncertain\",\"status\":\"open\"}]}");
+            var service = new AgentService(
+                store,
+                assessment,
+                new AgentLimits { MaxIterations = 5 },
+                llm,
+                new StubLlmDiagnostics(),
+                session,
+                () => projectRoot,
+                CreateModelAutoSetup(store, assessment, "qwen2.5-coder:3b"));
+
+            var result = await service.RunAsync(
+                "@reviewer Revisa Calculator.cs y su impacto en OrderTotals.Total; comprueba los componentes relacionados.");
+
+            Assert.False(result.Success);
+            Assert.Contains("hallazgos abiertos", result.Reason, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("OrderTotals.Total", result.Reason, StringComparison.Ordinal);
+            Assert.Equal(calculator, await File.ReadAllTextAsync(calculatorPath));
+            Assert.Equal(orderTotals, await File.ReadAllTextAsync(totalsPath));
+            Assert.Contains(result.Steps, step => step.Action == "read_file" && step.Success && step.Path == "Calculator.cs");
+            Assert.Contains(result.Steps, step => step.Action == "read_file" && step.Success && step.Path == "OrderTotals.cs");
+            Assert.Contains("componentes relacionados", string.Join("\n", llm.Prompts[0]), StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(4, llm.CallCount);
+
+            const string correctedCalculator = "public static int Sum(int a, int b) => a + b;\n";
+            await File.WriteAllTextAsync(calculatorPath, correctedCalculator);
+            var acceptedStore = new LocalStateStore(acceptedStateRoot);
+            var acceptedLlm = new SequenceLlmClient(
+                "{\"action\":\"list_dir\",\"path\":\".\"}",
+                "{\"action\":\"read_file\",\"path\":\"Calculator.cs\"}",
+                "{\"action\":\"read_file\",\"path\":\"OrderTotals.cs\"}",
+                "{\"action\":\"done\",\"reason\":\"La suma satisface al componente de totales.\",\"reviewFindings\":[]}");
+            var acceptedService = new AgentService(
+                acceptedStore,
+                assessment,
+                new AgentLimits { MaxIterations = 5 },
+                acceptedLlm,
+                new StubLlmDiagnostics(),
+                session,
+                () => projectRoot,
+                CreateModelAutoSetup(acceptedStore, assessment, "qwen2.5-coder:3b"));
+
+            var accepted = await acceptedService.RunAsync(
+                "@reviewer Revisa Calculator.cs y su impacto en OrderTotals.Total; comprueba los componentes relacionados.");
+
+            Assert.True(accepted.Success, accepted.Reason);
+            Assert.Equal(correctedCalculator, await File.ReadAllTextAsync(calculatorPath));
+            Assert.Equal(orderTotals, await File.ReadAllTextAsync(totalsPath));
+            Assert.Contains(accepted.Steps, step => step.Action == "read_file" && step.Success && step.Path == "Calculator.cs");
+            Assert.Contains(accepted.Steps, step => step.Action == "read_file" && step.Success && step.Path == "OrderTotals.cs");
+            Assert.Equal(4, acceptedLlm.CallCount);
+        }
+        finally
+        {
+            Directory.Delete(projectRoot, recursive: true);
+            Directory.Delete(stateRoot, recursive: true);
+            Directory.Delete(acceptedStateRoot, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task RunAsync_RevisionPreexistente_NoLaAtribuyeAlCambioDeOtroArchivo()
     {
         var projectRoot = TempDir();
