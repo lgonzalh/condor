@@ -8,6 +8,35 @@ namespace Condor.Cli.Tests;
 public class TuiModelInteractionTests
 {
     [Fact]
+    public async Task CambioDeModelo_ReconciliaCapacidadesDelModeloActivo()
+    {
+        var model = new ModelInfo
+        {
+            Name = "qwen2.5-coder:3b",
+            Family = "qwen2",
+            Capabilities = ["completion", "tools"]
+        };
+        var assessment = new FixedAssessmentService(new AssessmentResult
+        {
+            Tools = new ToolsProfile
+            {
+                Ollama = new OllamaStatus { Models = [model] }
+            }
+        });
+        ModelInfo? reconciledModel = null;
+
+        await CondorTui.ReconcileAgentModeAfterModelSwitchAsync(
+            assessment,
+            model.Name,
+            CancellationToken.None,
+            activeModel => reconciledModel = activeModel);
+
+        Assert.Same(model, reconciledModel);
+        Assert.Contains(CondorTui.BuildAgentOptions(reconciledModel), option =>
+            option.Id == "codificar" && !option.Disabled);
+    }
+
+    [Fact]
     public void HistorialDeTarea_MuestraElModeloQueGeneroLaRespuesta()
     {
         using var host = new TuiHost(110, 34);
@@ -230,6 +259,14 @@ public class TuiModelInteractionTests
             LastRequest = request;
             return Task.FromResult(response);
         }
+    }
+
+    private sealed class FixedAssessmentService(AssessmentResult assessment) : IAssessmentService
+    {
+        public Task<AssessmentResult> ExecuteAsync(
+            AssessmentRequest request,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(assessment);
     }
 
     private sealed class FixedPlanService(WorkPlan plan) : IPlanService

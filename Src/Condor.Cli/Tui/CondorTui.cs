@@ -257,7 +257,8 @@ public static class CondorTui
                         shutdownToken,
                         host,
                         input,
-                        taskRunning => agentMode.OpenPicker(input, host, taskRunning))
+                        taskRunning => agentMode.OpenPicker(input, host, taskRunning),
+                        model => agentMode.Reconcile(model, host))
                         .ConfigureAwait(true);
                     exitCode = inputOutcome.ExitCode;
                     if (inputOutcome.Disposition == SpecialInputDisposition.Exit)
@@ -599,11 +600,9 @@ public static class CondorTui
                     .ConfigureAwait(true);
                 if (switched)
                 {
-                    var assessment = await ReadAssessmentAsync(assessmentService, shutdownToken).ConfigureAwait(true);
-                    var model = string.IsNullOrWhiteSpace(session.ActiveModel)
-                        ? null
-                        : FindInstalledModel(assessment, session.ActiveModel);
-                    reconcileAgentMode(model);
+                    await ReconcileAgentModeAfterModelSwitchAsync(
+                            assessmentService, session.ActiveModel, shutdownToken, reconcileAgentMode)
+                        .ConfigureAwait(true);
                 }
             }
         }
@@ -788,7 +787,8 @@ public static class CondorTui
         CancellationToken shutdownToken,
         TuiHost host,
         TuiInput input,
-        Action<bool> openAgentPicker)
+        Action<bool> openAgentPicker,
+        Action<ModelInfo?> reconcileAgentMode)
     {
         if (text.Length == 0)
         {
@@ -862,8 +862,15 @@ public static class CondorTui
         {
             if (!string.IsNullOrWhiteSpace(modelArgument))
             {
-                await SwitchModelAsync(modelArgument, assessmentService, session, host, shutdownToken)
+                var switched = await SwitchModelAsync(
+                        modelArgument, assessmentService, session, host, shutdownToken)
                     .ConfigureAwait(true);
+                if (switched)
+                {
+                    await ReconcileAgentModeAfterModelSwitchAsync(
+                            assessmentService, session.ActiveModel, shutdownToken, reconcileAgentMode)
+                        .ConfigureAwait(true);
+                }
             }
             return new SpecialInputOutcome(SpecialInputDisposition.Continue, exitCode);
         }
@@ -1622,6 +1629,19 @@ public static class CondorTui
                 PlanAgentId, "Plan", "Condor prepara y guarda un plan sin modificar el proyecto.",
                 Array.Empty<string>(), Disabled: false, DisabledReason: null, Shortcut: "Enter")
         };
+    }
+
+    internal static async Task ReconcileAgentModeAfterModelSwitchAsync(
+        IAssessmentService assessmentService,
+        string? activeModel,
+        CancellationToken cancellationToken,
+        Action<ModelInfo?> reconcileAgentMode)
+    {
+        var assessment = await ReadAssessmentAsync(assessmentService, cancellationToken).ConfigureAwait(true);
+        var model = string.IsNullOrWhiteSpace(activeModel)
+            ? null
+            : FindInstalledModel(assessment, activeModel);
+        reconcileAgentMode(model);
     }
 
     internal static string ResolveAgentModeForModel(string? preferredAgentId, ModelInfo? model)
