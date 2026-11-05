@@ -30,6 +30,10 @@ public class OllamaDetector
             status.Note = "El servidor de Ollama no responde en 127.0.0.1:11434";
             await TryGetModelsViaCliAsync(status, cancellationToken);
         }
+        else
+        {
+            status.Note = "No se encontró Ollama instalado ni un servidor local disponible.";
+        }
 
         return status;
     }
