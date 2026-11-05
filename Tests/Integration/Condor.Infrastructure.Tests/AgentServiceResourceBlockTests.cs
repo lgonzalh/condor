@@ -2330,6 +2330,111 @@ public class AgentServiceResourceBlockTests
         }
     }
 
+    [Fact]
+    public async Task RunAsync_CorrigeProyectoReal_VerificaBuildYPruebasAntesDeCerrar()
+    {
+        var projectRoot = TempDir();
+        Directory.CreateDirectory(Path.Combine(projectRoot, "Sample"));
+        Directory.CreateDirectory(Path.Combine(projectRoot, "Sample.Tests"));
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(projectRoot, "Sample.slnx"), """
+                <Solution>
+                  <Project Path="Sample.Tests/Sample.Tests.csproj" />
+                  <Project Path="Sample/Sample.csproj" />
+                </Solution>
+                """);
+            await File.WriteAllTextAsync(Path.Combine(projectRoot, "Sample", "Sample.csproj"), """
+                <Project Sdk="Microsoft.NET.Sdk">
+                  <PropertyGroup><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
+                </Project>
+                """);
+            await File.WriteAllTextAsync(Path.Combine(projectRoot, "Sample", "Calculator.cs"),
+                "namespace Sample;\npublic static class Calculator { public static int Add(int left, int right) => left - right; }\n");
+            await File.WriteAllTextAsync(Path.Combine(projectRoot, "Sample.Tests", "Sample.Tests.csproj"), """
+                <Project Sdk="Microsoft.NET.Sdk">
+                  <PropertyGroup><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><IsPackable>false</IsPackable></PropertyGroup>
+                  <ItemGroup>
+                    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+                    <PackageReference Include="xunit" Version="2.9.3" />
+                    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+                  </ItemGroup>
+                  <ItemGroup><ProjectReference Include="..\Sample\Sample.csproj" /></ItemGroup>
+                </Project>
+                """);
+            await File.WriteAllTextAsync(Path.Combine(projectRoot, "Sample.Tests", "CalculatorTests.cs"), """
+                using Xunit;
+                namespace Sample.Tests;
+                public sealed class CalculatorTests
+                {
+                    [Fact]
+                    public void Add_NegativeNumberAndPositiveNumber_ReturnsSum()
+                    {
+                        Assert.Equal(2, Sample.Calculator.Add(-3, 5));
+                    }
+                }
+                """);
+            await RunGitAsync(projectRoot, "init");
+            await RunGitAsync(projectRoot, "config", "user.name", "Condor Integration Test");
+            await RunGitAsync(projectRoot, "config", "user.email", "condor-test@example.invalid");
+            await RunGitAsync(projectRoot, "add", ".");
+            await RunGitAsync(projectRoot, "commit", "-m", "Initial calculator fixture");
+
+            var store = new LocalStateStore(Path.Combine(TempDir(), "state-" + Guid.NewGuid().ToString("N")));
+            var assessment = new StubAssessmentService(ramTotalGb: 16, ramFreeGb: 8, installedModels: new[] { "qwen2.5-coder:3b" });
+            using var http = new HttpClient(new StubOllamaHandler());
+            using var session = new LocalModelSession(http);
+            await session.EnsureAvailableAsync("qwen2.5-coder:3b", CancellationToken.None);
+
+            const string correctedSource = "namespace Sample;\npublic static class Calculator { public static int Add(int left, int right) => left + right; }\n";
+            var llm = new SequenceLlmClient(
+                "{\"action\":\"list_dir\",\"path\":\"Sample\"}",
+                "{\"action\":\"read_file\",\"path\":\"Sample/Calculator.cs\"}",
+                "{\"action\":\"plan\",\"objective\":\"Corregir Calculator.Add y pasar las pruebas existentes\",\"scopePaths\":[\"Sample/Calculator.cs\"],\"excludedPaths\":[\"Sample.Tests/CalculatorTests.cs\"],\"planItems\":[{\"task\":\"Corregir la suma\",\"expectedResult\":\"Add(-3, 5) devuelve 2\",\"verificationStep\":\"Ejecutar build y pruebas del proyecto\"}],\"riskLevel\":\"medium\"}",
+                "{\"action\":\"edit_file\",\"path\":\"Sample/Calculator.cs\",\"content\":" + System.Text.Json.JsonSerializer.Serialize(correctedSource) + "}",
+                "{\"action\":\"done\",\"reason\":\"La suma corregida pasa las verificaciones del proyecto.\"}",
+                "{\"action\":\"git_diff\"}",
+                "{\"action\":\"done\",\"reason\":\"El resultado verificado satisface la solicitud.\"}");
+            var service = new AgentService(
+                store,
+                assessment,
+                new AgentLimits { MaxIterations = 8 },
+                llm,
+                new StubLlmDiagnostics(),
+                session,
+                () => projectRoot,
+                CreateModelAutoSetup(store, assessment, "qwen2.5-coder:3b"));
+
+            var result = await service.RunAsync(
+                "Corrige Sample/Calculator.cs para que Add(-3, 5) devuelva 2 y verifica las pruebas existentes. No edites Sample.Tests/CalculatorTests.cs.",
+                cancellationToken: CancellationToken.None);
+
+            Assert.True(result.Success,
+                result.Reason + Environment.NewLine +
+                "Last decision: " + result.Checkpoint?.LastDecision + Environment.NewLine +
+                "LLM calls: " + llm.CallCount + Environment.NewLine +
+                string.Join(Environment.NewLine, result.Steps.Select(step =>
+                    step.Action + " " + step.Path + " success=" + step.Success + " " + step.ResultPreview)) + Environment.NewLine +
+                "Prompt tail:" + Environment.NewLine +
+                string.Join(Environment.NewLine + "---" + Environment.NewLine, llm.Prompts.Last().TakeLast(4).Select(message =>
+                    message.Length > 1200 ? message[..1200] : message)));
+            Assert.Equal(correctedSource, await File.ReadAllTextAsync(Path.Combine(projectRoot, "Sample", "Calculator.cs")));
+            Assert.Contains(result.Steps, step => step.Action == AgentAction.ActionBuild && step.Success);
+            Assert.Contains(result.Steps, step => step.Action == AgentAction.ActionTest && step.Success);
+            Assert.Contains(result.Steps, step => step.Action == "git_diff" && step.Success);
+            Assert.Equal(7, llm.CallCount);
+        }
+        finally
+        {
+            if (Directory.Exists(projectRoot))
+            {
+                foreach (var file in Directory.EnumerateFiles(projectRoot, "*", SearchOption.AllDirectories))
+                    File.SetAttributes(file, FileAttributes.Normal);
+                Directory.Delete(projectRoot, recursive: true);
+            }
+        }
+    }
+
     private static string TempDir()
     {
         return Path.Combine(Path.GetTempPath(), "condor-agent-resource-" + Guid.NewGuid().ToString("N"));
