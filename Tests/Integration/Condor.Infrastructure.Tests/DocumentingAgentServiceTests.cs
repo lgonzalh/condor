@@ -192,6 +192,10 @@ public class DocumentingAgentServiceTests
             Assert.Contains("Hallazgos de revisión: 3 total; 1 resueltos; 1 aceptados/descartados; 1 abiertos.", content);
             Assert.Contains("Proporción de hallazgos descartados entre los adjudicados:", content);
             Assert.Contains("(1/2)", content);
+            Assert.Contains("Observación corregida: src/A.cs:10 (high); hallazgo:", content);
+            Assert.Contains("Observación descartada o justificada como intencional: src/B.cs:20 (low); hallazgo:", content);
+            Assert.Contains("justificación: Comportamiento intencional.", content);
+            Assert.DoesNotContain("src/C.cs:30 (medium)", content);
         }
         finally
         {

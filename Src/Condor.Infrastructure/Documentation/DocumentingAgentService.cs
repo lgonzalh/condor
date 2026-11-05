@@ -96,6 +96,15 @@ public sealed class DocumentingAgentService : IAgentService
             request.After.Add(adjudicated == 0
                 ? "Proporción de hallazgos descartados: no calculable; no hay hallazgos adjudicados."
                 : $"Proporción de hallazgos descartados entre los adjudicados: {(double)discarded / adjudicated:P1} ({discarded}/{adjudicated}).");
+            foreach (var finding in findings.Where(finding => finding.Status is "resolved" or "accepted"))
+            {
+                var outcome = finding.Status == "resolved"
+                    ? "corregida"
+                    : "descartada o justificada como intencional";
+                request.After.Add(
+                    $"Observación {outcome}: {finding.Path}:{finding.Line} ({finding.Severity}); " +
+                    $"hallazgo: {finding.Explanation}; justificación: {finding.ClosureReason ?? "no registrada"}.");
+            }
 
             var history = await ReviewOutcomeJournal.RecordAndSummarizeAsync(
                 workingDirectory,
