@@ -2335,7 +2335,7 @@ public class AgentServiceResourceBlockTests
             var llm = new SequenceLlmClient(
                 "{\"action\":\"list_dir\",\"path\":\".\"}",
                 "{\"action\":\"read_file\",\"path\":\"Calculator.cs\"}",
-                "{\"action\":\"done\",\"reason\":\"Hay un defecto verificable.\",\"reviewFindings\":[{\"path\":\"Calculator.cs\",\"line\":1,\"severity\":\"high\",\"explanation\":\"El resultado no coincide con el comportamiento solicitado.\",\"evidence\":\"public static int Sum(int a, int b) => a + b;\",\"reproduction\":\"Llama Sum(1, 2).\",\"origin\":\"uncertain\",\"status\":\"open\"}]}");
+                "{\"action\":\"done\",\"reason\":\"Hay un defecto verificable.\",\"reviewFindings\":[{\"path\":\"Calculator.cs\",\"line\":1,\"severity\":\"critical\",\"explanation\":\"El resultado no coincide con el comportamiento solicitado.\",\"evidence\":\"public static int Sum(int a, int b) => a + b;\",\"reproduction\":\"Llama Sum(1, 2).\",\"origin\":\"uncertain\",\"status\":\"open\"}]}");
             var service = new AgentService(
                 store,
                 assessment,
@@ -2349,7 +2349,7 @@ public class AgentServiceResourceBlockTests
             var result = await service.RunAsync("@reviewer Revisa Calculator.cs y reporta defectos concretos.");
 
             Assert.False(result.Success);
-            Assert.Contains("hallazgos abiertos", result.Reason, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("hallazgos críticos abiertos", result.Reason, StringComparison.OrdinalIgnoreCase);
             Assert.Contains("Calculator.cs", result.Reason, StringComparison.Ordinal);
             Assert.Contains("El resultado no coincide con el comportamiento solicitado.", result.Reason, StringComparison.Ordinal);
             Assert.Contains("Llama Sum(1, 2).", result.Reason, StringComparison.Ordinal);
