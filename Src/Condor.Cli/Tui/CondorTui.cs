@@ -83,6 +83,7 @@ public static class CondorTui
         string? initialInput = null,
         bool sinAnimacion = false)
     {
+        var workingDirectory = Environment.CurrentDirectory;
         using var host = tuiWidth.HasValue && tuiHeight.HasValue
             ? new TuiHost(tuiWidth.Value, tuiHeight.Value)
             : new TuiHost();
@@ -92,7 +93,7 @@ public static class CondorTui
             widthProvider: () => host.TerminalWidth);
         host.Enter();
         host.ShowWelcome();
-        host.SetWorkspace(Environment.CurrentDirectory);
+        host.SetWorkspace(workingDirectory);
         host.Repaint(); // primera imagen inmediata: la TUI aparece sin esperar la preparacion
 
         var startupOutcome = await PrepareTuiEnvironmentAsync(
@@ -138,6 +139,7 @@ public static class CondorTui
             var outcome = await ProcessFreeIntentionAsync(
                 text,
                 free,
+                workingDirectory,
                 agentMode.ActiveAgentId,
                 pendingClarificationTask,
                 pendingClarificationQuestion,
@@ -273,7 +275,7 @@ public static class CondorTui
                     {
                         case SlashRoute slash:
                             exitCode = await ProcessSlashRouteAsync(
-                                text, slash, exitCode, assessmentService, stateStore, session, shutdownToken, host, ticker, input)
+                                text, slash, exitCode, workingDirectory, assessmentService, stateStore, session, shutdownToken, host, ticker, input)
                                 .ConfigureAwait(true);
                             break;
 
@@ -873,6 +875,7 @@ public static class CondorTui
         string text,
         SlashRoute slash,
         int exitCode,
+        string workingDirectory,
         IAssessmentService assessmentService,
         IStateStore stateStore,
         LocalModelSession session,
@@ -908,7 +911,7 @@ public static class CondorTui
         {
             exitCode = await PlanInTuiAsync(
                 host,
-                new PlanService(stateStore, workingDirectory: Environment.CurrentDirectory),
+                new PlanService(stateStore, workingDirectory: workingDirectory),
                 stateStore,
                 slash.Arguments,
                 shutdownToken,
@@ -920,7 +923,7 @@ public static class CondorTui
             // la pantalla TUI se suspende y retoma intacta.
             host.SetEstado("Ejecutando " + FirstToken(text));
             await host.SuspendAsync(async () =>
-                exitCode = await Program.HandleSlashAsync(slash, assessmentService, stateStore, session.Llm, session)).ConfigureAwait(true);
+                exitCode = await Program.HandleSlashAsync(slash, assessmentService, stateStore, session.Llm, session, workingDirectory)).ConfigureAwait(true);
             host.SetEstado("Listo", ActivityKind.Success);
             host.SetProgreso("—");
         }
@@ -940,6 +943,7 @@ public static class CondorTui
     private static async Task<FreeIntentionOutcome> ProcessFreeIntentionAsync(
         string text,
         FreeIntentionRoute free,
+        string workingDirectory,
         string activeAgentId,
         string? pendingClarificationTask,
         string? pendingClarificationQuestion,
@@ -1016,7 +1020,7 @@ public static class CondorTui
                 {
                     await host.SuspendAsync(async () =>
                         exitCode = await Program.HandleSlashAsync(
-                            modeSlash, assessmentService, stateStore, session.Llm, session)).ConfigureAwait(true);
+                            modeSlash, assessmentService, stateStore, session.Llm, session, workingDirectory)).ConfigureAwait(true);
                 }
                 finally
                 {
@@ -1047,8 +1051,14 @@ public static class CondorTui
         runningCts = CancellationTokenSource.CreateLinkedTokenSource(shutdownToken);
         var agentBridge = new AgentProgressObserverBridge(new TuiAgentProgressView(host, ticker));
         var agent = new DocumentingAgentService(
-            new AgentService(stateStore, assessmentService, session: session, steeringChannel: activeSteering = new AgentSteeringChannel()),
-            new DocumenterService());
+            new AgentService(
+                stateStore,
+                assessmentService,
+                session: session,
+                workingDirectoryProvider: () => workingDirectory,
+                steeringChannel: activeSteering = new AgentSteeringChannel()),
+            new DocumenterService(),
+            workingDirectoryProvider: () => workingDirectory);
         runningWatch.Restart();
         var token = runningCts.Token;
         running = Task.Run(() => ExecuteAgentRouteAsync(agent, modeRoute, agentBridge, token));

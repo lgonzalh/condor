@@ -239,8 +239,10 @@ public static class Program
         IAssessmentService assessmentService,
         IStateStore stateStore,
         ILlmClient llmClient,
-        LocalModelSession session)
+        LocalModelSession session,
+        string? workingDirectory = null)
     {
+        workingDirectory ??= Environment.CurrentDirectory;
         if (route.Kind is SlashCommandKind.Consultar or SlashCommandKind.Examinar)
         {
             Terminal.WriteError("Las consultas a modelos locales solo se ejecutan dentro de la TUI.");
@@ -255,7 +257,7 @@ public static class Program
             SlashCommandKind.Contexto => await ContextCommand.ExecuteAsync(
                 new ContextService(stateStore), stateStore, args, CancellationToken.None),
             SlashCommandKind.Planear => await PlanCommand.ExecuteAsync(
-                new PlanService(stateStore, workingDirectory: Environment.CurrentDirectory), stateStore, args, CancellationToken.None),
+                new PlanService(stateStore, workingDirectory: workingDirectory), stateStore, args, CancellationToken.None),
             SlashCommandKind.Construir => await BuildCommand.ExecuteAsync(
                 new BuildService(stateStore), stateStore, args, CancellationToken.None),
             SlashCommandKind.Verificar => await VerifyCommand.ExecuteAsync(
@@ -273,7 +275,7 @@ public static class Program
                 CancellationToken.None),
             SlashCommandKind.Avanzar => await AdvanceCommand.ExecuteAsync(
                 new CycleService(
-                    new PlanService(stateStore, workingDirectory: Environment.CurrentDirectory),
+                    new PlanService(stateStore, workingDirectory: workingDirectory),
                     new BuildService(stateStore),
                     new VerificationService(stateStore),
                     stateStore,
@@ -282,11 +284,12 @@ public static class Program
                 stateStore,
                 args,
                 CancellationToken.None),
-            SlashCommandKind.Metricas => await DeliveryMetricsCommand.ExecuteAsync(stateStore, args, CancellationToken.None),
+            SlashCommandKind.Metricas => await DeliveryMetricsCommand.ExecuteAsync(
+                stateStore, args, CancellationToken.None, workingDirectory),
             SlashCommandKind.EvaluarRevisor => await ReviewerBenchmarkCommand.ExecuteAsync(
                 llmClient,
                 session.ActiveModel ?? string.Empty,
-                Environment.CurrentDirectory,
+                workingDirectory,
                 args,
                 CancellationToken.None),
             SlashCommandKind.Ayuda => await RenderHelpAndReturn(),
