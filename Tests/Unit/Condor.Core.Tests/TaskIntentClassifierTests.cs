@@ -61,6 +61,15 @@ public sealed class TaskIntentClassifierTests
     }
 
     [Theory]
+    [InlineData("¿Qué hace esta clase?")]
+    [InlineData("¿Qué contiene este proyecto?")]
+    public void PreguntaInformativaConTildes_NoSolicitaModificacion(string intention)
+    {
+        Assert.True(TaskIntentClassifier.IsInformational(intention));
+        Assert.False(TaskIntentClassifier.RequiresModification(intention));
+    }
+
+    [Theory]
     [InlineData("Actualiza el contenido existente de index.html para que sea adaptable.")]
     [InlineData("Actualizar la pagina web y conservar la documentacion existente.")]
     public void SolicitudDeActualizacionQueMencionaContenido_NoEsInformativa(string intention)

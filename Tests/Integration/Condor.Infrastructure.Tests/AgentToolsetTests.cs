@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Condor.Core.Models;
 using Condor.Infrastructure.Agent;
@@ -123,6 +124,35 @@ public class AgentToolsetTests
         Assert.True(File.Exists(Path.Combine(dir, "src", "Nuevo.cs")));
     }
 
+    [Theory]
+    [InlineData(AgentAction.ActionCreateFile)]
+    [InlineData(AgentAction.ActionEditFile)]
+    public async Task FileMutation_ContenidoIgualALaRuta_NoLaEscribeComoCodigo(string action)
+    {
+        var dir = TempDir();
+        var path = "Sample.Tests/CalculatorTests.cs";
+        var fullPath = Path.Combine(dir, "Sample.Tests", "CalculatorTests.cs");
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+        const string existingContent = "namespace Sample.Tests;";
+        if (action == AgentAction.ActionEditFile)
+            File.WriteAllText(fullPath, existingContent);
+        var toolset = new AgentToolset(dir);
+
+        var step = await toolset.ExecuteAsync(new AgentAction
+        {
+            Action = action,
+            Path = path,
+            Content = path
+        }, 1, CancellationToken.None);
+
+        Assert.False(step.Success);
+        Assert.Contains("content contiene solo la ruta", step.ResultPreview, StringComparison.OrdinalIgnoreCase);
+        if (action == AgentAction.ActionCreateFile)
+            Assert.False(File.Exists(fullPath));
+        else
+            Assert.Equal(existingContent, await File.ReadAllTextAsync(fullPath));
+    }
+
     [Fact]
     public async Task ReadFile_RutaInexistente_SugiereCandidatos()
     {
@@ -137,10 +167,72 @@ public class AgentToolsetTests
         Assert.Contains("Calculator", step.ResultPreview);
     }
 
+    [Fact]
+    public async Task GitLogYGitShow_MuestranPropositoYAlcanceDeCadaCommit()
+    {
+        var dir = TempDir();
+        try
+        {
+            RunGit(dir, "init", "--quiet");
+            RunGit(dir, "config", "user.name", "Condor Tests");
+            RunGit(dir, "config", "user.email", "condor-tests@example.invalid");
+            Directory.CreateDirectory(Path.Combine(dir, "src"));
+            var path = Path.Combine(dir, "src", "Calculator.cs");
+            await File.WriteAllTextAsync(path, "public static class Calculator { }\n");
+            RunGit(dir, "add", "src/Calculator.cs");
+            RunGit(dir, "commit", "--quiet", "-m", "feat: add calculator type");
+            await File.WriteAllTextAsync(path, "public static class Calculator { public static int Sum(int a, int b) => a + b; }\n");
+            RunGit(dir, "add", "src/Calculator.cs");
+            RunGit(dir, "commit", "--quiet", "-m", "feat: add sum operation");
+            var head = RunGit(dir, "rev-parse", "HEAD");
+
+            var toolset = new AgentToolset(dir);
+            var log = await toolset.ExecuteAsync(
+                new AgentAction { Action = AgentAction.ActionGitLog }, 1, CancellationToken.None);
+            var commit = await toolset.ExecuteAsync(
+                new AgentAction { Action = AgentAction.ActionGitShow, Path = head }, 2, CancellationToken.None);
+
+            Assert.True(log.Success, log.ResultPreview);
+            Assert.Contains("feat: add calculator type", log.ResultPreview, StringComparison.Ordinal);
+            Assert.Contains("feat: add sum operation", log.ResultPreview, StringComparison.Ordinal);
+            Assert.Contains("src/Calculator.cs", log.ResultPreview, StringComparison.Ordinal);
+            Assert.True(commit.Success, commit.ResultPreview);
+            Assert.Contains("feat: add sum operation", commit.ResultPreview, StringComparison.Ordinal);
+            Assert.Contains("src/Calculator.cs", commit.ResultPreview, StringComparison.Ordinal);
+        }
+        finally
+        {
+            foreach (var file in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories))
+                File.SetAttributes(file, FileAttributes.Normal);
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
     private static string TempDir()
     {
         var dir = Path.Combine(Path.GetTempPath(), "condor-toolset-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         return dir;
+    }
+
+    private static string RunGit(string workingDirectory, params string[] arguments)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "git",
+            WorkingDirectory = workingDirectory,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        foreach (var argument in arguments) startInfo.ArgumentList.Add(argument);
+        using var process = Process.Start(startInfo) ?? throw new InvalidOperationException("No se pudo iniciar Git.");
+        var output = process.StandardOutput.ReadToEnd();
+        var error = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        if (process.ExitCode != 0)
+            throw new InvalidOperationException("Git falló: " + error);
+        return output.Trim();
     }
 }

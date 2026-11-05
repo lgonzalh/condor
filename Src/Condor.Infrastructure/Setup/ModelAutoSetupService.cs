@@ -108,36 +108,16 @@ public sealed class ModelAutoSetupService : IModelAutoSetupService
         // y se repite la seleccion con ese estado actual.
         if (!selection.AlreadyInstalled)
         {
-            var fresh = await AssessNowAsync(cancellationToken);
-            if (fresh is null && _assessmentService is not null)
-            {
-                selection.Limitations.Add("No se pudo reevaluar RAM e inventario justo antes de obtener el modelo; no se descarga.");
-                selection.Reason = "La comprobacion de seguridad del equipo no esta disponible.";
+            var revalidation = await RevalidateBeforeDownloadAsync(selection, authoritativeAssessment, cancellationToken);
+            selection = revalidation.Selection;
+            authoritativeAssessment = revalidation.Assessment;
+            if (!revalidation.ShouldContinue)
                 return selection;
-            }
-
-            authoritativeAssessment = fresh ?? await _stateStore.LoadAssessmentAsync(cancellationToken);
-            selection = ModelSelector.RecommendFromCatalog(authoritativeAssessment, ModelCatalog.Default);
-            if (selection.Desired is null)
-            {
-                return selection;
-            }
-
-            if (selection.AlreadyInstalled && await _operator.IsInstalledAsync(
-                    selection.InstalledName ?? selection.Desired.PullName, cancellationToken))
-            {
-                selection.Reason = "El inventario actualizado contiene un modelo local viable; se reutiliza sin descargar.";
-                return selection;
-            }
-
-            if (selection.AlreadyInstalled)
-            {
-                selection.AlreadyInstalled = false;
-                selection.InstalledName = null;
-            }
         }
 
         var desired = selection.Desired;
+        if (desired is null)
+            return selection;
 
         if (!IsOllamaReady(authoritativeAssessment))
         {
@@ -187,7 +167,42 @@ public sealed class ModelAutoSetupService : IModelAutoSetupService
         return selection;
     }
 
-/// <summary>
+    private async Task<(ModelSelectionResult Selection, AssessmentResult? Assessment, bool ShouldContinue)>
+        RevalidateBeforeDownloadAsync(
+            ModelSelectionResult selection,
+            AssessmentResult? authoritativeAssessment,
+            CancellationToken cancellationToken)
+    {
+        var fresh = await AssessNowAsync(cancellationToken);
+        if (fresh is null && _assessmentService is not null)
+        {
+            selection.Limitations.Add("No se pudo reevaluar RAM e inventario justo antes de obtener el modelo; no se descarga.");
+            selection.Reason = "La comprobacion de seguridad del equipo no esta disponible.";
+            return (selection, authoritativeAssessment, false);
+        }
+
+        authoritativeAssessment = fresh ?? await _stateStore.LoadAssessmentAsync(cancellationToken);
+        selection = ModelSelector.RecommendFromCatalog(authoritativeAssessment, ModelCatalog.Default);
+        if (selection.Desired is null)
+            return (selection, authoritativeAssessment, false);
+
+        if (selection.AlreadyInstalled && await _operator.IsInstalledAsync(
+                selection.InstalledName ?? selection.Desired.PullName, cancellationToken))
+        {
+            selection.Reason = "El inventario actualizado contiene un modelo local viable; se reutiliza sin descargar.";
+            return (selection, authoritativeAssessment, false);
+        }
+
+        if (selection.AlreadyInstalled)
+        {
+            selection.AlreadyInstalled = false;
+            selection.InstalledName = null;
+        }
+
+        return (selection, authoritativeAssessment, true);
+    }
+
+    /// <summary>
     /// Seleccion inteligente por TAREA + presupuesto (harness dinamico). Usa la
     /// politico de reserva, el requisito de la tarea y la eficiencia (1- y 1+).
     /// </summary>

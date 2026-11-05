@@ -61,6 +61,59 @@ public class OllamaClient : ILlmClient, ILlmProviderDiagnostics
         }
     }
 
+    public async Task<IReadOnlySet<string>> GetLoadedModelNamesAsync(CancellationToken cancellationToken = default)
+    {
+        var loadedModels = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(3));
+
+        try
+        {
+            using var response = await _httpClient.GetAsync(
+                _apiBase + "/api/ps",
+                HttpCompletionOption.ResponseHeadersRead,
+                timeout.Token).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+                return loadedModels;
+
+            await using var stream = await response.Content.ReadAsStreamAsync(timeout.Token).ConfigureAwait(false);
+            using var document = await System.Text.Json.JsonDocument.ParseAsync(
+                stream,
+                cancellationToken: timeout.Token).ConfigureAwait(false);
+            if (!document.RootElement.TryGetProperty("models", out var models) ||
+                models.ValueKind != System.Text.Json.JsonValueKind.Array)
+            {
+                return loadedModels;
+            }
+
+            foreach (var model in models.EnumerateArray())
+            {
+                if (!model.TryGetProperty("name", out var nameElement) ||
+                    nameElement.ValueKind != System.Text.Json.JsonValueKind.String ||
+                    !model.TryGetProperty("context_length", out var contextLengthElement) ||
+                    contextLengthElement.ValueKind != System.Text.Json.JsonValueKind.Number ||
+                    !contextLengthElement.TryGetInt32(out var contextLength) || contextLength <= 0)
+                {
+                    continue;
+                }
+
+                var name = nameElement.GetString();
+                if (!string.IsNullOrWhiteSpace(name))
+                    loadedModels.Add(name);
+            }
+
+            return loadedModels;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            return loadedModels;
+        }
+    }
+
     /// <summary>
     /// Descarga el modelo de la RAM del proveedor mediante el mecanismo oficial
     /// de Ollama (POST /api/generate con keep_alive=0). Condor NO gestiona el
@@ -108,15 +161,19 @@ public class OllamaClient : ILlmClient, ILlmProviderDiagnostics
         try
         {
             var content = BuildContent(request);
-            var payload = new
+            var payload = new Dictionary<string, object?>
             {
-                model = request.Model,
-                stream = false,
-                messages = BuildMessages(request, content),
-                options = request.MaxTokens is null
+                ["model"] = request.Model,
+                ["stream"] = false,
+                ["messages"] = BuildMessages(request, content),
+                ["options"] = request.MaxTokens is null
                     ? (object)new { temperature = request.Temperature }
                     : new { temperature = request.Temperature, num_predict = request.MaxTokens }
             };
+            if (request.RequireJson)
+            {
+                payload["format"] = "json";
+            }
 
             using var response = await _httpClient.PostAsJsonAsync(
                 _apiBase + "/api/chat",

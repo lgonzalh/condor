@@ -81,114 +81,128 @@ public sealed class AgentHarness
         const string missingLinkFailure = "no contiene el enlace relativo exacto requerido";
         var isMissingLinkFailure = !string.IsNullOrWhiteSpace(failureReason) &&
             failureReason.Contains(missingLinkFailure, StringComparison.OrdinalIgnoreCase);
-        if (!isMissingLinkFailure && !allowRequestedRootHtmlFile)
-        {
-            return null;
-        }
-
+        if (!isMissingLinkFailure && !allowRequestedRootHtmlFile) return null;
         var requiredLink = FindRequiredRelativeHtmlLink(_intention);
         if (requiredLink is null) return null;
 
         var root = Path.GetFullPath(_workingDir);
         var rootPrefix = Path.EndsInDirectorySeparator(root) ? root : root + Path.DirectorySeparatorChar;
-        var candidatePaths = new List<string>();
+        foreach (var relativePath in BuildHtmlCandidatePaths(allowRequestedRootHtmlFile))
+        {
+            ct.ThrowIfCancellationRequested();
+            var repaired = await TryRepairHtmlCandidateAsync(
+                root, rootPrefix, relativePath, requiredLink, allowRequestedRootHtmlFile, ct).ConfigureAwait(false);
+            if (repaired is not null) return repaired;
+        }
+
+        return null;
+    }
+
+    private List<string> BuildHtmlCandidatePaths(bool allowRequestedRootHtmlFile)
+    {
+        var candidates = new List<string>();
         foreach (var step in _steps)
         {
             if (!step.Success || string.IsNullOrWhiteSpace(step.Path) ||
                 step.Action is not (AgentAction.ActionCreateFile or AgentAction.ActionEditFile or AgentAction.ActionPatch))
-            {
                 continue;
-            }
 
             var extension = Path.GetExtension(step.Path);
-            if (!extension.Equals(".html", StringComparison.OrdinalIgnoreCase) &&
-                !extension.Equals(".htm", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            candidatePaths.Add(step.Path);
+            if (extension.Equals(".html", StringComparison.OrdinalIgnoreCase) ||
+                extension.Equals(".htm", StringComparison.OrdinalIgnoreCase))
+                candidates.Add(step.Path);
         }
 
         if (allowRequestedRootHtmlFile && FindRequestedRootHtmlFile(_intention) is { } requestedRootHtml &&
-            !candidatePaths.Exists(path => string.Equals(path, requestedRootHtml, StringComparison.OrdinalIgnoreCase)))
+            !candidates.Exists(path => string.Equals(path, requestedRootHtml, StringComparison.OrdinalIgnoreCase)))
+            candidates.Insert(0, requestedRootHtml);
+
+        return candidates;
+    }
+
+    private async Task<HtmlRepairResult?> TryRepairHtmlCandidateAsync(
+        string root,
+        string rootPrefix,
+        string relativePath,
+        string requiredLink,
+        bool allowRequestedRootHtmlFile,
+        CancellationToken ct)
+    {
+        var fullPath = Path.GetFullPath(Path.Combine(root, relativePath));
+        if (!fullPath.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase)) return null;
+        if (!File.Exists(fullPath))
         {
-            candidatePaths.Insert(0, requestedRootHtml);
+            return await TryCreateMissingRequestedRootHtmlAsync(
+                root, fullPath, relativePath, requiredLink, allowRequestedRootHtmlFile, ct).ConfigureAwait(false);
         }
 
-        foreach (var relativePath in candidatePaths)
+        var content = await TryReadHtmlCandidateAsync(fullPath, ct).ConfigureAwait(false);
+        if (content is null || !ContainsHtmlMarkup(content) || ContainsHtmlLink(content, requiredLink)) return null;
+
+        var anchor = BuildRequestedHtmlAnchor(_intention, requiredLink);
+        var repaired = RemoveHtmlDocumentStylesheetLinks(content);
+        var closingBody = Regex.Match(repaired, @"(?i)</body\s*>", RegexOptions.RightToLeft);
+        if (!closingBody.Success) return null;
+        repaired = repaired.Insert(closingBody.Index, Environment.NewLine + "    " + anchor + Environment.NewLine + "  ");
+        if (!ContainsHtmlLink(repaired, requiredLink)) return null;
+
+        try
         {
-            ct.ThrowIfCancellationRequested();
-
-            var fullPath = Path.GetFullPath(Path.Combine(root, relativePath));
-            if (!fullPath.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            if (!File.Exists(fullPath))
-            {
-                if (allowRequestedRootHtmlFile &&
-                    FindRequestedRootHtmlFile(_intention) is { } requestedFile &&
-                    string.Equals(relativePath, requestedFile, StringComparison.OrdinalIgnoreCase) &&
-                    string.Equals(Path.GetDirectoryName(fullPath), root, StringComparison.OrdinalIgnoreCase) &&
-                    await TryCreateRequestedRootHtmlFileAsync(fullPath, root, requiredLink, _intention, ct).ConfigureAwait(false))
-                {
-                    return new HtmlRepairResult(relativePath.Replace(Path.DirectorySeparatorChar, '/'), AgentAction.ActionCreateFile);
-                }
-
-                continue;
-            }
-
-            string content;
-            try
-            {
-                if ((File.GetAttributes(fullPath) & FileAttributes.ReparsePoint) != 0)
-                    continue;
-                content = await File.ReadAllTextAsync(fullPath, new UTF8Encoding(false, true), ct).ConfigureAwait(false);
-            }
-            catch (DecoderFallbackException)
-            {
-                continue;
-            }
-            catch (IOException)
-            {
-                continue;
-            }
-            catch (UnauthorizedAccessException)
-            {
-                continue;
-            }
-
-            if (!ContainsHtmlMarkup(content) || ContainsHtmlLink(content, requiredLink)) continue;
-
-            var anchor = BuildRequestedHtmlAnchor(_intention, requiredLink);
-            var repaired = RemoveHtmlDocumentStylesheetLinks(content);
-            var closingBody = Regex.Match(repaired, @"(?i)</body\s*>", RegexOptions.RightToLeft);
-            if (!closingBody.Success) continue;
-
-            repaired = repaired.Insert(closingBody.Index, Environment.NewLine + "    " + anchor + Environment.NewLine + "  ");
-            if (!ContainsHtmlLink(repaired, requiredLink)) continue;
-
-            try
-            {
-                await File.WriteAllTextAsync(fullPath, repaired, new UTF8Encoding(false), ct).ConfigureAwait(false);
-            }
-            catch (IOException)
-            {
-                continue;
-            }
-            catch (UnauthorizedAccessException)
-            {
-                continue;
-            }
-
-            return new HtmlRepairResult(
-                Path.GetRelativePath(root, fullPath).Replace(Path.DirectorySeparatorChar, '/'),
-                AgentAction.ActionEditFile);
+            await File.WriteAllTextAsync(fullPath, repaired, new UTF8Encoding(false), ct).ConfigureAwait(false);
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return null;
         }
 
-        return null;
+        return new HtmlRepairResult(
+            Path.GetRelativePath(root, fullPath).Replace(Path.DirectorySeparatorChar, '/'),
+            AgentAction.ActionEditFile);
+    }
+
+    private async Task<HtmlRepairResult?> TryCreateMissingRequestedRootHtmlAsync(
+        string root,
+        string fullPath,
+        string relativePath,
+        string requiredLink,
+        bool allowRequestedRootHtmlFile,
+        CancellationToken ct)
+    {
+        var requestedFile = FindRequestedRootHtmlFile(_intention);
+        if (!allowRequestedRootHtmlFile || requestedFile is null ||
+            !string.Equals(relativePath, requestedFile, StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(Path.GetDirectoryName(fullPath), root, StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        var created = await TryCreateRequestedRootHtmlFileAsync(fullPath, root, requiredLink, _intention, ct).ConfigureAwait(false);
+        return created
+            ? new HtmlRepairResult(relativePath.Replace(Path.DirectorySeparatorChar, '/'), AgentAction.ActionCreateFile)
+            : null;
+    }
+
+    private static async Task<string?> TryReadHtmlCandidateAsync(string fullPath, CancellationToken ct)
+    {
+        try
+        {
+            if ((File.GetAttributes(fullPath) & FileAttributes.ReparsePoint) != 0) return null;
+            return await File.ReadAllTextAsync(fullPath, new UTF8Encoding(false, true), ct).ConfigureAwait(false);
+        }
+        catch (DecoderFallbackException)
+        {
+            return null;
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 
     private HarnessVerifyResult? VerifyChangedHtmlFiles()
@@ -292,7 +306,7 @@ public sealed class AgentHarness
             : path;
     }
 
-    private static string? FindRequestedRootHtmlFile(string? intention)
+    internal static string? FindRequestedRootHtmlFile(string? intention)
     {
         if (string.IsNullOrWhiteSpace(intention)) return null;
         var match = Regex.Match(

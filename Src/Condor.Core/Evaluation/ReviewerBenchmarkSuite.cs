@@ -1,0 +1,33 @@
+using Condor.Core.Models;
+
+namespace Condor.Core.Evaluation;
+
+/// <summary>Casos versionados de defectos conocidos y un caso limpio para calibrar al revisor.</summary>
+public static class ReviewerBenchmarkSuite
+{
+    public const string Version = "reviewer-v1";
+
+    public static IReadOnlyList<ReviewerBenchmarkCase> Cases { get; } = new[]
+    {
+        new ReviewerBenchmarkCase(
+            "private-document-access",
+            "src/Sample/AccessControl.cs",
+            "public static bool CanRead(User user, Document document)\n{\n    return document.OwnerId == user.Id || user.IsAuthenticated;\n}",
+            new[] { new ReviewerBenchmarkExpectation("src/Sample/AccessControl.cs", 3, "high") }),
+        new ReviewerBenchmarkCase(
+            "path-traversal",
+            "src/Sample/ArchiveReader.cs",
+            "public static string Read(string root, string name)\n{\n    var path = Path.Combine(root, name);\n    return File.ReadAllText(path);\n}",
+            new[] { new ReviewerBenchmarkExpectation("src/Sample/ArchiveReader.cs", 3, "high") }),
+        new ReviewerBenchmarkCase(
+            "negative-order-quantity",
+            "src/Sample/Cart.cs",
+            "public static int AddToStock(int requestedQuantity, int stock)\n{\n    if (requestedQuantity <= stock)\n    {\n        stock -= requestedQuantity;\n        return stock;\n    }\n    return stock;\n}",
+            new[] { new ReviewerBenchmarkExpectation("src/Sample/Cart.cs", 3, "medium") }),
+        new ReviewerBenchmarkCase(
+            "clean-clamp",
+            "src/Sample/Clamp.cs",
+            "public static int Clamp(int value, int min, int max)\n{\n    if (min > max) throw new ArgumentException();\n    return Math.Min(max, Math.Max(min, value));\n}",
+            Array.Empty<ReviewerBenchmarkExpectation>())
+    };
+}

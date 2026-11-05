@@ -7,6 +7,12 @@ namespace Condor.Core.Tests;
 public class AgentEngineTests
 {
     [Fact]
+    public void AgentLimits_PlanBPermiteLecturaYCorreccionAcotadas()
+    {
+        Assert.Equal(2, AgentLimits.Default.MaxPlanBIterations);
+    }
+
+    [Fact]
     public void ValidateAction_AccionPermitida_Valida()
     {
         var v = AgentEngine.ValidateAction(new AgentAction { Action = AgentAction.ActionReadFile, Path = "a.cs" });
@@ -191,6 +197,23 @@ public class AgentEngineTests
     }
 
     [Fact]
+    public void HasSufficientEvidence_CambioDePruebaConFalloEsperado_NoCierraTrasSoloLeer()
+    {
+        const string intention = "perfil: pruebas. Crea únicamente una prueba unitaria para Sample/Calculator.cs; la base contiene un defecto y el fallo esperado debe informarse, sin editar producción.";
+        var steps = new List<AgentStep>
+        {
+            new() { Action = AgentAction.ActionListDir, Path = ".", Success = true, ResultPreview = "Sample, Sample.Tests" },
+            new() { Action = AgentAction.ActionReadFile, Path = "Sample/Calculator.cs", Success = true, ResultPreview = "Add resta en lugar de sumar" },
+            new() { Action = AgentAction.ActionPlan, Path = "Sample/Calculator.cs", Success = false, ResultPreview = "La solicitud incluye un fallo esperado." }
+        };
+
+        var (sufficient, hint) = AgentEngine.HasSufficientEvidenceForDone(intention, steps);
+
+        Assert.False(sufficient);
+        Assert.Contains("modificar archivos", hint, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void HasSufficientEvidence_DiagnosticoSinLeerFuente_EsInsuficiente()
     {
         var steps = new List<AgentStep>
@@ -328,6 +351,55 @@ public class AgentEngineTests
         Assert.NotNull(action);
         Assert.Equal(AgentAction.ActionEditFile, action.Action);
         Assert.Equal("Calculator.cs", action.Path);
+    }
+
+    [Fact]
+    public void ParseAction_PropiedadesSnakeCase_MapeaPlanYSubtareas()
+    {
+        var action = AgentActionParser.Parse("""
+            {"action":"plan","objective":"Agregar prueba","scope_paths":["Tests/CalculatorTests.cs"],"excluded_paths":["src/Calculator.cs"],"plan_steps":["Crear prueba"],"expected_results":["Existe la prueba"],"verification_steps":["Ejecutar dotnet test"],"risk_level":"low","subtasks":[{"id":"review","profile_id":"reviewer","max_duration_seconds":30,"max_iterations":2,"max_output_tokens":1000}]}
+            """);
+
+        Assert.NotNull(action);
+        Assert.Equal(new[] { "Tests/CalculatorTests.cs" }, action.ScopePaths);
+        Assert.Equal(new[] { "src/Calculator.cs" }, action.ExcludedPaths);
+        Assert.Equal(new[] { "Crear prueba" }, action.PlanSteps);
+        Assert.Equal("low", action.RiskLevel);
+        Assert.Equal("reviewer", Assert.Single(action.Subtasks!).ProfileId);
+    }
+
+    [Fact]
+    public void ParseAction_PlanItemsAgrupaTareaResultadoYComprobacion()
+    {
+        var action = AgentActionParser.Parse("""
+            {"action":"plan","objective":"Agregar prueba","scope_paths":["Tests/CalculatorTests.cs"],"plan_items":[{"task":"Crear prueba","expected_result":"Existe el caso","verification_step":"Ejecutar dotnet test"}],"risk_level":"medium"}
+            """);
+
+        Assert.NotNull(action);
+        Assert.Equal(new[] { "Crear prueba" }, action.PlanSteps);
+        Assert.Equal(new[] { "Existe el caso" }, action.ExpectedResults);
+        Assert.Equal(new[] { "Ejecutar dotnet test" }, action.VerificationSteps);
+    }
+
+    [Fact]
+    public void ParseAction_PlanItemsMezcladoConListasParalelas_PriorizaLosItemsAgrupados()
+    {
+        var action = AgentActionParser.Parse("""
+            {"action":"plan","planItems":[{"task":"Crear prueba","expectedResult":"Existe","verificationStep":"Leer"}],"planSteps":["otra tarea"],"expectedResults":["otro resultado"],"verificationSteps":["otra comprobacion"]}
+            """);
+
+        Assert.NotNull(action);
+        Assert.Equal(new[] { "Crear prueba" }, action.PlanSteps);
+        Assert.Equal(new[] { "Existe" }, action.ExpectedResults);
+        Assert.Equal(new[] { "Leer" }, action.VerificationSteps);
+    }
+
+    [Fact]
+    public void ParseAction_PropiedadDuplicadaAlNormalizar_RechazaLaAccion()
+    {
+        var action = AgentActionParser.Parse("{\"action\":\"plan\",\"scopePaths\":[\"safe.cs\"],\"scope_paths\":[\"outside.cs\"]}");
+
+        Assert.Null(action);
     }
 
     [Fact]

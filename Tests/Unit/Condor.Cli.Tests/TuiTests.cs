@@ -672,6 +672,8 @@ public class ArquitecturaInteraccionesTests
         Assert.Contains(frame, line => line.Contains(VersionInfo.DisplayName));
         // Algunas lineas de ayuda deben estar visibles en la zona de actividad.
         Assert.Contains(frame, line => line.Contains("/salir"));
+        Assert.Contains(frame, line => line.Contains("/metricas"));
+        Assert.Contains(frame, line => line.Contains("/evaluar-revisor"));
         Assert.Contains(frame, line => line.Contains("Contracciones:"));
     }
 

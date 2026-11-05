@@ -16,6 +16,11 @@ TestResults/
 
 # Estado local de Condor
 *.log
+/.condor/comparisons/
+/.condor/performance/
+/.condor/reviewer-benchmark/
+/.condor/review-outcomes/
+/.condor/incident-learning.json
 
 # Editor
 .idea/

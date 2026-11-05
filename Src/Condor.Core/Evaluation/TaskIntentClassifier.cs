@@ -121,7 +121,7 @@ public static class TaskIntentClassifier
         { "hola", "buenas", "buenos dias", "buenas tardes", "buenas noches", "gracias", "quien eres", "como estas" };
 
     private static readonly string[] InformationalSignals =
-        { "que hay", "que es", "describe", "cuent", "analiza", "explica", "resumen", "que contiene", "que hace", "revisa", "revisa y" };
+        { "que hay", "qué hay", "que es", "qué es", "describe", "cuent", "analiza", "explica", "resumen", "que contiene", "qué contiene", "que hace", "qué hace", "revisa", "revisa y" };
 
     private static readonly string[] ModificationSignals =
         { "corrig", "arregla", "modifica", "actualiza", "actualizar", "actualización", "actualizacion", "cambia", "refactor", "implementa", "anade", "agrega", "crea", "escribe el", "build", "compila", "test" };

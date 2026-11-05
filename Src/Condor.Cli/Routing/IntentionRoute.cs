@@ -14,7 +14,9 @@ public enum SlashCommandKind
     Consultar,
     VerificarSemantico,
     Preparar,
-    Avanzar
+    Avanzar,
+    Metricas,
+    EvaluarRevisor
 }
 
 public abstract record IntentionRoute;
@@ -42,7 +44,9 @@ public static class IntentionRouter
             ["/consultar"] = SlashCommandKind.Consultar,
             ["/verificar-semantico"] = SlashCommandKind.VerificarSemantico,
             ["/preparar"] = SlashCommandKind.Preparar,
-            ["/avanzar"] = SlashCommandKind.Avanzar
+            ["/avanzar"] = SlashCommandKind.Avanzar,
+            ["/metricas"] = SlashCommandKind.Metricas,
+            ["/evaluar-revisor"] = SlashCommandKind.EvaluarRevisor
         };
 
     public static bool IsSlashCommand(string? input)

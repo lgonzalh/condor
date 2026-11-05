@@ -392,8 +392,25 @@ public static class SelectListRenderer
             return lines;
         }
 
-        var visible = Math.Min(state.VisibleRows, state.Filtered.Count);
-        var hasScrollbar = options.ShowScrollbar && state.Filtered.Count > visible;
+        var layout = CalculateLayout(state, width, options);
+        for (var row = 0; row < layout.VisibleRows; row++)
+        {
+            var filteredIndex = state.ScrollOffset + row;
+            if (filteredIndex >= state.Filtered.Count)
+            {
+                break;
+            }
+
+            lines.Add(RenderVisibleRow(state, options, theme, layout, row, filteredIndex));
+        }
+
+        return lines;
+    }
+
+    private static RenderLayout CalculateLayout(SelectListState state, int width, SelectListRenderOptions options)
+    {
+        var visibleRows = Math.Min(state.VisibleRows, state.Filtered.Count);
+        var hasScrollbar = options.ShowScrollbar && state.Filtered.Count > visibleRows;
         var rowWidth = Math.Max(1, width - (hasScrollbar ? 1 : 0));
         var shortcutWidth = options.ShowShortcuts
             ? Math.Min(12, state.Filtered
@@ -409,73 +426,70 @@ public static class SelectListRenderer
         var labelWidth = options.TwoColumns
             ? Math.Clamp(options.LabelColumnWidth ?? maxLabel + 2, 1, Math.Max(1, contentWidth - 1))
             : 0;
-
         var thumbHeight = hasScrollbar
-            ? Math.Max(1, (visible * visible) / state.Filtered.Count)
+            ? Math.Max(1, (visibleRows * visibleRows) / state.Filtered.Count)
             : 0;
         var thumbStart = hasScrollbar
-            ? state.ScrollOffset * Math.Max(0, visible - thumbHeight) /
-              Math.Max(1, state.Filtered.Count - visible)
+            ? state.ScrollOffset * Math.Max(0, visibleRows - thumbHeight) /
+              Math.Max(1, state.Filtered.Count - visibleRows)
             : 0;
 
-        for (var row = 0; row < visible; row++)
+        return new RenderLayout(visibleRows, hasScrollbar, shortcutWidth, contentWidth, labelWidth, thumbStart, thumbHeight);
+    }
+
+    private static string RenderVisibleRow(
+        SelectListState state,
+        SelectListRenderOptions options,
+        TuiTheme theme,
+        RenderLayout layout,
+        int row,
+        int filteredIndex)
+    {
+        var item = state.Items[state.Filtered[filteredIndex]];
+        var selected = filteredIndex == state.SelectedIndex && !item.Disabled;
+        var shortcut = options.ShowShortcuts ? item.Shortcut ?? "" : "";
+        var description = BuildDescription(item);
+        var label = item.Label;
+        var detail = description;
+        var textWidth = layout.ContentWidth;
+        if (options.TwoColumns)
         {
-            var filteredIndex = state.ScrollOffset + row;
-            if (filteredIndex >= state.Filtered.Count)
-            {
-                break;
-            }
-
-            var item = state.Items[state.Filtered[filteredIndex]];
-            var selected = filteredIndex == state.SelectedIndex && !item.Disabled;
-            var shortcut = options.ShowShortcuts ? item.Shortcut ?? "" : "";
-            var description = BuildDescription(item);
-            var textWidth = contentWidth;
-            var label = item.Label;
-            var detail = description;
-            if (options.TwoColumns)
-            {
-                label = PadOrClip(item.Label, labelWidth);
-                detail = ClipWithEllipsis(description, Math.Max(0, contentWidth - labelWidth - 2));
-                if (detail.Length > 0) detail = "  " + detail;
-                textWidth = labelWidth + Math.Max(0, contentWidth - labelWidth);
-            }
-            else
-            {
-                var combined = string.IsNullOrEmpty(description) ? item.Label : item.Label + " · " + description;
-                label = ClipWithEllipsis(combined, contentWidth);
-                detail = "";
-            }
-
-            if (shortcutWidth > 0)
-            {
-                textWidth = contentWidth + 2 + shortcutWidth;
-                shortcut = PadLeftOrClip(shortcut, shortcutWidth);
-            }
-
-            var line = RenderItemRow(
-                label,
-                detail,
-                shortcut,
-                textWidth,
-                item,
-                selected,
-                theme);
-
-            if (hasScrollbar)
-            {
-                var isThumb = row >= thumbStart && row < thumbStart + thumbHeight;
-                var barStyle = selected
-                    ? theme.SelectionBackground + theme.SelectionForeground
-                    : isThumb ? theme.Accent : theme.Muted;
-                line += barStyle + (isThumb ? "█" : "│") + Ansi.Reset;
-            }
-
-            lines.Add(line);
+            label = PadOrClip(item.Label, layout.LabelWidth);
+            detail = ClipWithEllipsis(description, Math.Max(0, layout.ContentWidth - layout.LabelWidth - 2));
+            if (detail.Length > 0) detail = "  " + detail;
+            textWidth = layout.LabelWidth + Math.Max(0, layout.ContentWidth - layout.LabelWidth);
+        }
+        else
+        {
+            var combined = string.IsNullOrEmpty(description) ? item.Label : item.Label + " · " + description;
+            label = ClipWithEllipsis(combined, layout.ContentWidth);
+            detail = "";
         }
 
-        return lines;
+        if (layout.ShortcutWidth > 0)
+        {
+            textWidth = layout.ContentWidth + 2 + layout.ShortcutWidth;
+            shortcut = PadLeftOrClip(shortcut, layout.ShortcutWidth);
+        }
+
+        var line = RenderItemRow(label, detail, shortcut, textWidth, item, selected, theme);
+        if (!layout.HasScrollbar) return line;
+
+        var isThumb = row >= layout.ThumbStart && row < layout.ThumbStart + layout.ThumbHeight;
+        var barStyle = selected
+            ? theme.SelectionBackground + theme.SelectionForeground
+            : isThumb ? theme.Accent : theme.Muted;
+        return line + barStyle + (isThumb ? "█" : "│") + Ansi.Reset;
     }
+
+    private readonly record struct RenderLayout(
+        int VisibleRows,
+        bool HasScrollbar,
+        int ShortcutWidth,
+        int ContentWidth,
+        int LabelWidth,
+        int ThumbStart,
+        int ThumbHeight);
 
     private static string RenderSimple(string text, int width, string foreground, TuiTheme theme)
     {

@@ -80,6 +80,39 @@ public class LocalStateStoreTests
         Assert.True(loaded.Tools.Ollama.Installed);
     }
 
+    [Fact]
+    public async Task SaveYLoadCheckpoint_ConservaResultadosEsperadosPorTarea()
+    {
+        var projectDirectory = DirectorioTemporal();
+        var stateDirectory = DirectorioTemporal();
+        Directory.CreateDirectory(projectDirectory);
+        var store = new LocalStateStore(stateDirectory);
+        var checkpoint = new AgentCheckpoint
+        {
+            Task = "corregir la suma",
+            PlanSteps = new List<string> { "leer el contrato", "corregir la implementación" },
+            ExpectedResults = new List<string> { "contrato entendido", "suma conforme al contrato" },
+            VerificationSteps = new List<string> { "leer IArithmetic.cs", "ejecutar el caso de suma" }
+        };
+
+        try
+        {
+            Assert.True(await store.SaveAgentCheckpointAsync(projectDirectory, checkpoint));
+
+            var loaded = await store.LoadAgentCheckpointAsync(projectDirectory);
+
+            Assert.NotNull(loaded);
+            Assert.Equal(checkpoint.PlanSteps, loaded.PlanSteps);
+            Assert.Equal(checkpoint.ExpectedResults, loaded.ExpectedResults);
+            Assert.Equal(checkpoint.VerificationSteps, loaded.VerificationSteps);
+        }
+        finally
+        {
+            if (Directory.Exists(projectDirectory)) Directory.Delete(projectDirectory, recursive: true);
+            if (Directory.Exists(stateDirectory)) Directory.Delete(stateDirectory, recursive: true);
+        }
+    }
+
     private static string DirectorioTemporal()
     {
         return Path.Combine(Path.GetTempPath(), "condor-tests-" + Guid.NewGuid().ToString("N"));

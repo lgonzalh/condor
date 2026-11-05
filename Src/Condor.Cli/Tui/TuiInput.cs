@@ -41,8 +41,8 @@ public sealed class TuiInput
     private static readonly string[] KnownCommands =
     {
         "/agentes", "/analizar", "/avanzar", "/ayuda", "/construir", "/consultar",
-        "/contexto", "/examinar", "/modelo", "/planear",
-        "/preparar", "/recomendar", "/verificar", "/verificar-semantico", "/version", "/salir"
+        "/comparar-modelos", "/contexto", "/examinar", "/modelo", "/planear",
+        "/preparar", "/recomendar", "/verificar", "/verificar-semantico", "/version", "/metricas", "/evaluar-revisor", "/salir"
     };
 
     private static readonly string[] BusyCommands =
@@ -231,38 +231,7 @@ public sealed class TuiInput
     {
         if (_selectList is not null)
         {
-            if ((key.Modifiers & ConsoleModifiers.Control) != 0 && key.Key == ConsoleKey.P)
-            {
-                if (_overlayState == OverlayState.Paleta)
-                {
-                    CloseSelectList(restoreBuffer: true);
-                    Render();
-                    return InputAction.None;
-                }
-
-                return InputAction.OpenCommands;
-            }
-
-            if (key.Key == ConsoleKey.Tab)
-            {
-                if (_overlayState == OverlayState.Slash)
-                {
-                    CompleteSelectedCommand();
-                    return InputAction.None;
-                }
-
-                if (_overlayState == OverlayState.Agentes)
-                {
-                    CloseSelectList(restoreBuffer: true);
-                    Render();
-                    return InputAction.None;
-                }
-
-                CloseSelectList(restoreBuffer: true);
-                return InputAction.OpenAgents;
-            }
-
-            return HandleSelectList(key);
+            return HandleOverlayKey(key);
         }
 
         if ((key.Modifiers & ConsoleModifiers.Control) != 0 && key.Key == ConsoleKey.P)
@@ -281,118 +250,136 @@ public sealed class TuiInput
             return InputAction.None;
         }
 
-        switch (key.Key)
+        return key.Key switch
         {
-            case ConsoleKey.Enter:
-                var text = _buffer.Trim();
-                if (text.Length > 0)
-                {
-                    _hasSubmittedFirstInteraction = true;
-                }
+            ConsoleKey.Enter => SubmitBuffer(),
+            ConsoleKey.Escape => HandleEscape(),
+            ConsoleKey.Backspace => BackspaceBuffer(),
+            ConsoleKey.Delete => DeleteBufferCharacter(),
+            ConsoleKey.LeftArrow => MoveEditorCaret(-1),
+            ConsoleKey.RightArrow => MoveEditorCaret(1),
+            ConsoleKey.Home => MoveEditorCaretToBoundary(toEnd: false),
+            ConsoleKey.End => MoveEditorCaretToBoundary(toEnd: true),
+            ConsoleKey.UpArrow => NavigateHistory(previous: true),
+            ConsoleKey.DownArrow => NavigateHistory(previous: false),
+            _ => InsertEditorCharacter(key.KeyChar)
+        };
+    }
 
-                if (text.Length > 0 && (_history.Count == 0 || _history[^1] != text))
-                {
-                    _history.Add(text);
-                }
-
-                _historyIndex = _history.Count;
-                _draft = "";
-                return InputAction.Submit;
-
-            case ConsoleKey.Escape:
-                if (_buffer.Length > 0)
-                {
-                    _buffer = "";
-                    _caret = 0;
-                    _escapePressed = false;
-                    _slashSuggestionsDismissed = false;
-                    Render();
-                    return InputAction.None;
-                }
-
-                // Doble ESC para interrumpir tarea
-                if (_escapePressed)
-                {
-                    _escapePressed = false;
-                    return InputAction.Interrupt;
-                }
-
-                _escapePressed = true;
+    private InputAction HandleOverlayKey(ConsoleKeyInfo key)
+    {
+        if ((key.Modifiers & ConsoleModifiers.Control) != 0 && key.Key == ConsoleKey.P)
+        {
+            if (_overlayState == OverlayState.Paleta)
+            {
+                CloseSelectList(restoreBuffer: true);
+                Render();
                 return InputAction.None;
+            }
 
-            case ConsoleKey.Backspace:
-                if (_caret > 0)
-                {
-                    _caret--;
-                    _buffer = _buffer.Remove(_caret, 1);
-                    UpdateSlashSuggestionsFromBuffer();
-                    Render();
-                }
-
-                return InputAction.None;
-
-            case ConsoleKey.Delete:
-                if (_caret < _buffer.Length)
-                {
-                    _buffer = _buffer.Remove(_caret, 1);
-                    UpdateSlashSuggestionsFromBuffer();
-                    Render();
-                }
-
-                return InputAction.None;
-
-            case ConsoleKey.LeftArrow:
-                if (_caret > 0)
-                {
-                    _caret--;
-                    Render();
-                }
-
-                return InputAction.None;
-
-            case ConsoleKey.RightArrow:
-                if (_caret < _buffer.Length)
-                {
-                    _caret++;
-                    Render();
-                }
-
-                return InputAction.None;
-
-            case ConsoleKey.Home:
-                if (_caret != 0)
-                {
-                    _caret = 0;
-                    Render();
-                }
-
-                return InputAction.None;
-
-            case ConsoleKey.End:
-                if (_caret != _buffer.Length)
-                {
-                    _caret = _buffer.Length;
-                    Render();
-                }
-
-                return InputAction.None;
-
-            case ConsoleKey.UpArrow:
-                HistoryPrevious();
-                return InputAction.None;
-
-            case ConsoleKey.DownArrow:
-                HistoryNext();
-                return InputAction.None;
-
-            default:
-                if (!char.IsControl(key.KeyChar))
-                {
-                    Insert(key.KeyChar.ToString());
-                }
-
-                return InputAction.None;
+            return InputAction.OpenCommands;
         }
+
+        if (key.Key == ConsoleKey.Tab)
+        {
+            return HandleSelectListTab();
+        }
+
+        return HandleSelectList(key);
+    }
+
+    private InputAction SubmitBuffer()
+    {
+        var text = _buffer.Trim();
+        if (text.Length > 0) _hasSubmittedFirstInteraction = true;
+        if (text.Length > 0 && (_history.Count == 0 || _history[^1] != text)) _history.Add(text);
+        _historyIndex = _history.Count;
+        _draft = "";
+        return InputAction.Submit;
+    }
+
+    private InputAction HandleEscape()
+    {
+        if (_buffer.Length > 0)
+        {
+            _buffer = "";
+            _caret = 0;
+            _escapePressed = false;
+            _slashSuggestionsDismissed = false;
+            Render();
+            return InputAction.None;
+        }
+
+        if (_escapePressed)
+        {
+            _escapePressed = false;
+            return InputAction.Interrupt;
+        }
+
+        _escapePressed = true;
+        return InputAction.None;
+    }
+
+    private InputAction BackspaceBuffer()
+    {
+        if (_caret > 0)
+        {
+            _caret--;
+            _buffer = _buffer.Remove(_caret, 1);
+            UpdateSlashSuggestionsFromBuffer();
+            Render();
+        }
+
+        return InputAction.None;
+    }
+
+    private InputAction DeleteBufferCharacter()
+    {
+        if (_caret < _buffer.Length)
+        {
+            _buffer = _buffer.Remove(_caret, 1);
+            UpdateSlashSuggestionsFromBuffer();
+            Render();
+        }
+
+        return InputAction.None;
+    }
+
+    private InputAction MoveEditorCaret(int offset)
+    {
+        var nextCaret = _caret + offset;
+        if (nextCaret >= 0 && nextCaret <= _buffer.Length && nextCaret != _caret)
+        {
+            _caret = nextCaret;
+            Render();
+        }
+
+        return InputAction.None;
+    }
+
+    private InputAction MoveEditorCaretToBoundary(bool toEnd)
+    {
+        var target = toEnd ? _buffer.Length : 0;
+        if (_caret != target)
+        {
+            _caret = target;
+            Render();
+        }
+
+        return InputAction.None;
+    }
+
+    private InputAction NavigateHistory(bool previous)
+    {
+        if (previous) HistoryPrevious();
+        else HistoryNext();
+        return InputAction.None;
+    }
+
+    private InputAction InsertEditorCharacter(char character)
+    {
+        if (!char.IsControl(character)) Insert(character.ToString());
+        return InputAction.None;
     }
 
     public void BeginModelPicker(
@@ -477,185 +464,182 @@ public sealed class TuiInput
             return InputAction.None;
         }
 
-        switch (key.Key)
+        return key.Key switch
         {
-            case ConsoleKey.Enter:
-                var selected = _selectList.Selected;
-                if (selected is null || selected.Disabled)
-                {
-                    return InputAction.None;
-                }
+            ConsoleKey.Enter => SelectCurrentItem(),
+            ConsoleKey.UpArrow => MoveSelection(previous: true),
+            ConsoleKey.DownArrow => MoveSelection(previous: false),
+            ConsoleKey.Escape => DismissSelectList(),
+            ConsoleKey.Backspace => BackspaceSelectListQuery(),
+            ConsoleKey.Delete => DeleteFromSelectListQuery(),
+            ConsoleKey.Tab => HandleSelectListTab(),
+            ConsoleKey.LeftArrow => MoveSelectListCaret(-1),
+            ConsoleKey.RightArrow => MoveSelectListCaret(1),
+            ConsoleKey.Home => MoveSelectListCaretToBoundary(toEnd: false),
+            ConsoleKey.End => MoveSelectListCaretToBoundary(toEnd: true),
+            _ => InsertSelectListCharacter(key.KeyChar)
+        };
+    }
 
-                if (_overlayState == OverlayState.Modelos)
-                {
-                    _selectedModel = selected.Id;
-                    _buffer = "";
-                    _caret = 0;
-                    CloseSelectList(restoreBuffer: false);
-                    Render();
-                    return InputAction.ModelSelected;
-                }
-
-                if (_overlayState == OverlayState.Agentes)
-                {
-                    _selectedAgentId = selected.Id;
-                    CloseSelectList(restoreBuffer: true);
-                    Render();
-                    return InputAction.AgentSelected;
-                }
-
-                _buffer = selected.Id;
-                _caret = _buffer.Length;
-                _slashSuggestionsDismissed = false;
-                CloseSelectList(restoreBuffer: false);
-                Render();
-                return InputAction.Submit;
-
-            case ConsoleKey.UpArrow:
-                _selectList = _selectList.MovePrev();
-                SyncSelectionBuffer();
-                Render();
-                return InputAction.None;
-
-            case ConsoleKey.DownArrow:
-                _selectList = _selectList.MoveNext();
-                SyncSelectionBuffer();
-                Render();
-                return InputAction.None;
-
-            case ConsoleKey.Escape:
-                if (_overlayState == OverlayState.Slash)
-                {
-                    _slashSuggestionsDismissed = true;
-                    CloseSelectList(restoreBuffer: false);
-                }
-                else
-                {
-                    CloseSelectList(restoreBuffer: true);
-                }
-
-                Render();
-                return InputAction.None;
-
-            case ConsoleKey.Backspace:
-                if (_overlayState == OverlayState.Slash || _overlayState == OverlayState.Modelos)
-                {
-                    if (_caret > 0)
-                    {
-                        _caret--;
-                        _buffer = _buffer.Remove(_caret, 1);
-                        if (_overlayState == OverlayState.Slash)
-                        {
-                            UpdateSlashSuggestionsFromBuffer();
-                        }
-                        else
-                        {
-                            _selectList = _selectList.SetQuery(_buffer);
-                        }
-                    }
-                }
-                else if (_selectList.Query.Length > 0)
-                {
-                    _selectList = _selectList.SetQuery(_selectList.Query[..^1]);
-                }
-
-                Render();
-                return InputAction.None;
-
-            case ConsoleKey.Delete:
-                if ((_overlayState is OverlayState.Slash or OverlayState.Modelos) && _caret < _buffer.Length)
-                {
-                    _buffer = _buffer.Remove(_caret, 1);
-                    if (_overlayState == OverlayState.Slash)
-                    {
-                        UpdateSlashSuggestionsFromBuffer();
-                    }
-                    else
-                    {
-                        _selectList = _selectList.SetQuery(_buffer);
-                    }
-                    Render();
-                }
-                else if ((_overlayState is OverlayState.Paleta or OverlayState.Agentes) && _selectList.Query.Length > 0)
-                {
-                    _selectList = _selectList.SetQuery(_selectList.Query[..^1]);
-                    Render();
-                }
-                return InputAction.None;
-
-            case ConsoleKey.Tab:
-                if (_overlayState == OverlayState.Slash)
-                {
-                    CompleteSelectedCommand();
-                    return InputAction.None;
-                }
-
-                if (_overlayState == OverlayState.Agentes)
-                {
-                    CloseSelectList(restoreBuffer: true);
-                    Render();
-                    return InputAction.None;
-                }
-
-                CloseSelectList(restoreBuffer: true);
-                return InputAction.OpenAgents;
-
-            case ConsoleKey.LeftArrow:
-                if ((_overlayState is OverlayState.Slash or OverlayState.Modelos) && _caret > 0)
-                {
-                    _caret--;
-                    Render();
-                }
-                return InputAction.None;
-
-            case ConsoleKey.RightArrow:
-                if ((_overlayState is OverlayState.Slash or OverlayState.Modelos) && _caret < _buffer.Length)
-                {
-                    _caret++;
-                    Render();
-                }
-                return InputAction.None;
-
-            case ConsoleKey.Home:
-                if (_overlayState is OverlayState.Slash or OverlayState.Modelos)
-                {
-                    _caret = 0;
-                    Render();
-                }
-                return InputAction.None;
-
-            case ConsoleKey.End:
-                if (_overlayState is OverlayState.Slash or OverlayState.Modelos)
-                {
-                    _caret = _buffer.Length;
-                    Render();
-                }
-                return InputAction.None;
-
-            default:
-                if (!char.IsControl(key.KeyChar))
-                {
-                    if (_overlayState is OverlayState.Paleta or OverlayState.Agentes)
-                    {
-                        _selectList = _selectList.SetQuery(_selectList.Query + key.KeyChar);
-                        Render();
-                    }
-                    else if (_overlayState == OverlayState.Modelos)
-                    {
-                        _buffer = _buffer.Insert(_caret, key.KeyChar.ToString());
-                        _caret++;
-                        _selectList = _selectList.SetQuery(_buffer);
-                        Render();
-                    }
-                    else
-                    {
-                        Insert(key.KeyChar.ToString());
-                        return InputAction.None;
-                    }
-                }
-
-                return InputAction.None;
+    private InputAction SelectCurrentItem()
+    {
+        var selected = _selectList?.Selected;
+        if (selected is null || selected.Disabled)
+        {
+            return InputAction.None;
         }
+
+        if (_overlayState == OverlayState.Modelos)
+        {
+            _selectedModel = selected.Id;
+            _buffer = "";
+            _caret = 0;
+            CloseSelectList(restoreBuffer: false);
+            Render();
+            return InputAction.ModelSelected;
+        }
+
+        if (_overlayState == OverlayState.Agentes)
+        {
+            _selectedAgentId = selected.Id;
+            CloseSelectList(restoreBuffer: true);
+            Render();
+            return InputAction.AgentSelected;
+        }
+
+        _buffer = selected.Id;
+        _caret = _buffer.Length;
+        _slashSuggestionsDismissed = false;
+        CloseSelectList(restoreBuffer: false);
+        Render();
+        return InputAction.Submit;
+    }
+
+    private InputAction MoveSelection(bool previous)
+    {
+        if (_selectList is null) return InputAction.None;
+        _selectList = previous ? _selectList.MovePrev() : _selectList.MoveNext();
+        SyncSelectionBuffer();
+        Render();
+        return InputAction.None;
+    }
+
+    private InputAction DismissSelectList()
+    {
+        if (_overlayState == OverlayState.Slash)
+        {
+            _slashSuggestionsDismissed = true;
+            CloseSelectList(restoreBuffer: false);
+        }
+        else
+        {
+            CloseSelectList(restoreBuffer: true);
+        }
+
+        Render();
+        return InputAction.None;
+    }
+
+    private InputAction BackspaceSelectListQuery()
+    {
+        if (_selectList is null) return InputAction.None;
+        if (_overlayState is OverlayState.Slash or OverlayState.Modelos)
+        {
+            if (_caret > 0)
+            {
+                _caret--;
+                _buffer = _buffer.Remove(_caret, 1);
+                if (_overlayState == OverlayState.Slash) UpdateSlashSuggestionsFromBuffer();
+                else _selectList = _selectList.SetQuery(_buffer);
+            }
+        }
+        else if (_selectList.Query.Length > 0)
+        {
+            _selectList = _selectList.SetQuery(_selectList.Query[..^1]);
+        }
+
+        Render();
+        return InputAction.None;
+    }
+
+    private InputAction DeleteFromSelectListQuery()
+    {
+        if (_selectList is null) return InputAction.None;
+        if ((_overlayState is OverlayState.Slash or OverlayState.Modelos) && _caret < _buffer.Length)
+        {
+            _buffer = _buffer.Remove(_caret, 1);
+            if (_overlayState == OverlayState.Slash) UpdateSlashSuggestionsFromBuffer();
+            else _selectList = _selectList.SetQuery(_buffer);
+            Render();
+        }
+        else if ((_overlayState is OverlayState.Paleta or OverlayState.Agentes) && _selectList.Query.Length > 0)
+        {
+            _selectList = _selectList.SetQuery(_selectList.Query[..^1]);
+            Render();
+        }
+
+        return InputAction.None;
+    }
+
+    private InputAction HandleSelectListTab()
+    {
+        if (_overlayState == OverlayState.Slash)
+        {
+            CompleteSelectedCommand();
+            return InputAction.None;
+        }
+
+        if (_overlayState == OverlayState.Agentes)
+        {
+            CloseSelectList(restoreBuffer: true);
+            Render();
+            return InputAction.None;
+        }
+
+        CloseSelectList(restoreBuffer: true);
+        return InputAction.OpenAgents;
+    }
+
+    private InputAction MoveSelectListCaret(int offset)
+    {
+        if (_overlayState is not (OverlayState.Slash or OverlayState.Modelos)) return InputAction.None;
+        var nextCaret = _caret + offset;
+        if (nextCaret < 0 || nextCaret > _buffer.Length) return InputAction.None;
+        _caret = nextCaret;
+        Render();
+        return InputAction.None;
+    }
+
+    private InputAction MoveSelectListCaretToBoundary(bool toEnd)
+    {
+        if (_overlayState is not (OverlayState.Slash or OverlayState.Modelos)) return InputAction.None;
+        _caret = toEnd ? _buffer.Length : 0;
+        Render();
+        return InputAction.None;
+    }
+
+    private InputAction InsertSelectListCharacter(char character)
+    {
+        if (char.IsControl(character)) return InputAction.None;
+        if (_selectList is null) return InputAction.None;
+        if (_overlayState is OverlayState.Paleta or OverlayState.Agentes)
+        {
+            _selectList = _selectList.SetQuery(_selectList.Query + character);
+            Render();
+        }
+        else if (_overlayState == OverlayState.Modelos)
+        {
+            _buffer = _buffer.Insert(_caret, character.ToString());
+            _caret++;
+            _selectList = _selectList.SetQuery(_buffer);
+            Render();
+        }
+        else
+        {
+            Insert(character.ToString());
+        }
+
+        return InputAction.None;
     }
 
     private void CompleteSelectedCommand()
@@ -764,6 +748,7 @@ public sealed class TuiInput
         "/avanzar" => "Planificar, construir y verificar una tarea",
         "/ayuda" => "Mostrar ayuda de Condor",
         "/construir" => "Construir el proyecto",
+        "/comparar-modelos" => "Comparar dos modelos, sin editar archivos",
         "/consultar" => "Consultar al modelo local",
         "/contexto" => "Consultar el contexto del proyecto",
         "/examinar" => "Analizar una imagen local",

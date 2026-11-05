@@ -25,14 +25,19 @@ public enum IntentFlavor
 
 public static class AgentEngine
 {
+    private const int MaxPlanSteps = 12;
+
     private static readonly string[] CanonicalActions =
     {
         AgentAction.ActionListDir, AgentAction.ActionReadFile,
         AgentAction.ActionPatch, AgentAction.ActionEditFile,
         AgentAction.ActionCreateFile,
         AgentAction.ActionBuild, AgentAction.ActionTest,
-        AgentAction.ActionRestore, AgentAction.ActionGitStatus,
-        AgentAction.ActionSearch, AgentAction.ActionUndoFile, AgentAction.ActionDone
+        AgentAction.ActionRestore, AgentAction.ActionGitStatus, AgentAction.ActionGitDiff,
+        AgentAction.ActionGitLog, AgentAction.ActionGitShow,
+        AgentAction.ActionSearch, AgentAction.ActionUndoFile,
+        AgentAction.ActionPlan, AgentAction.ActionClarify,
+        AgentAction.ActionDelegate, AgentAction.ActionDone
     };
     private static readonly HashSet<string> AllowedActions = new(CanonicalActions, System.StringComparer.Ordinal);
 
@@ -47,25 +52,151 @@ public static class AgentEngine
         if (!AllowedActions.Contains(action.Action))
             return new ActionValidation(false, "Accion no permitida: " + action.Action);
 
-        if (action.Action == AgentAction.ActionEditFile || action.Action == AgentAction.ActionCreateFile)
-        {
-            if (string.IsNullOrWhiteSpace(action.Path))
-                return new ActionValidation(false, "Se requiere 'path' para la accion de archivo.");
-            if (string.IsNullOrWhiteSpace(action.Content))
-                return new ActionValidation(false, "Se requiere 'content' para la accion de archivo.");
-        }
+        var validation = ValidateFileMutation(action) ?? ValidatePatch(action) ??
+            ValidateUndoFile(action) ?? ValidateGitShow(action);
+        if (validation is not null)
+            return validation.Value;
 
-        if (action.Action == AgentAction.ActionPatch)
-        {
-            if (string.IsNullOrWhiteSpace(action.Path))
-                return new ActionValidation(false, "Se requiere 'path' para la accion patch.");
-            if (string.IsNullOrEmpty(action.Original) && string.IsNullOrWhiteSpace(action.Content))
-                return new ActionValidation(false, "Se requiere 'original' (texto a localizar) para la accion patch.");
-            if (action.Replacement is null && action.Content is null)
-                return new ActionValidation(false, "Se requiere 'replacement' (texto nuevo) para la accion patch.");
-        }
+        if (action.Action == AgentAction.ActionPlan)
+            return ValidatePlan(action);
+
+        validation = ValidateClarify(action) ?? ValidateDelegation(action);
+        if (validation is not null)
+            return validation.Value;
 
         return new ActionValidation(true, null);
+    }
+
+    private static ActionValidation? ValidateFileMutation(AgentAction action)
+    {
+        if (action.Action != AgentAction.ActionEditFile && action.Action != AgentAction.ActionCreateFile)
+            return null;
+        if (string.IsNullOrWhiteSpace(action.Path))
+            return new ActionValidation(false, "Se requiere 'path' para la accion de archivo.");
+        return string.IsNullOrWhiteSpace(action.Content)
+            ? new ActionValidation(false, "Se requiere 'content' para la accion de archivo.")
+            : null;
+    }
+
+    private static ActionValidation? ValidatePatch(AgentAction action)
+    {
+        if (action.Action != AgentAction.ActionPatch)
+            return null;
+        if (string.IsNullOrWhiteSpace(action.Path))
+            return new ActionValidation(false, "Se requiere 'path' para la accion patch.");
+        if (string.IsNullOrEmpty(action.Original) && string.IsNullOrWhiteSpace(action.Content))
+            return new ActionValidation(false, "Se requiere 'original' (texto a localizar) para la accion patch.");
+        return action.Replacement is null && action.Content is null
+            ? new ActionValidation(false, "Se requiere 'replacement' (texto nuevo) para la accion patch.")
+            : null;
+    }
+
+    private static ActionValidation? ValidateUndoFile(AgentAction action)
+        => action.Action == AgentAction.ActionUndoFile && string.IsNullOrWhiteSpace(action.Path)
+            ? new ActionValidation(false, "Se requiere 'path' para deshacer una edición.")
+            : null;
+
+    private static ActionValidation? ValidateGitShow(AgentAction action)
+        => action.Action == AgentAction.ActionGitShow &&
+           (string.IsNullOrWhiteSpace(action.Path) || action.Path.Length is < 7 or > 40 ||
+            action.Path.Any(ch => !Uri.IsHexDigit(ch)))
+            ? new ActionValidation(false, "git_show requiere en 'path' un hash de commit hexadecimal de 7 a 40 caracteres.")
+            : null;
+
+    private static ActionValidation? ValidateClarify(AgentAction action)
+        => action.Action == AgentAction.ActionClarify &&
+           string.IsNullOrWhiteSpace(action.Reason) && string.IsNullOrWhiteSpace(action.Content)
+            ? new ActionValidation(false, "La aclaración requiere una pregunta concreta.")
+            : null;
+
+    private static ActionValidation? ValidateDelegation(AgentAction action)
+    {
+        if (action.Action != AgentAction.ActionDelegate)
+            return null;
+        if (action.Subtasks is not { Count: > 0 and <= 4 })
+            return new ActionValidation(false, "La delegación requiere entre 1 y 4 subtareas independientes.");
+
+        var ids = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+        foreach (var subtask in action.Subtasks)
+        {
+            if (subtask is null || string.IsNullOrWhiteSpace(subtask.Id) || subtask.Id.Length > 40 ||
+                subtask.Id.Any(ch => !char.IsLetterOrDigit(ch) && ch is not '-' and not '_'))
+                return new ActionValidation(false, "Cada subtarea requiere un id corto con letras, números, guion o guion bajo.");
+            if (!ids.Add(subtask.Id))
+                return new ActionValidation(false, "Los ids de las subtareas deben ser únicos.");
+            if (string.IsNullOrWhiteSpace(subtask.Task) || subtask.Task.Length > 6000)
+                return new ActionValidation(false, "Cada subtarea requiere una instrucción de hasta 6000 caracteres.");
+            if (subtask.ProfileId is not ("engineer" or "reviewer" or "security-reviewer" or "test-engineer"))
+                return new ActionValidation(false, "La subtarea usa un perfil desconocido.");
+            if (subtask.MaxDurationSeconds is < 15 or > 1800)
+                return new ActionValidation(false, "La duración de cada agente debe estar entre 15 y 1800 segundos.");
+            if (subtask.MaxIterations is < 1 or > 20)
+                return new ActionValidation(false, "Las iteraciones de cada agente deben estar entre 1 y 20.");
+            if (subtask.MaxOutputTokens is < 128 or > 65_536)
+                return new ActionValidation(false, "El presupuesto de salida de cada agente debe estar entre 128 y 65536 tokens.");
+        }
+
+        return null;
+    }
+
+    private static ActionValidation ValidatePlan(AgentAction action)
+    {
+        if (string.IsNullOrWhiteSpace(action.Objective))
+            return new ActionValidation(false, "El plan requiere un objetivo explícito.");
+        if (action.ScopePaths is not { Count: > 0 } || action.ScopePaths.Any(path => !IsSafeScopePath(path)))
+            return new ActionValidation(false, "El plan requiere el campo scopePaths con rutas relativas seguras desde la raíz del proyecto.");
+        if (action.ExcludedPaths?.Any(path => !IsSafeScopePath(path)) == true)
+            return new ActionValidation(false, "excludedPaths contiene una ruta insegura.");
+        if (action.PlanSteps is not { Count: > 0 } || action.PlanSteps.Any(string.IsNullOrWhiteSpace))
+            return new ActionValidation(false, "El plan requiere tareas ordenadas.");
+        if (action.PlanSteps.Count > MaxPlanSteps)
+            return new ActionValidation(false, "El plan excede 12 tareas; divídelo en un conjunto más pequeño y verificable.");
+        if (action.PlanSteps.Distinct(System.StringComparer.OrdinalIgnoreCase).Count() != action.PlanSteps.Count)
+            return new ActionValidation(false, "Las tareas del plan deben ser únicas y estar ordenadas.");
+        if (action.ExpectedResults is not { Count: > 0 } || action.ExpectedResults.Any(string.IsNullOrWhiteSpace))
+            return new ActionValidation(false, "El plan requiere un resultado esperado para cada tarea.");
+        if (action.ExpectedResults.Count != action.PlanSteps.Count)
+            return new ActionValidation(false, "Cada tarea del plan requiere exactamente un resultado esperado, en el mismo orden.");
+        if (action.VerificationSteps is not { Count: > 0 } || action.VerificationSteps.Any(string.IsNullOrWhiteSpace))
+            return new ActionValidation(false, "El plan requiere comprobaciones de salida.");
+        if (action.VerificationSteps.Count != action.PlanSteps.Count)
+            return new ActionValidation(false, "Cada tarea del plan requiere exactamente una comprobación propia, en el mismo orden.");
+        if (action.VerificationSteps.Distinct(System.StringComparer.OrdinalIgnoreCase).Count() != action.VerificationSteps.Count)
+            return new ActionValidation(false, "Cada tarea del plan requiere una comprobación distinta y verificable.");
+
+        return new ActionValidation(true, null);
+    }
+
+    public static bool IsPathWithinScope(string? path, IReadOnlyList<string>? scopePaths, IReadOnlyList<string>? excludedPaths = null)
+    {
+        if (!IsSafeScopePath(path) || scopePaths is not { Count: > 0 }) return false;
+        if (excludedPaths?.Any(scope => MatchesScope(path!, scope)) == true) return false;
+        return scopePaths.Any(scope => MatchesScope(path!, scope));
+    }
+
+    private static bool IsSafeScopePath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        var normalized = path.Replace('\\', '/').Trim();
+        if (normalized.StartsWith('/') || normalized.Contains(':')) return false;
+        if (normalized.Contains('*') && !normalized.EndsWith("/**", System.StringComparison.Ordinal)) return false;
+        if (normalized.Split('/').Any(segment => segment == ".." || segment.Length == 0)) return false;
+        return normalized == "." || !normalized.Split('/').Any(segment => segment == ".");
+    }
+
+    private static bool MatchesScope(string path, string scope)
+    {
+        var candidate = path.Replace('\\', '/').TrimStart('/');
+        if (candidate.StartsWith("./", System.StringComparison.Ordinal)) candidate = candidate.Substring(2);
+        var declared = scope.Replace('\\', '/').Trim();
+        if (declared == ".") return true;
+        if (declared.EndsWith("/**", System.StringComparison.Ordinal))
+        {
+            var directory = declared.Substring(0, declared.Length - 3).TrimEnd('/');
+            return candidate.Equals(directory, System.StringComparison.OrdinalIgnoreCase) ||
+                   candidate.StartsWith(directory + "/", System.StringComparison.OrdinalIgnoreCase);
+        }
+        return candidate.Equals(declared, System.StringComparison.OrdinalIgnoreCase);
     }
 
     public static ProgressDecision EvaluateHarness(bool buildOk, bool testsOk, string? buildError, string? testsError)
@@ -102,7 +233,7 @@ public static class AgentEngine
     }
 
     private static bool IsObservation(string action)
-        => action is AgentAction.ActionListDir or AgentAction.ActionReadFile or AgentAction.ActionSearch;
+        => action is AgentAction.ActionListDir or AgentAction.ActionReadFile or AgentAction.ActionSearch or AgentAction.ActionGitDiff or AgentAction.ActionGitLog or AgentAction.ActionGitShow;
 
     private static bool SamePath(string? a, string? b)
         => string.Equals(a, b, System.StringComparison.OrdinalIgnoreCase);
@@ -168,6 +299,11 @@ public static class AgentEngine
             // lista rigida de archivos: es exigir alcance, no una ruta concreta.
             var changed = steps.Any(s => s.Success && s.Action is AgentAction.ActionPatch or AgentAction.ActionEditFile or AgentAction.ActionCreateFile);
             if (changed) return (true, null);
+
+            if (TaskIntentClassifier.RequiresModification(intention))
+            {
+                return (false, "La solicitud exige modificar archivos; la lectura o el diagnóstico no completan el cambio pedido. Ejecuta el cambio autorizado y verifícalo antes de concluir.");
+            }
 
             var searchedErrors = steps.Any(s => s.Success && s.Action == AgentAction.ActionSearch);
 
@@ -264,52 +400,10 @@ public static class AgentEngine
     private static bool IsReadableContent(string? path)
     {
         if (string.IsNullOrWhiteSpace(path)) return false;
-        var p = path.Replace('\\', '/').TrimEnd('/');
-        var idx = p.LastIndexOf('.');
-        var ext = idx >= 0 ? p.Substring(idx) : "";
-        switch (ext.ToLowerInvariant())
-        {
-            case ".cs":
-            case ".vb":
-            case ".fs":
-            case ".ts":
-            case ".js":
-            case ".mjs":
-            case ".cjs":
-            case ".py":
-            case ".go":
-            case ".rs":
-            case ".java":
-            case ".kt":
-            case ".swift":
-            case ".rb":
-            case ".php":
-            case ".html":
-            case ".htm":
-            case ".css":
-            case ".scss":
-            case ".sass":
-            case ".less":
-            case ".csproj":
-            case ".fsproj":
-            case ".vbproj":
-            case ".sln":
-            case ".slnx":
-            case ".csx":
-            case ".json":
-            case ".yaml":
-            case ".yml":
-            case ".xml":
-            case ".ini":
-            case ".cfg":
-            case ".toml":
-            case ".md":
-            case ".markdown":
-            case ".txt":
-                return true;
-            default:
-                return false;
-        }
+        var normalized = path.Replace('\\', '/').TrimEnd('/');
+        var extensionStart = normalized.LastIndexOf('.');
+        var extension = extensionStart >= 0 ? normalized.Substring(extensionStart) : "";
+        return AgentContentFileTypes.IsReadableExtension(extension);
     }
 
     private static string NormalizePath(string? p)

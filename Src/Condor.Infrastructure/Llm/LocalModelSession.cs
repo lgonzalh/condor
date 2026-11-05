@@ -52,6 +52,9 @@ public sealed class LocalModelSession : ILlmProviderLifecycle, IDisposable
     /// <summary>Diagnostico de disponibilidad del proveedor para esta sesion.</summary>
     public ILlmProviderDiagnostics Diagnostics => _llm;
 
+    public Task<IReadOnlySet<string>> GetLoadedModelNamesAsync(CancellationToken cancellationToken = default)
+        => _llm.GetLoadedModelNamesAsync(cancellationToken);
+
     public string ProviderName => _llm.ProviderName;
 
     public string? ActiveModel

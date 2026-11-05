@@ -587,68 +587,77 @@ public sealed class TuiHost : IDisposable
             var sb = new System.Text.StringBuilder();
             if (_dirtyAll)
             {
-                sb.Append(Ansi.ClearScreen);
-                if (_mode == HostMode.Welcome)
-                {
-                    PaintWelcomeHeaderLocked(sb);
-                    PaintWelcomeStatusLocked(sb);
-                    PaintTickerLocked(sb);
-                }
-                else
-                {
-                    PaintChromeLocked(sb);
-                    PaintActivityLocked(sb);
-                    PaintSelectListOverlayDiffLocked(sb, force: true, underlayPainted: true);
-                    PaintEstadoLocked(sb);
-                    PaintInputRegionLocked(sb);
-                    PaintTickerLocked(sb);
-                }
+                PaintFullFrameLocked(sb);
             }
             else
             {
-                if (_dirtyHeader && _mode == HostMode.Session)
-                {
-                    PaintTitleRowLocked(sb);
-                    PaintSeparatorLocked(sb, HeaderRows - 1, null);
-                    PaintSeparatorLocked(sb, SepInputRow, null);
-                }
-
-                var activityPainted = false;
-                if (_dirtyActivity && _mode == HostMode.Session)
-                {
-                    PaintActivityLocked(sb);
-                    activityPainted = true;
-                }
-
-                if ((_dirtyOverlay || activityPainted) && _mode == HostMode.Session)
-                {
-                    PaintSelectListOverlayDiffLocked(sb, force: activityPainted, underlayPainted: activityPainted);
-                }
-
-                if (_dirtyStatus && _mode == HostMode.Session)
-                {
-                    PaintEstadoLocked(sb);
-                }
-                else if (_dirtyStatus && _mode == HostMode.Welcome)
-                {
-                    PaintWelcomeStatusLocked(sb);
-                }
-
-                if (_dirtyInput && _mode == HostMode.Session)
-                {
-                    PaintInputRegionLocked(sb);
-                }
-
-                if (_dirtyTicker)
-                {
-                    PaintTickerLocked(sb);
-                }
+                PaintDirtyRegionsLocked(sb);
             }
 
             AppendInputCursorStateLocked(sb);
             _dirtyAll = _dirtyHeader = _dirtyActivity = _dirtyStatus = _dirtyInput =
                 _dirtyTicker = _dirtyOverlay = false;
             return sb.ToString();
+        }
+    }
+
+    private void PaintFullFrameLocked(System.Text.StringBuilder output)
+    {
+        output.Append(Ansi.ClearScreen);
+        if (_mode == HostMode.Welcome)
+        {
+            PaintWelcomeHeaderLocked(output);
+            PaintWelcomeStatusLocked(output);
+            PaintTickerLocked(output);
+            return;
+        }
+
+        PaintChromeLocked(output);
+        PaintActivityLocked(output);
+        PaintSelectListOverlayDiffLocked(output, force: true, underlayPainted: true);
+        PaintEstadoLocked(output);
+        PaintInputRegionLocked(output);
+        PaintTickerLocked(output);
+    }
+
+    private void PaintDirtyRegionsLocked(System.Text.StringBuilder output)
+    {
+        if (_dirtyHeader && _mode == HostMode.Session)
+        {
+            PaintTitleRowLocked(output);
+            PaintSeparatorLocked(output, HeaderRows - 1, null);
+            PaintSeparatorLocked(output, SepInputRow, null);
+        }
+
+        var activityPainted = false;
+        if (_dirtyActivity && _mode == HostMode.Session)
+        {
+            PaintActivityLocked(output);
+            activityPainted = true;
+        }
+
+        if ((_dirtyOverlay || activityPainted) && _mode == HostMode.Session)
+        {
+            PaintSelectListOverlayDiffLocked(output, force: activityPainted, underlayPainted: activityPainted);
+        }
+
+        if (_dirtyStatus && _mode == HostMode.Session)
+        {
+            PaintEstadoLocked(output);
+        }
+        else if (_dirtyStatus && _mode == HostMode.Welcome)
+        {
+            PaintWelcomeStatusLocked(output);
+        }
+
+        if (_dirtyInput && _mode == HostMode.Session)
+        {
+            PaintInputRegionLocked(output);
+        }
+
+        if (_dirtyTicker)
+        {
+            PaintTickerLocked(output);
         }
     }
 

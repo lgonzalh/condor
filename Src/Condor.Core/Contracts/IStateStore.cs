@@ -35,4 +35,12 @@ public interface IStateStore
     Task SaveSemanticVerificationAsync(SemanticVerificationResult result, CancellationToken cancellationToken = default);
 
     Task<SemanticVerificationResult?> LoadSemanticVerificationAsync(CancellationToken cancellationToken = default);
+
+    Task<bool> SaveAgentCheckpointAsync(string workingDirectory, AgentCheckpoint checkpoint, CancellationToken cancellationToken = default);
+
+    Task<AgentCheckpoint?> LoadAgentCheckpointAsync(string workingDirectory, CancellationToken cancellationToken = default);
+
+    Task<DeliveryMetricsState> LoadDeliveryMetricsAsync(string workingDirectory, CancellationToken cancellationToken = default);
+
+    Task SaveDeliveryMetricsAsync(string workingDirectory, DeliveryMetricsState state, CancellationToken cancellationToken = default);
 }

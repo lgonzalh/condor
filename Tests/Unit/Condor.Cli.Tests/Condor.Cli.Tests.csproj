@@ -19,6 +19,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="VisualSnapshots\**\*.snap" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\..\Src\Condor.Cli\Condor.Cli.csproj" />
   </ItemGroup>
 

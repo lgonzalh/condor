@@ -17,7 +17,10 @@ REM ======================================================================
 
 set "ROOT=%~dp0"
 set "ROOT=%ROOT:~0,-1%"
-set "OUT=%ROOT%\.artifacts\condor"
+for /f "usebackq delims=" %%N in (`powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$branch=git -C '%ROOT%' branch --show-current; if ([string]::IsNullOrWhiteSpace($branch)) {$branch='detached'}; if ($branch -eq 'main') {'condor'} else {'condor-' + ($branch -replace '[^A-Za-z0-9._-]','-')}"`) do set "PROFILE=%%N"
+if not defined PROFILE set "PROFILE=condor"
+set "OUT=%ROOT%\.artifacts\%PROFILE%"
+set "ARTIFACTS=%ROOT%\.artifacts\%PROFILE%-build"
 set "EXE=%OUT%\condor.exe"
 set "NEED_PUBLISH=0"
 
@@ -33,13 +36,13 @@ if not exist "%SRC%" (
 
 set "NEED_PUBLISH=1"
 if exist "%EXE%" (
-    for /f "usebackq delims=" %%N in (`powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$exe=Get-Item -LiteralPath '%EXE%'; $newer='0'; foreach ($f in (Get-ChildItem -LiteralPath '%ROOT%\Src' -Recurse -File -Include *.cs,*.csproj)) { if ($f.FullName -notmatch '\\(obj|bin)\\' -and $f.LastWriteTime -gt $exe.LastWriteTime) { $newer='1'; break } }; $newer"`) do if "%%N"=="0" set "NEED_PUBLISH=0"
+    for /f "usebackq delims=" %%N in (`powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$exe=Get-Item -LiteralPath '%EXE%'; $newer='0'; if ((Get-Item -LiteralPath '%ROOT%\condor.cmd').LastWriteTime -gt $exe.LastWriteTime) {$newer='1'}; foreach ($f in (Get-ChildItem -LiteralPath '%ROOT%\Src' -Recurse -File -Include *.cs,*.csproj)) { if ($f.FullName -notmatch '\\(obj|bin)\\' -and $f.LastWriteTime -gt $exe.LastWriteTime) { $newer='1'; break } }; $newer"`) do if "%%N"=="0" set "NEED_PUBLISH=0"
 )
 
 if "%NEED_PUBLISH%"=="1" (
     echo [Condor] Actualizando Condor...
     if not exist "%OUT%" mkdir "%OUT%"
-    dotnet publish "%SRC%" -c Release -o "%OUT%" --nologo -v q
+    dotnet publish "%SRC%" -c Release -p:ArtifactsPath="%ARTIFACTS%" -o "%OUT%" --nologo -v q
     if errorlevel 1 (
         echo [Condor] ERROR: no se pudo preparar Condor. Revisa que el SDK de .NET este instalado.
         exit /b 1

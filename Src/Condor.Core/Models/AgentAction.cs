@@ -14,8 +14,14 @@ public class AgentAction
     public const string ActionTest = "test";
     public const string ActionRestore = "restore";
     public const string ActionGitStatus = "git_status";
+    public const string ActionGitDiff = "git_diff";
+    public const string ActionGitLog = "git_log";
+    public const string ActionGitShow = "git_show";
     public const string ActionSearch = "search";
     public const string ActionUndoFile = "undo_file";
+    public const string ActionPlan = "plan";
+    public const string ActionClarify = "clarify";
+    public const string ActionDelegate = "delegate";
     public const string ActionDone = "done";
 
     public string Action { get; set; } = "";
@@ -28,4 +34,21 @@ public class AgentAction
 
     public string? Reason { get; set; }
     public List<string>? AllowedActions { get; set; }
+
+    // El plan se declara antes de editar. Las rutas son relativas al proyecto;
+    // los directorios completos se indican con el sufijo /**.
+    public string? Objective { get; set; }
+    public List<string>? ScopePaths { get; set; }
+    public List<string>? ExcludedPaths { get; set; }
+    public List<string>? PlanSteps { get; set; }
+    public List<string>? ExpectedResults { get; set; }
+    public List<string>? VerificationSteps { get; set; }
+    public List<AgentPlanItem>? PlanItems { get; set; }
+    public string? RiskLevel { get; set; }
+
+    // Tareas independientes que el agente principal puede encargar a agentes aislados.
+    public List<AgentSubtask>? Subtasks { get; set; }
+
+    // Hallazgos estructurados que los perfiles de revisión entregan al agente principal.
+    public List<AgentReviewFinding>? ReviewFindings { get; set; }
 }

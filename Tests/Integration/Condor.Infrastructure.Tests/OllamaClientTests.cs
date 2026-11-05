@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using Condor.Core.Models;
 using Condor.Infrastructure.Llm;
 
@@ -32,7 +33,8 @@ public class OllamaClientTests
     [Fact]
     public async Task CompleteAsync_ModeloInexistente_DevuelveErrorDeModelo()
     {
-        var client = new OllamaClient();
+        var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
+        var client = new OllamaClient(new HttpClient(handler));
 
         var response = await client.CompleteAsync(new LlmRequest { Model = "modelo-inexistente-condor", Prompt = "hola" });
 
@@ -134,6 +136,32 @@ public class OllamaClientTestsConSimulacion
 
         Assert.NotNull(captured);
         Assert.StartsWith("http://127.0.0.1:11434", captured.ToString());
+    }
+
+    [Fact]
+    public async Task CompleteAsync_RequireJson_EnviaFormatoJsonAlProveedor()
+    {
+        string? requestBody = null;
+        var handler = new FakeHttpMessageHandler(request =>
+        {
+            requestBody = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{\"model\":\"modelo\",\"message\":{\"content\":\"{\\\"action\\\":\\\"done\\\"}\"}}", Encoding.UTF8, "application/json")
+            };
+        });
+        var client = new OllamaClient(new HttpClient(handler));
+
+        var response = await client.CompleteAsync(new LlmRequest
+        {
+            Model = "modelo",
+            Prompt = "Devuelve una acción JSON.",
+            RequireJson = true
+        });
+
+        Assert.True(response.Success, response.Error);
+        using var payload = JsonDocument.Parse(requestBody!);
+        Assert.Equal("json", payload.RootElement.GetProperty("format").GetString());
     }
 
     [Fact]

@@ -105,7 +105,7 @@ public static class Program
                         assessmentService, stateStore, session, shutdownCts.Token, first, sinAnimacion);
                 }
 
-                if (slash.Kind != SlashCommandKind.Ayuda)
+                if (slash.Kind is not (SlashCommandKind.Ayuda or SlashCommandKind.Metricas))
                 {
                     // Bootstrap de dependencias (Ollama) antes de preparar el modelo.
                     var bootstrap = await RunBootstrapAsync(progress: null, shutdownCts.Token);
@@ -255,7 +255,7 @@ public static class Program
             SlashCommandKind.Contexto => await ContextCommand.ExecuteAsync(
                 new ContextService(stateStore), stateStore, args, CancellationToken.None),
             SlashCommandKind.Planear => await PlanCommand.ExecuteAsync(
-                new PlanService(stateStore), stateStore, args, CancellationToken.None),
+                new PlanService(stateStore, workingDirectory: Environment.CurrentDirectory), stateStore, args, CancellationToken.None),
             SlashCommandKind.Construir => await BuildCommand.ExecuteAsync(
                 new BuildService(stateStore), stateStore, args, CancellationToken.None),
             SlashCommandKind.Verificar => await VerifyCommand.ExecuteAsync(
@@ -273,13 +273,20 @@ public static class Program
                 CancellationToken.None),
             SlashCommandKind.Avanzar => await AdvanceCommand.ExecuteAsync(
                 new CycleService(
-                    new PlanService(stateStore),
+                    new PlanService(stateStore, workingDirectory: Environment.CurrentDirectory),
                     new BuildService(stateStore),
                     new VerificationService(stateStore),
                     stateStore,
                     semanticService: new SemanticVerificationService(stateStore),
                     documenter: new DocumenterService()),
                 stateStore,
+                args,
+                CancellationToken.None),
+            SlashCommandKind.Metricas => await DeliveryMetricsCommand.ExecuteAsync(stateStore, args, CancellationToken.None),
+            SlashCommandKind.EvaluarRevisor => await ReviewerBenchmarkCommand.ExecuteAsync(
+                llmClient,
+                session.ActiveModel ?? string.Empty,
+                Environment.CurrentDirectory,
                 args,
                 CancellationToken.None),
             SlashCommandKind.Ayuda => await RenderHelpAndReturn(),
@@ -390,6 +397,8 @@ public static class Program
         WriteHelpCommand("/consultar \"<mensaje>\"", "Consulta al modelo local.");
         WriteHelpCommand("/verificar-semantico", "Compila y ejecuta las pruebas del proyecto.");
         WriteHelpCommand("/preparar", "Refresca la preparacion del entorno.");
+        WriteHelpCommand("/metricas", "Consulta o registra manualmente entregas, fallos, recuperaciones y retrabajo.");
+        WriteHelpCommand("/evaluar-revisor [--actualizar-base]", "Evalúa el revisor en casos conocidos y compara con una línea base estable.");
         WriteHelpCommand("/ayuda", "Muestra esta ayuda.");
         WriteHelpCommand("/version", "Muestra la version.");
         WriteHelpCommand("/salir", "Termina la sesion interactiva.");

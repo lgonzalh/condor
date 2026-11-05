@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using Condor.Core.Contracts;
 using Condor.Core.Models;
@@ -14,15 +15,20 @@ namespace Condor.Infrastructure.Planning
         private readonly IStateStore _stateStore;
         private readonly ContextService _contextService;
         private readonly PlanLimits _limits;
+        private readonly string? _workingDirectory;
 
         public PlanService(
             IStateStore stateStore,
             ContextService? contextService = null,
-            PlanLimits? limits = null)
+            PlanLimits? limits = null,
+            string? workingDirectory = null)
         {
             _stateStore = stateStore;
             _contextService = contextService ?? new ContextService(stateStore);
             _limits = limits ?? PlanLimits.Default;
+            _workingDirectory = string.IsNullOrWhiteSpace(workingDirectory)
+                ? null
+                : Path.GetFullPath(workingDirectory);
         }
 
         public async Task<WorkPlan> BuildPlanAsync(
@@ -36,6 +42,14 @@ namespace Condor.Infrastructure.Planning
                 var context = await _stateStore
                     .LoadContextAsync(cancellationToken)
                     .WaitAsync(timeout, cancellationToken);
+
+                if (_workingDirectory is not null &&
+                    (context is null || !SameDirectory(context.WorkingDirectory, _workingDirectory)))
+                {
+                    context = await _contextService
+                        .BuildContextAsync(_workingDirectory, cancellationToken)
+                        .WaitAsync(timeout, cancellationToken);
+                }
 
                 context ??= await _contextService
                     .BuildContextAsync(cancellationToken)
@@ -52,6 +66,28 @@ namespace Condor.Infrastructure.Planning
                     Reason = ReasonTimeout,
                     GeneratedAtUtc = DateTime.UtcNow
                 };
+            }
+        }
+
+        private static bool SameDirectory(string left, string right)
+        {
+            if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
+            {
+                return false;
+            }
+
+            try
+            {
+                var normalizedLeft = Path.TrimEndingDirectorySeparator(Path.GetFullPath(left));
+                var normalizedRight = Path.TrimEndingDirectorySeparator(Path.GetFullPath(right));
+                var comparison = OperatingSystem.IsWindows()
+                    ? StringComparison.OrdinalIgnoreCase
+                    : StringComparison.Ordinal;
+                return string.Equals(normalizedLeft, normalizedRight, comparison);
+            }
+            catch
+            {
+                return false;
             }
         }
     }

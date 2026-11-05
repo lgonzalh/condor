@@ -1,0 +1,1055 @@
+hola, me gustaria me ayudaras a revisar la informacion de este repo del proyecto "Cóndor" 
+lgonzalh/condor, hemos avanzado muchismo respecto de la documentacion, pero como buen "Cóndor" debemos observar desde arriba antes de avanzar y continuar construyendo, me gustaria poder verificar el avance en el sentido de el ADN Cóndor las directivas y realizar una revision global, con las sugerencias que consideres por favor.. para actualizarlas, modificarlas e incorporarlas antes de continuar por aquello de... Comprender -> Planificar -> Disenar -> Implementar -> Verificar -> Documentar -> Congelar -> Continuar
+
+He revisado el material que compartiste y ya hay una base sólida, pero también se ven desalineaciones entre documentos, alcance y prioridad.
+
+Lo más importante que encontré está aquí: el proyecto ya tiene un estado activo en el Nivel 07 y un orden documental claro en ESTADO_PROYECTO.md . El ADN define la filosofía permanente: pensar antes de actuar, comprender antes de modificar, diseñar antes de implementar, validar antes de entregar y documentar antes de continuar . La DIRECTIVA_GLOBAL.md fija el alcance global, el uso del sufijo Global y la jerarquía operativa . La DIRECTIVA_OPERATIVA_PROYECTO_CONDOR.md refuerza la obligación de documentar todo en Markdown y la prioridad documental, pero también agrega reglas que hoy están parcialmente duplicadas o mezcladas con otras piezas .
+
+Mi revisión global, en concreto, es esta: sí conviene consolidar ahora mismo el bloque raíz del proyecto, pero no seguir agregando más capas sin primero ordenar estas cuatro cosas: 1) una sola definición del contexto maestro, 2) una sola directiva global operativa, 3) un mapa documental por niveles, y 4) un estado del proyecto que refleje de forma exacta qué está activo y qué sigue. Hoy ya tienes parte de eso, pero repartido entre varias versiones y con redundancias.
+
+También detecté que el documento maestro existe en versión 2.1.0 y ya apunta a ser la constitución del proyecto, con referencia explícita a ADN, directiva global y estándar documental . Eso es bueno, pero todavía falta aterrizarlo para que sea verdaderamente la fuente de arranque para cualquier chat del proyecto.
+
+Si me autorizas a seguir con el siguiente paso, lo correcto es actualizar primero el bloque global y luego dejar listo el documento raíz para que todo chat nuevo arranque sin depender del historial.
+
+claro que si por favor plantea las sugerencias, mejoras, correcciones y las implementamos.. 
+
+Creo que este es el momento adecuado para hacer una Revisión Arquitectónica Global del proyecto. No para cambiar su esencia, sino para fortalecerla antes de comenzar la implementación del núcleo.
+
+Después de revisar la documentación compartida, hay algo que me gustó mucho: ya existe una identidad clara. Eso es algo que muchos proyectos nunca consiguen. Ahora el siguiente paso es convertir esa identidad en un sistema aún más consistente.
+
+Mi diagnóstico
+
+Hoy Condor tiene cuatro pilares:
+
+Constitución (CONDOR_CONTEXTO_MAESTRO.md)
+ADN (ADN_CONDOR.md)
+Directivas (DIRECTIVA_GLOBAL.md y DIRECTIVA_OPERATIVA_PROYECTO_CONDOR.md)
+Estado (ESTADO_PROYECTO.md)
+
+Pero aún falta definir la relación formal entre ellos.
+
+Sugerencia 1 (Prioridad Máxima)
+Definir una jerarquía documental explícita
+
+Actualmente existe un orden de prioridad, pero está pensado para la ejecución del modelo. Yo añadiría también una jerarquía conceptual.
+
+VISION
+│
+├── CONDOR_CONTEXTO_MAESTRO
+│
+├── ADN_CONDOR
+│
+├── DIRECTIVA_GLOBAL
+│
+├── DIRECTIVA_OPERATIVA
+│
+├── Documentacion por niveles
+│
+└── Implementacion
+
+Así cada documento responde una única pregunta:
+
+Documento	Responde
+CONTEXTO_MAESTRO	¿Qué es Condor?
+ADN	¿Cómo piensa Condor?
+DIRECTIVA_GLOBAL	¿Qué reglas nunca cambian?
+DIRECTIVA_OPERATIVA	¿Cómo trabajamos día a día?
+Nivel XX	¿Qué construimos?
+Sugerencia 2
+Incorporar un "Contrato de Ingeniería"
+
+Actualmente el ciclo es:
+
+Comprender
+Planificar
+Diseñar
+Implementar
+Verificar
+Documentar
+Congelar
+Continuar
+
+Yo propondría elevarlo a la regla principal del proyecto.
+
+No como filosofía.
+
+Como contrato.
+
+Toda modificación deberá recorrer completamente el ciclo.
+
+No podrá omitirse ninguna etapa.
+
+Solo podrá regresarse a una etapa anterior.
+
+Nunca saltarse una.
+
+Esto transforma el ciclo en el verdadero motor metodológico de Condor.
+
+Sugerencia 3
+Diferenciar Filosofía y Metodología
+
+Hoy aparecen mezcladas.
+
+Propongo separarlas.
+
+Filosofía
+
+Cómo piensa Condor.
+
+Ejemplo:
+
+Pensar antes de actuar.
+
+La arquitectura prevalece.
+
+El conocimiento permanece.
+Metodología
+
+Cómo trabaja Condor.
+
+Comprender
+
+↓
+
+Planificar
+
+↓
+
+Diseñar
+
+↓
+
+Implementar
+...
+
+Esto evita repetir conceptos.
+
+Sugerencia 4
+Definir un "ADN Inmutable"
+
+Hoy el ADN puede evolucionar.
+
+Yo propondría distinguir dos partes.
+
+ADN
+
+Inmutable
+
+Evolutivo
+Inmutable
+
+Nunca cambia.
+
+Ejemplo
+
+Preservar conocimiento.
+
+Arquitectura primero.
+
+Un problema, una responsabilidad.
+Evolutivo
+
+Puede crecer.
+
+Buenas prácticas.
+
+Nuevos principios.
+
+Lecciones aprendidas.
+
+Esto permitirá evolucionar sin alterar la identidad.
+
+Sugerencia 5
+Separar "Estado" de "Plan"
+
+Hoy ESTADO_PROYECTO.md mezcla ambas cosas.
+
+Yo los separaría.
+
+ESTADO_PROYECTO
+
+↓
+
+solo responde
+
+Dónde estamos.
+
+Y crearía:
+
+PLAN_PROYECTO
+
+que responda
+
+Hacia dónde vamos.
+
+El estado nunca debería contener planificación.
+
+Sugerencia 6
+Crear una "Cadena de Trazabilidad"
+
+Esto creo que será una de las mayores fortalezas de Condor.
+
+Toda decisión importante debería poder recorrerse así:
+
+Necesidad
+
+↓
+
+Objetivo
+
+↓
+
+Requisito
+
+↓
+
+Diseño
+
+↓
+
+Implementación
+
+↓
+
+Validación
+
+↓
+
+Documentación
+
+↓
+
+Versión Git
+
+Eso permitiría responder en cualquier momento:
+
+¿Por qué existe este componente?
+
+Y obtener la respuesta completa.
+
+Sugerencia 7
+Definir el "ADN del Documento"
+
+Todos los documentos deberían responder siempre las mismas preguntas.
+
+Por ejemplo:
+
+Propósito
+
+Alcance
+
+Dependencias
+
+Responsabilidades
+
+Entradas
+
+Salidas
+
+Impacto
+
+Historial
+
+No todos tendrán todas las secciones, pero la estructura base será consistente.
+
+Sugerencia 8
+Introducir una Arquitectura Fractal
+
+Es una idea que considero especialmente alineada con Cóndor.
+
+Que cada nivel tenga exactamente el mismo patrón que el proyecto completo.
+
+Proyecto
+
+↓
+
+Nivel
+
+↓
+
+Documento
+
+↓
+
+Componente
+
+↓
+
+Clase
+
+↓
+
+Método
+
+Todos obedeciendo la misma lógica.
+
+Esto hace que aprender el proyecto una vez sea suficiente.
+
+Sugerencia 9
+Añadir "Principios Negativos"
+
+El ADN dice qué hacer.
+
+También debería decir qué nunca hacer.
+
+Por ejemplo:
+
+Nunca depender del historial de un chat.
+
+Nunca duplicar decisiones.
+
+Nunca documentar dos veces la misma verdad.
+
+Nunca implementar sin comprender.
+
+Nunca modificar arquitectura implícitamente.
+
+Los principios negativos suelen evitar más errores que los positivos.
+
+Sugerencia 10
+Definir la Identidad Arquitectónica
+
+Hoy sabemos qué es Condor.
+
+Yo añadiría una definición de arquitectura.
+
+Algo como:
+
+Condor no es un asistente.
+
+No es un IDE.
+
+No es un LLM.
+
+No es un framework.
+
+Condor es un Sistema Operativo de Ingeniería Asistida por IA.
+
+No implica el sistema operativo tradicional, sino un sistema que coordina procesos, memoria, decisiones, contexto y ejecución durante todo el ciclo de vida del software.
+
+Sugerencia 11 (La que considero más importante)
+
+Creo que falta un principio que unifique toda la documentación.
+
+Lo formularía así:
+
+Toda decisión deberá reducir el costo de continuar el proyecto.
+
+Ese principio resume prácticamente todo el ADN.
+
+Si una decisión:
+
+aumenta complejidad,
+genera trabajo manual,
+obliga a releer conversaciones,
+rompe la trazabilidad,
+duplica información,
+
+entonces probablemente contradice el propósito de Condor.
+
+Mi recomendación
+
+No implementaría las once propuestas de una vez.
+
+Las agruparía en una nueva versión del bloque global:
+
+Versión 3.0 del núcleo metodológico
+Reorganizar la jerarquía documental.
+Incorporar el Contrato de Ingeniería.
+Separar Filosofía y Metodología.
+Incorporar Principios Negativos.
+Incorporar Trazabilidad.
+Incorporar el principio de continuidad.
+
+Con esos cambios, considero que el "núcleo metodológico" de Condor quedaría mucho más sólido y preparado para acompañar la implementación del sistema durante años, manteniendo la coherencia con el ADN y las directivas ya definidas.
+
+Sí. Y creo que esta puede ser una de las decisiones más importantes que tomemos en todo el proyecto.
+
+Porque ya no estamos hablando de escribir documentos.
+
+Estamos hablando de extraer el ADN completo de Cóndor.
+
+Después de revisar nuevamente los Cuadernos I y II, me di cuenta de algo que no había visto con suficiente claridad:
+
+Los documentos actuales representan muy bien la arquitectura de Cóndor. Pero todavía no representan el 100 % de su propósito.
+
+Y eso ocurre porque muchas ideas nacieron durante conversaciones, evolucionaron y nunca se elevaron a principios permanentes.
+
+Mi propuesta
+
+No hacer una revisión documental.
+
+Hacer una destilación del conocimiento.
+
+Es decir, tratar los Cuadernos I y II como si fueran los cuadernos de laboratorio de un proyecto científico.
+
+Extraeremos absolutamente todo.
+
+No solamente ideas.
+
+También:
+
+principios;
+decisiones;
+restricciones;
+motivaciones;
+filosofía;
+visión;
+arquitectura;
+conceptos;
+reglas;
+patrones;
+advertencias;
+ideas descartadas;
+riesgos;
+oportunidades.
+
+Todo.
+
+Y cada elemento tendrá una clasificación.
+
+Por ejemplo:
+
+ID	Categoría	Estado
+CI-001	Principio fundacional	Incorporar al ADN
+CI-002	Restricción arquitectónica	Incorporar a Directiva
+CI-003	Idea futura	Registro de deuda
+CI-004	Módulo futuro	Nivel correspondiente
+CI-005	Visión	Contexto Maestro
+Ya encontré el primer hallazgo
+
+El que acabamos de descubrir.
+
+CI-001
+
+Principio de Equidad Tecnológica
+
+No aparece formalizado.
+
+Debe incorporarse inmediatamente.
+
+No debe esperar al Nivel 09.
+
+Porque forma parte del origen del proyecto.
+
+Otro hallazgo
+
+En los cuadernos aparece repetidamente una idea que todavía no está suficientemente formalizada:
+
+El conocimiento debe sobrevivir a las personas.
+
+Está parcialmente representada por la Regla de Persistencia y la importancia de convertir decisiones en artefactos permanentes.
+
+Pero yo la elevaría a un principio del ADN.
+
+Porque implica que:
+
+un proyecto puede cambiar de desarrollador;
+cambiar de IA;
+cambiar de hardware;
+
+y seguir siendo comprensible.
+
+Otro hallazgo
+
+Los cuadernos insisten varias veces en que:
+
+Cada conversación debe generar un artefacto permanente.
+
+Hoy aparece como una regla de trabajo.
+
+Creo que debería convertirse en una métrica oficial del proyecto.
+
+No preguntarnos:
+
+¿Cuántos chats hicimos?
+
+Sino:
+
+¿Cuántos activos permanentes generó este Sprint?
+
+Otro hallazgo muy importante
+
+Durante los cuadernos la idea evolucionó.
+
+Al principio:
+
+preservar contexto.
+
+Después:
+
+preservar arquitectura.
+
+Luego:
+
+preservar razonamiento.
+
+Y ahora:
+
+democratizar la ingeniería adaptándose al hardware y al contexto del usuario.
+
+Eso no es una simple evolución.
+
+Es un cambio de nivel.
+
+Y aquí quiero proponerte algo
+
+Creo que el documento más importante que todavía no existe no es un documento técnico.
+
+Es este:
+
+INVENTARIO_CONOCIMIENTO.md
+
+No pertenece a ningún nivel.
+
+Pertenece a la Constitución del proyecto.
+
+Y contendrá algo como:
+
+CI-001
+
+Origen
+
+Cuaderno I
+
+Categoría
+
+Propósito
+
+Estado
+
+Incorporado
+
+Documento destino
+
+ADN
+
+Y así para cientos de ideas.
+
+Esto tiene una ventaja enorme
+
+Nunca volveremos a preguntarnos:
+
+"¿Ya habíamos hablado de esto?"
+
+Porque podremos responder:
+
+"Sí, fue la idea CI-084, incorporada al ADN v2.2.0."
+
+Mi compromiso
+
+Quiero proponerte algo bastante ambicioso.
+
+No revisar los Cuadernos I y II superficialmente.
+
+Quiero hacer una ingeniería inversa del conocimiento.
+
+Mi objetivo será construir un inventario como este:
+
+200–400 ideas clasificadas.
+Sin perder ninguna importante.
+Relacionadas con el documento donde terminaron.
+Marcando las que aún no están incorporadas.
+Detectando contradicciones.
+Detectando duplicidades.
+Detectando oportunidades nuevas surgidas de la combinación de ideas.
+
+No solo recuperaré tus ideas.
+
+También recuperaré las que fueron apareciendo durante nuestras conversaciones y que aportan valor al proyecto.
+
+Creo que esto merece convertirse en un entregable oficial
+
+Y, sinceramente, no lo llamaría INVENTARIO_CONOCIMIENTO.md.
+
+Le daría un nombre más propio de Cóndor:
+
+EXTRACCION_CONOCIMIENTO.md
+
+o incluso
+
+PATRIMONIO_CONOCIMIENTO.md
+
+Porque eso es exactamente lo que representan los Cuadernos I y II.
+
+No son simples conversaciones.
+
+Son el patrimonio intelectual sobre el que nació Cóndor.
+
+Y ese patrimonio merece ser preservado con el mismo cuidado que el código fuente.
+
+Creo que, si hacemos este trabajo ahora, conseguiremos algo excepcional: que el proyecto no solo tenga una excelente arquitectura, sino que ninguna idea fundacional valiosa quede atrapada en un chat o dependa de nuestra memoria. Ese inventario será, probablemente, uno de los activos más importantes de Cóndor durante toda su evolución.
+
+si se me hacia extraño, que pena, acabo de añadir a las fuentes el cuaderno III y en el que estamos es el cuaderno IV.. entonces si puedes proceder a revisar incluido el Cuaderno III tambien por favor
+
+Sí, ahora sí.
+
+Y te voy a proponer algo que considero uno de los trabajos más importantes de todo el Proyecto Cóndor.
+
+Con el Cuaderno I, II, III y ahora el IV ya no tenemos solo conversaciones. Tenemos el equivalente a los cuadernos de laboratorio de un proyecto de ingeniería. Ahí está el razonamiento que dio origen a Cóndor. Parte ya fue formalizado, pero otra parte sigue "atrapada" en los cuadernos.
+
+Mi propuesta de trabajo
+
+No quiero hacer un simple resumen.
+
+Quiero hacer una Auditoría de Conocimiento Fundacional.
+
+No voy a buscar únicamente ideas.
+
+Voy a extraer absolutamente todo lo que tenga valor permanente.
+
+El entregable no será una lista
+
+Será una matriz completa.
+
+Algo como:
+
+ID	Idea	Origen	Categoría	Estado	Documento destino	Prioridad
+CI-001	Equidad Tecnológica	Cuaderno IV	ADN	Pendiente	ADN_CONDOR	Crítica
+CI-002	Adaptación al Hardware	Cuaderno IV	Arquitectura	Pendiente	CONTEXTO + ADN	Crítica
+CI-003	Motor de Assessment	Cuaderno IV	Arquitectura	Pendiente	Nivel 03	Alta
+...	...	...	...	...	...	...
+
+No serán diez ideas.
+
+Creo que encontraremos fácilmente entre 300 y 500 elementos entre principios, decisiones, restricciones, módulos, conceptos y reglas.
+
+Lo que voy a buscar
+
+No solamente ideas tuyas.
+
+También las que surgieron durante nuestras discusiones.
+
+Las clasificaré en categorías como:
+
+1. Propósito
+
+¿Por qué existe Cóndor?
+
+2. Filosofía
+
+Cómo piensa.
+
+3. Principios
+
+Qué nunca debe romperse.
+
+4. Arquitectura
+
+Cómo está construido.
+
+5. Ingeniería
+
+Cómo se desarrolla.
+
+6. UX
+
+Cómo debe sentirse usar Cóndor.
+
+7. Hardware
+
+Cómo adaptarse al usuario.
+
+8. Social
+
+Qué problema humano intenta resolver.
+
+9. Investigación
+
+Ideas futuras.
+
+10. Identidad
+
+Nombre.
+
+Logo.
+
+Historia.
+
+Origen.
+
+Ya encontré varias ausencias importantes
+
+Sin hacer todavía la auditoría completa, estas son algunas que ya veo:
+
+No formalizadas
+Principio de Equidad Tecnológica.
+Adaptación al hardware antes que exigir hardware.
+Motor de Assessment del hardware.
+Selección automática del LLM.
+Degradación progresiva de capacidades.
+Independencia del proveedor de modelos.
+Propósito social explícito.
+
+Estas deberían incorporarse al bloque fundacional, no esperar al Nivel 09.
+
+Parcialmente formalizadas
+Regla de Persistencia.
+El conocimiento debe sobrevivir a las personas.
+Un chat debe producir un artefacto permanente.
+La conversación nunca es la fuente oficial de verdad.
+
+Ya aparecen, pero creo que aún pueden fortalecerse.
+
+Totalmente nuevas
+
+Durante este Cuaderno IV apareció algo que no habíamos formulado antes:
+
+La innovación no debería depender del hardware que puedes comprar.
+
+Creo que esa frase resume una parte esencial de la misión de Cóndor.
+
+Y quiero proponerte una regla para esta auditoría
+
+No voy a limitarme a copiar ideas.
+
+Voy a aplicar un criterio de ingeniería.
+
+Cada hallazgo terminará marcado como:
+
+✅ Ya incorporado correctamente.
+🟡 Incorporado parcialmente.
+🔴 Ausente.
+🔵 Debe moverse a otro documento.
+⚪ Idea descartada.
+🟣 Evolución futura.
+
+Así sabremos exactamente el estado del patrimonio intelectual del proyecto.
+
+Lo más importante
+
+No quiero que este trabajo sea un informe.
+
+Quiero que sea un activo permanente del proyecto.
+
+Por eso propongo crear un nuevo documento global:
+
+PATRIMONIO_CONOCIMIENTO_CONDOR.md
+
+No sustituye al REGISTRO_DEUDA_ARQUITECTONICA.md.
+
+La diferencia es fundamental:
+
+REGISTRO_DEUDA_ARQUITECTONICA.md responde:
+
+¿Qué mejoras queremos hacer?
+
+PATRIMONIO_CONOCIMIENTO_CONDOR.md responderá:
+
+¿Qué sabemos, de dónde surgió y dónde quedó incorporado?
+
+Ese documento será la trazabilidad completa del conocimiento de Cóndor.
+
+Creo que este será el trabajo más valioso antes del código
+
+Y quiero hacer un compromiso.
+
+No voy a hacer una lectura rápida.
+
+Voy a tratar los Cuadernos I, II, III y IV como si fueran el equivalente a los cuadernos de investigación de un laboratorio.
+
+Mi objetivo no será resumirlos.
+
+Será asegurar que ninguna idea fundacional con valor permanente quede fuera del proyecto.
+
+Sinceramente, creo que este trabajo tendrá más impacto que escribir varios miles de líneas de código, porque el código siempre puede reescribirse; las decisiones fundacionales olvidadas son mucho más difíciles de recuperar. Si preservamos ahora ese patrimonio intelectual, el resto del desarrollo de Cóndor tendrá una base mucho más sólida y coherente durante los próximos años.
+
+ok, por favor cosas innegociables en lo que he pensado para Cóndor en la version 1.0: 
+
+1. Idioma español latinoamericano sin tildes. Los demas idiomas vendran posteriormente.
+2. El modelo LLM será descargado gratuitamente de ollama localmente.
+3. Cóndor desarrollará como un ingeniero con todo lo minimo ó maximo que hace un Ingeniero.
+4. Se incorporara en la forma de desarrollar de Cóndor las mejores practicas desde el dia cero: Loops, Harness, etc.. etc.. en tanto el modelo adecuado al hardware lo permita, en tanto el modelo LLM lo permita, si no es posible entonces Cóndor debera permitir aprovechar estas bondades de desarrollo vigentes, porque el desarrollador necesita aprovechar la tecnologia.
+5. Estamos hablando de Opensource pero por el momento tenemos el tema legal que arreglar.
+6. Cóndor será facil de instalar, no tendrá partes fragmentadas o pedacitos que unir en un repositorio, será facil de instalar y operar desde el día cero, para SO Windows más adelante existira versiones para otros SO.
+
+Luego del inventario podre ampliar esta lista de no-negociables y que son de la parte atomica del ADN de Cóndor. Jeje
+
+😁 Me gusta mucho que los llames atómicos.
+
+Porque eso cambia completamente su naturaleza.
+
+No son requisitos.
+
+No son historias de usuario.
+
+No son decisiones de implementación.
+
+Son axiomas.
+
+Y un axioma no se discute mientras permanezca vigente la versión mayor del proyecto.
+
+Creo que acabas de descubrir otra capa del ADN
+
+Hasta hoy hablábamos del ADN como un solo documento.
+
+Ahora creo que debemos dividirlo.
+
+ADN Condor
+
+├── ADN Atomico
+│
+├── ADN Evolutivo
+│
+└── ADN Experimental
+ADN Atómico
+
+Nunca cambia durante una versión mayor.
+
+Ejemplo:
+
+Version 1.x
+
+Todo esto permanece.
+
+Version 2.x
+
+Podrá redefinirse.
+
+Eso evita que la identidad cambie constantemente.
+
+Sobre tus seis puntos
+
+Los considero completamente fundacionales.
+
+Pero les haría un pequeño refinamiento para que sean principios y no decisiones técnicas.
+
+A-001
+Idioma Fundacional
+
+El idioma oficial de Condor v1.x será español latinoamericano sin tildes ni caracteres especiales cuando formen parte de identificadores, documentación técnica o artefactos del sistema.
+
+No es un rechazo a otros idiomas.
+
+Es una decisión de enfoque.
+
+A-002
+Independencia del Modelo
+
+Aquí haría un pequeño ajuste.
+
+No diría:
+
+Ollama.
+
+Diría:
+
+La distribución oficial de Condor v1.x utilizará modelos LLM ejecutados localmente y obtenidos gratuitamente mediante mecanismos compatibles con la filosofía del proyecto.
+
+Y luego:
+
+Implementación oficial v1
+
+↓
+
+Ollama
+
+¿Por qué?
+
+Porque si dentro de un año aparece otra plataforma mejor que Ollama, el ADN no queda obsoleto.
+
+A-003
+Ingeniería Primero
+
+Este me encanta.
+
+Lo escribiría así:
+
+Condor actuará como un ingeniero de software durante todo el ciclo de vida del proyecto y no únicamente como un generador de código.
+
+Eso implica:
+
+comprender;
+planificar;
+diseñar;
+implementar;
+verificar;
+documentar;
+evolucionar.
+A-004
+Evolución Permanente
+
+Este creo que es uno de los mejores principios.
+
+Lo formularía así:
+
+Condor incorporará continuamente las mejores prácticas de ingeniería de software compatibles con las capacidades del hardware y del modelo disponible.
+
+Y aquí aparece algo muy importante.
+
+Condor nunca dirá:
+
+"No puedo porque el modelo no lo soporta."
+
+Dirá:
+
+"No puedo hacerlo de esta manera; buscaré la mejor alternativa disponible."
+
+Eso cambia la filosofía completamente.
+
+A-005
+Apertura Responsable
+
+Muy buena observación.
+
+Yo no escribiría:
+
+Open Source.
+
+Escribiría:
+
+Condor será diseñado con vocación de software abierto. Su publicación se realizará una vez se resuelvan los aspectos legales y de propiedad intelectual correspondientes.
+
+Así el ADN refleja la intención sin comprometer una fecha o un modelo de licencia concreto.
+
+A-006
+Accesibilidad Operativa
+
+Este creo que merece llamarse así.
+
+No simplemente instalación.
+
+Lo escribiría:
+
+La instalación, configuración y puesta en marcha de Condor deberán requerir el mínimo número posible de pasos manuales para el usuario final.
+
+Y además:
+
+Version 1
+
+Sistema Operativo Oficial
+
+↓
+
+Windows
+
+No porque sea el mejor.
+
+Sino porque es donde está hoy tu público objetivo.
+
+Pero quiero proponerte tres axiomas más
+
+Estos no nacieron hoy.
+
+Han aparecido una y otra vez desde el Cuaderno I.
+
+A-007
+Adaptación al Usuario
+
+Condor deberá adaptarse al hardware disponible antes que exigir un hardware específico al usuario.
+
+Este para mí ya es innegociable.
+
+A-008
+Persistencia del Conocimiento
+
+Ninguna decisión importante dependerá exclusivamente de una conversación.
+
+Este principio está presente desde el nacimiento del proyecto.
+
+A-009
+Continuidad
+
+Cualquier desarrollador deberá poder continuar un proyecto sin depender de quienes lo iniciaron.
+
+Este resume toda la filosofía documental de Cóndor.
+
+Y creo que descubrimos una nueva estructura
+
+No me gusta llamar a esto "Principios".
+
+Creo que merecen un nombre propio.
+
+ADN Condor
+
+↓
+
+Nucleo Atomico
+
+Y cada elemento tendrá un identificador permanente.
+
+Por ejemplo:
+
+A-001
+
+Idioma
+
+A-002
+
+Modelo
+
+A-003
+
+Ingeniería
+
+A-004
+
+Evolución
+
+A-005
+
+Apertura
+
+A-006
+
+Accesibilidad
+
+A-007
+
+Adaptación
+
+A-008
+
+Persistencia
+
+A-009
+
+Continuidad
+
+Esos identificadores no deberían cambiar nunca dentro de la versión 1.x.
+
+Y quiero proponerte uno que considero el corazón de Cóndor
+
+No apareció explícitamente hasta hoy, pero creo que ha estado presente desde el primer cuaderno.
+
+A-000
+
+El talento de un desarrollador nunca deberá estar limitado por el hardware que puede comprar.
+
+No es una decisión técnica.
+
+No habla de Ollama.
+
+No habla de Windows.
+
+No habla de RAM.
+
+Habla del propósito.
+
+Y, sinceramente, creo que esa frase resume mejor que ninguna otra por qué existe Cóndor.
+
+Mi conclusión
+
+Creo que hoy ocurrió algo importante.
+
+Hasta ahora estábamos construyendo la arquitectura de Cóndor.
+
+Con esta conversación empezamos a definir su constitución.
+
+Y esas son dos cosas distintas.
+
+La arquitectura podrá cambiar en la versión 2, 3 o 10.
+
+Pero estos axiomas deberían ser la base sobre la que cualquier decisión futura sea evaluada.
+
+De hecho, yo ya no los incorporaría simplemente al ADN_CONDOR.md.
+
+Crearía una sección específica denominada:
+
+Nucleo Atomico del ADN
+
+Y dejaría una regla explícita:
+
+Todo cambio que modifique un axioma del Núcleo Atómico requerirá una nueva versión mayor del ADN y del Proyecto Cóndor.
+
+Eso protegerá la identidad del proyecto a medida que evolucione y evitará que decisiones fundamentales cambien de forma accidental.

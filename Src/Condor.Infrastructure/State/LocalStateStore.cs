@@ -1,9 +1,13 @@
 using System;
 using System.Text;
+using System.Text.Json;
+using System.Security.Cryptography;
+using System.Linq;
 using System.Threading.Tasks;
 using Condor.Core.Contracts;
 using Condor.Core.Models;
 using Condor.Core.Serialization;
+using Condor.Infrastructure.Security;
 
 namespace Condor.Infrastructure.State
 {
@@ -17,6 +21,7 @@ namespace Condor.Infrastructure.State
         private const string CycleFileName = "cycle.json";
         private const string VisionFileName = "vision.json";
         private const string SemanticVerificationFileName = "verificacion_semantica.json";
+        private const string DeliveryMetricsFileName = "metricas-entrega.json";
         private readonly string _stateDirectory;
 
         public LocalStateStore()
@@ -314,6 +319,130 @@ namespace Condor.Infrastructure.State
             catch
             {
             }
+        }
+
+        public async Task<bool> SaveAgentCheckpointAsync(string workingDirectory, AgentCheckpoint checkpoint, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                Directory.CreateDirectory(_stateDirectory);
+                var filePath = AgentCheckpointPath(workingDirectory);
+                var temporaryPath = filePath + ".tmp";
+                var safeCheckpoint = new AgentCheckpoint
+                {
+                    SchemaVersion = checkpoint.SchemaVersion,
+                    Task = Redact(checkpoint.Task) ?? string.Empty,
+                    WorkingDirectory = Path.GetFullPath(workingDirectory),
+                    Iteration = checkpoint.Iteration,
+                    Model = checkpoint.Model,
+                    Strategy = checkpoint.Strategy,
+                    LastDecision = Redact(checkpoint.LastDecision),
+                    LastAction = Redact(checkpoint.LastAction),
+                    LastResult = string.IsNullOrWhiteSpace(checkpoint.LastResult) ? null : "Resultado detallado omitido del punto de continuidad.",
+                    HarnessState = checkpoint.HarnessState,
+                    LastError = Redact(checkpoint.LastError),
+                    NextAction = Redact(checkpoint.NextAction),
+                    RiskLevel = checkpoint.RiskLevel,
+                    DeclaredScope = checkpoint.DeclaredScope?.ToList(),
+                    ExcludedScope = checkpoint.ExcludedScope?.ToList(),
+                    PlanSteps = checkpoint.PlanSteps?.Select(value => Redact(value) ?? string.Empty).ToList(),
+                    ExpectedResults = checkpoint.ExpectedResults?.Select(value => Redact(value) ?? string.Empty).ToList(),
+                    VerificationSteps = checkpoint.VerificationSteps?.Select(value => Redact(value) ?? string.Empty).ToList(),
+                    CompletedSteps = checkpoint.CompletedSteps.Select(value => Redact(value) ?? string.Empty).ToList(),
+                    PlanBIterationsUsed = checkpoint.PlanBIterationsUsed,
+                    ReviewRoundsUsed = checkpoint.ReviewRoundsUsed,
+                    UnreviewedModifications = checkpoint.UnreviewedModifications,
+                    ReviewReplanRequired = checkpoint.ReviewReplanRequired,
+                    ReviewReplanPrepared = checkpoint.ReviewReplanPrepared,
+                    ResourcesPressure = checkpoint.ResourcesPressure,
+                    HeadroomGb = checkpoint.HeadroomGb,
+                    GeneratedAtUtc = DateTime.UtcNow
+                };
+                var json = JsonSerializer.Serialize(safeCheckpoint, new JsonSerializerOptions { WriteIndented = true });
+                await File.WriteAllTextAsync(temporaryPath, json, new UTF8Encoding(false), cancellationToken);
+                File.Move(temporaryPath, filePath, overwrite: true);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public async Task<AgentCheckpoint?> LoadAgentCheckpointAsync(string workingDirectory, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var filePath = AgentCheckpointPath(workingDirectory);
+                if (!File.Exists(filePath)) return null;
+                var json = await File.ReadAllTextAsync(filePath, cancellationToken);
+                var checkpoint = JsonSerializer.Deserialize<AgentCheckpoint>(json);
+                return checkpoint is null || checkpoint.NextAction == "entregar" ? null : checkpoint;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public async Task<DeliveryMetricsState> LoadDeliveryMetricsAsync(string workingDirectory, CancellationToken cancellationToken = default)
+        {
+            var filePath = DeliveryMetricsPath(workingDirectory);
+            if (!File.Exists(filePath)) return new DeliveryMetricsState();
+
+            var json = await File.ReadAllTextAsync(filePath, cancellationToken);
+            var state = JsonSerializer.Deserialize<DeliveryMetricsState>(json);
+            return state is null || state.Changes is null
+                ? new DeliveryMetricsState()
+                : state;
+        }
+
+        public async Task SaveDeliveryMetricsAsync(string workingDirectory, DeliveryMetricsState state, CancellationToken cancellationToken = default)
+        {
+            Directory.CreateDirectory(_stateDirectory);
+            var safeState = new DeliveryMetricsState
+            {
+                Changes = state.Changes.Select(change => new DeliveryChangeRecord
+                {
+                    ChangeId = change.ChangeId,
+                    StartedAtUtc = change.StartedAtUtc,
+                    DeliveredAtUtc = change.DeliveredAtUtc,
+                    FailedAtUtc = change.FailedAtUtc,
+                    FailureReason = Redact(change.FailureReason),
+                    RecoveredAtUtc = change.RecoveredAtUtc,
+                    ReworkAtUtc = change.ReworkAtUtc,
+                    ReworkReason = Redact(change.ReworkReason),
+                    RelatedTaskExecutionIds = (change.RelatedTaskExecutionIds ?? new List<string>()).Take(256).ToList(),
+                    IncidentTaskExecutionIds = (change.IncidentTaskExecutionIds ?? new List<string>()).Take(256).ToList()
+                }).ToList()
+            };
+            var filePath = DeliveryMetricsPath(workingDirectory);
+            var temporaryPath = filePath + ".tmp";
+            var json = JsonSerializer.Serialize(safeState, new JsonSerializerOptions { WriteIndented = true });
+            await File.WriteAllTextAsync(temporaryPath, json, new UTF8Encoding(false), cancellationToken);
+            File.Move(temporaryPath, filePath, overwrite: true);
+        }
+
+        private string AgentCheckpointPath(string workingDirectory)
+        {
+            var root = Path.GetFullPath(workingDirectory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var identity = OperatingSystem.IsWindows() ? root.ToUpperInvariant() : root;
+            var key = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identity)));
+            return Path.Combine(_stateDirectory, "agent-checkpoint-" + key + ".json");
+        }
+
+        private string DeliveryMetricsPath(string workingDirectory)
+        {
+            var root = Path.GetFullPath(workingDirectory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var identity = OperatingSystem.IsWindows() ? root.ToUpperInvariant() : root;
+            var key = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identity)));
+            return Path.Combine(_stateDirectory, "metricas-entrega-" + key + ".json");
+        }
+
+        private static string? Redact(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return value;
+            return SensitiveTextRedactor.Redact(value);
         }
     }
 }

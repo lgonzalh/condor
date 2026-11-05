@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Condor.Core.Contracts;
 using Condor.Core.Models;
+using Condor.Infrastructure.Security;
 
 namespace Condor.Infrastructure.Documentation;
 
@@ -16,15 +17,6 @@ public sealed class DocumenterService : IDocumenter
     private const int MaxEntriesPerSection = 250;
     private const int MaxEntryLength = 1000;
     private static readonly UTF8Encoding Utf8WithoutBom = new(false);
-    private static readonly Regex SecretTokenPattern = new(
-        @"(?<![A-Za-z0-9])(?:sk-[A-Za-z0-9_-]{8,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[baprs]-[A-Za-z0-9-]{8,})(?![A-Za-z0-9])",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
-    private static readonly Regex CredentialAssignmentPattern = new(
-        @"\b(api[_-]?key|secret|password|token)\s*[:=]\s*[^\s,;]+",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
-    private static readonly Regex BearerPattern = new(
-        @"\bBearer\s+[A-Za-z0-9._~+/=-]+",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
     private static readonly Regex GeneratedReportNamePattern = new(
         @"^\d{8}-\d{9}-.+-[0-9a-f]{32}\.md$",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
@@ -223,9 +215,7 @@ public sealed class DocumenterService : IDocumenter
 
     private static string Escape(string value)
     {
-        var redacted = SecretTokenPattern.Replace(value, "[REDACTADO]");
-        redacted = CredentialAssignmentPattern.Replace(redacted, "$1=[REDACTADO]");
-        redacted = BearerPattern.Replace(redacted, "Bearer [REDACTADO]");
+        var redacted = SensitiveTextRedactor.Redact(value, "[REDACTADO]");
 
         return redacted.Replace("\\", "\\\\", StringComparison.Ordinal)
             .Replace("`", "\\`", StringComparison.Ordinal)

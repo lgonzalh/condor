@@ -18,6 +18,7 @@ public class AgentCheckpoint
 {
     public string SchemaVersion { get; set; } = "1.0.0";
     public string Task { get; set; } = "";
+    public string? WorkingDirectory { get; set; }
     public int Iteration { get; set; }
     public string Model { get; set; } = "";
     public string Strategy { get; set; } = "";
@@ -27,7 +28,20 @@ public class AgentCheckpoint
     public string? HarnessState { get; set; }
     public string? LastError { get; set; }
     public string? NextAction { get; set; }
+    public string? RiskLevel { get; set; }
+    public List<string>? DeclaredScope { get; set; }
+    public List<string>? ExcludedScope { get; set; }
+    public List<string>? PlanSteps { get; set; }
+    public List<string>? ExpectedResults { get; set; }
+    public List<string>? VerificationSteps { get; set; }
+    public List<string> CompletedSteps { get; set; } = new();
     public int PlanBIterationsUsed { get; set; }
+    public int ReviewRoundsUsed { get; set; }
+    public int UnreviewedModifications { get; set; }
+    public bool ReviewReplanRequired { get; set; }
+    public bool ReviewReplanPrepared { get; set; }
+    public string? PendingApprovalDigest { get; set; }
+    public string? PendingApprovalDescription { get; set; }
 
     /// <summary>Estado de presion de recursos en el ultimo punto evaluado (informativo).</summary>
     public string? ResourcesPressure { get; set; }
@@ -44,8 +58,17 @@ public class AgentResult
     public string? Reason { get; set; }
     public string Model { get; set; } = "";
     public string? Objective { get; set; }
+    public bool AwaitingUserInput { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? TaskExecutionId { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<string>? LinkedDeliveryMetricRecords { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? DeliveryMetricsLinkWarning { get; set; }
     public List<AgentStep> Steps { get; set; } = new();
     public AgentCheckpoint? Checkpoint { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<AgentReviewFinding>? ReviewFindings { get; set; }
 
     /// <summary>
     /// Inventario del entorno y de la decision de modelo recopilado por Condor
@@ -98,11 +121,12 @@ public sealed class AgentLimits
 
     public int MaxIterations { get; init; } = 8;
     public int TimeoutMilliseconds { get; init; } = 300_000;
+    public int MaxTokensPerRequest { get; init; } = 1024;
     public int MaxModifications { get; init; } = 8;
     public int MaxRepeatedAction { get; init; } = 3;
     public int MaxRepeatedFailedAction { get; init; } = 2;
     /// <summary>Máximo de acciones correctivas que Plan B puede analizar y emitir.</summary>
-    public int MaxPlanBIterations { get; init; } = 1;
+    public int MaxPlanBIterations { get; init; } = 2;
     public int MaxRedundantObservations { get; init; } = 0;
     public int MaxInvalidOutputs { get; init; } = 8;
     public int MaxContentLength { get; init; } = 200_000;

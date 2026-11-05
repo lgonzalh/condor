@@ -5,8 +5,8 @@ namespace Condor.Infrastructure.Tests;
 
 public class AgentRendererTests
 {
-    private static AgentStep Obs(string action, string path, bool ok = true, string? preview = null)
-        => new() { Iteration = 1, Action = action, Path = path, Success = ok, ResultPreview = preview };
+    private static AgentStep Obs(string action, string path, bool ok = true, string? preview = null, int iteration = 1)
+        => new() { Iteration = iteration, Action = action, Path = path, Success = ok, ResultPreview = preview };
 
     [Fact]
     public void ReadFile_NoImprimeElContenidoCompleto()
@@ -190,6 +190,30 @@ public class AgentRendererTests
 
         Assert.DoesNotContain("Condor" + Environment.NewLine + "Observa", text);
         Assert.DoesNotContain("Planifica · Construye · Verifica", text);
+    }
+
+    [Fact]
+    public void CierreResumeLoVerificadoLoNoComprobadoYLoPendiente()
+    {
+        var result = new AgentResult
+        {
+            Success = false,
+            Reason = "Las pruebas no terminaron.",
+            Checkpoint = new AgentCheckpoint { NextAction = "corregir el fallo y repetir las pruebas" },
+            Steps = new List<AgentStep>
+            {
+                Obs(AgentAction.ActionEditFile, "src/Calc.cs", iteration: 2),
+                Obs(AgentAction.ActionGitDiff, "", preview: "diff revisado", iteration: 3),
+                Obs(AgentAction.ActionTest, "", ok: false, preview: "Falló el caso Sum(1, 2).", iteration: 4)
+            }
+        };
+
+        var text = AgentRenderer.BuildResultText(result);
+
+        Assert.Contains("Verificado: revisión del diff", text, StringComparison.Ordinal);
+        Assert.Contains("No se pudo comprobar: pruebas automatizadas — Falló el caso Sum(1, 2).", text, StringComparison.Ordinal);
+        Assert.Contains("No ejecutado: compilación.", text, StringComparison.Ordinal);
+        Assert.Contains("Pendiente: corregir el fallo y repetir las pruebas.", text, StringComparison.Ordinal);
     }
 }
 

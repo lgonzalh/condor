@@ -23,6 +23,21 @@ public class AgentHarnessTests
     }
 
     [Fact]
+    public async Task VerifyAsync_IncompatibilidadDeTipos_BloqueaElCierrePorFalloDeBuild()
+    {
+        var project = TempProject("harnesstypes");
+        File.WriteAllText(Path.Combine(project.Root, "Calc", "Calc.cs"),
+            "namespace Calc;\npublic static class Ops\n{\n    public static string Sum(int a, int b) => a + b;\n}\n");
+
+        var harness = new AgentHarness(project.Root, AgentLimits.Default, new List<AgentStep>());
+        var result = await harness.VerifyAsync(CancellationToken.None);
+
+        Assert.False(result.Done);
+        Assert.Contains("Build fallo", result.Reason, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("CS0029", result.Detail, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task VerifyAsync_ProyectoCorregido_ConfirmaBuildYTest()
     {
         var project = TempProject("harnessok");

@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Condor.Core.Agent;
 using Condor.Core.Models;
 using Condor.Infrastructure.Llm;
 using Condor.Infrastructure.SemanticVerification;
@@ -38,6 +40,9 @@ public sealed class AgentToolset
         if (action.Action == AgentAction.ActionTest) return await RunTestAsync(action, iteration, ct);
         if (action.Action == AgentAction.ActionRestore) return await RunRestoreAsync(action, iteration, ct);
         if (action.Action == AgentAction.ActionGitStatus) return GitStatus(action, iteration);
+        if (action.Action == AgentAction.ActionGitDiff) return GitDiff(iteration);
+        if (action.Action == AgentAction.ActionGitLog) return GitLog(iteration);
+        if (action.Action == AgentAction.ActionGitShow) return GitShow(action, iteration);
         if (action.Action == AgentAction.ActionSearch) return Search(action, iteration);
         if (action.Action == AgentAction.ActionUndoFile) return UndoFile(action, iteration);
 
@@ -93,6 +98,8 @@ public sealed class AgentToolset
         var full = Resolve(action.Path ?? "");
         if (!IsWithin(full)) return F(iteration, action.Action, "Ruta fuera del proyecto.", action.Path);
         if (File.Exists(full)) return F(iteration, action.Action, "El archivo ya existe (usa patch o edit_file sobre " + RelativeOf(full) + ").", action.Path);
+        if (ContentIsOnlyTargetPath(full, action.Content))
+            return F(iteration, action.Action, "El campo content contiene solo la ruta o el nombre del archivo; debe contener código fuente válido.", action.Path);
         var dir = Path.GetDirectoryName(full);
         if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
         _undoStack[full] = null; // antes no existia
@@ -105,10 +112,24 @@ public sealed class AgentToolset
         var full = Resolve(action.Path ?? "");
         if (!IsWithin(full)) return F(iteration, action.Action, "Ruta fuera del proyecto.", action.Path);
         if (!File.Exists(full)) return F(iteration, action.Action, "El archivo no existe (usa create_file en " + RelativeOf(full) + ").", action.Path);
+        if (ContentIsOnlyTargetPath(full, action.Content))
+            return F(iteration, action.Action, "El campo content contiene solo la ruta o el nombre del archivo; debe contener código fuente válido.", action.Path);
         if ((action.Content ?? "").Length > _maxContent) return F(iteration, action.Action, "Contenido demasiado largo.", action.Path);
         _undoStack[full] = File.ReadAllText(full);
         File.WriteAllText(full, action.Content ?? "");
         return Ok(iteration, action.Action, action.Path, "Archivo actualizado en " + RelativeOf(full) + ". Usa patch para reemplazos quirurgicos y conserva el resto del contenido intacto.");
+    }
+
+    private bool ContentIsOnlyTargetPath(string fullPath, string? content)
+    {
+        if (!AgentContentFileTypes.IsSourceExtension(Path.GetExtension(fullPath)) || string.IsNullOrWhiteSpace(content))
+            return false;
+
+        var normalizedContent = content.Trim().Replace('\\', '/');
+        var relativePath = RelativeOf(fullPath).Replace('\\', '/');
+        var fileName = Path.GetFileName(fullPath);
+        return normalizedContent.Equals(relativePath, StringComparison.OrdinalIgnoreCase) ||
+               normalizedContent.Equals(fileName, StringComparison.OrdinalIgnoreCase);
     }
 
     private AgentStep Patch(AgentAction action, int iteration)
@@ -289,6 +310,57 @@ public sealed class AgentToolset
         var branch = TryGit("rev-parse --abbrev-ref HEAD");
         var status = TryGit("status --porcelain");
         return Ok(iteration, action.Action, null, "Rama: " + branch + "\n" + (string.IsNullOrWhiteSpace(status) ? "limpio" : status));
+    }
+
+    private AgentStep GitLog(int iteration)
+    {
+        if (!string.Equals(TryGit("rev-parse --is-inside-work-tree"), "true", StringComparison.OrdinalIgnoreCase))
+            return F(iteration, AgentAction.ActionGitLog, "El proyecto no está en un repositorio Git.", null);
+
+        var log = TryGit("log -10 --date=short --format=%H%x09%ad%x09%s --stat --no-renames");
+        return Ok(iteration, AgentAction.ActionGitLog, null,
+            string.IsNullOrWhiteSpace(log) ? "El repositorio todavía no tiene commits." : log);
+    }
+
+    private AgentStep GitShow(AgentAction action, int iteration)
+    {
+        var hash = action.Path?.Trim() ?? "";
+        if (hash.Length is < 7 or > 40 || hash.Any(ch => !Uri.IsHexDigit(ch)))
+            return F(iteration, AgentAction.ActionGitShow, "Se requiere un hash hexadecimal de commit de 7 a 40 caracteres.", hash);
+
+        var summary = TryGit("show --format=fuller --stat --no-renames " + hash);
+        return string.IsNullOrWhiteSpace(summary)
+            ? F(iteration, AgentAction.ActionGitShow, "No se pudo leer el commit indicado.", hash)
+            : Ok(iteration, AgentAction.ActionGitShow, hash, summary);
+    }
+
+    private AgentStep GitDiff(int iteration)
+    {
+        var diff = new System.Text.StringBuilder();
+        foreach (var change in _undoStack.OrderBy(entry => entry.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            var relativePath = RelativeOf(change.Key);
+            var exists = File.Exists(change.Key);
+            var current = exists ? File.ReadAllText(change.Key) : null;
+            if (string.Equals(change.Value, current, StringComparison.Ordinal)) continue;
+
+            diff.AppendLine(change.Value is null ? "--- /dev/null" : "--- a/" + relativePath);
+            diff.AppendLine(exists ? "+++ b/" + relativePath : "+++ /dev/null");
+            if (change.Value is not null)
+            {
+                foreach (var line in change.Value.Replace("\r\n", "\n").Split('\n'))
+                    diff.Append('-').AppendLine(line);
+            }
+            if (current is not null)
+            {
+                foreach (var line in current.Replace("\r\n", "\n").Split('\n'))
+                    diff.Append('+').AppendLine(line);
+            }
+            if (diff.Length > 20_000) break;
+        }
+
+        var content = diff.Length == 0 ? "No hay cambios hechos por el agente para revisar." : Truncate(diff.ToString());
+        return Ok(iteration, AgentAction.ActionGitDiff, null, content);
     }
 
     private string TryGit(string args)

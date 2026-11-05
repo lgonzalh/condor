@@ -196,6 +196,31 @@ public class TuiShortcutTests
     }
 
     [Fact]
+    public void SelectorAgentes_FiltraPorTecladoYSeleccionaModoCoincidente()
+    {
+        using var host = new TuiHost(forceInteractive: true);
+        host.Enter();
+        var input = new TuiInput(host);
+        input.SetText("crea una prueba para la suma");
+        input.BeginAgentPicker(new[]
+        {
+            new SelectItem("plan", "Plan", "Crea y guarda un plan", Array.Empty<string>(), false, null, "Enter"),
+            new SelectItem("codificar", "Codificar", "Ejecuta tareas con herramientas", Array.Empty<string>(), false, null, "Enter")
+        }, activeAgentId: "plan");
+
+        foreach (var character in "Codificar")
+        {
+            input.Handle(new ConsoleKeyInfo(character, ConsoleKey.A, false, false, false));
+        }
+
+        Assert.Equal("codificar", input.SelectedAgentId);
+        Assert.Equal(InputAction.AgentSelected,
+            input.Handle(new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false)));
+        Assert.Equal("codificar", input.SelectedAgentId);
+        Assert.Equal("crea una prueba para la suma", input.Buffer);
+    }
+
+    [Fact]
     public void SelectorAgentes_EscapeCierraSinCambiarElModoNiPerderLaTarea()
     {
         using var host = new TuiHost(forceInteractive: true);
@@ -338,6 +363,32 @@ public class TuiShortcutTests
         Assert.DoesNotContain("Orquestador", labels);
         Assert.DoesNotContain("Plan", labels);
         Assert.DoesNotContain("Rápido", labels);
+    }
+
+    [Fact]
+    public void CompararModelos_LeeDosModelosYLaMismaTareaDesdeElComando()
+    {
+        var parsed = CondorTui.TryParseModelComparisonCommand(
+            "/comparar-modelos qwen2.5-coder:3b llama3.2:3b -- Resume el objetivo sin modificar archivos.",
+            out var firstModel,
+            out var secondModel,
+            out var task);
+
+        Assert.True(parsed);
+        Assert.Equal("qwen2.5-coder:3b", firstModel);
+        Assert.Equal("llama3.2:3b", secondModel);
+        Assert.Equal("Resume el objetivo sin modificar archivos.", task);
+        Assert.True(CondorTui.TryParseComparisonModel("qwen2.5-coder:3b", out var localProvider, out var localModel));
+        Assert.Equal("ollama", localProvider);
+        Assert.Equal("qwen2.5-coder:3b", localModel);
+        Assert.True(CondorTui.TryParseComparisonModel(
+            "openai-compatible::modelo-local", out var alternateProvider, out var alternateModel));
+        Assert.Equal("openai-compatible", alternateProvider);
+        Assert.Equal("modelo-local", alternateModel);
+        Assert.False(CondorTui.TryParseModelComparisonCommand(
+            "/comparar-modelos qwen2.5-coder:3b -- falta el segundo modelo",
+            out _, out _, out _));
+        Assert.Contains("/comparar-modelos", Condor.Cli.Tui.TuiInput.CommandPaletteCommands);
     }
 
     [Fact]
