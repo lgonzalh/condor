@@ -131,6 +131,8 @@ public class ModelPromptBuilderTests
 
         Assert.Contains("reprodúcelo contra la versión base", engineerPrompt, System.StringComparison.OrdinalIgnoreCase);
         Assert.Contains("sigue la causa", engineerPrompt, System.StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("coteja el objetivo original y cada resultado esperado", engineerPrompt, System.StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("No declares éxito si alguno no está cumplido o no puede verificarse", engineerPrompt, System.StringComparison.OrdinalIgnoreCase);
         Assert.Contains("\"planItems\":[{\"task\":\"Crear la prueba de regresión\",\"expectedResult\":\"El archivo de prueba contiene el caso solicitado\",\"verificationStep\":\"Ejecutar el caso con dotnet test\"}]", engineerPrompt, System.StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Respeta literalmente las rutas indicadas por el usuario también en scopePaths", engineerPrompt, System.StringComparison.OrdinalIgnoreCase);
         Assert.Contains("falla contra la versión base y pasa con la corrección", testEngineerPrompt, System.StringComparison.OrdinalIgnoreCase);
