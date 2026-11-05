@@ -2275,6 +2275,61 @@ public class AgentServiceResourceBlockTests
         }
     }
 
+    [Fact]
+    public async Task RunAsync_DelegacionAplicaPresupuestoDeTokensAlSubagente()
+    {
+        var projectRoot = TempDir();
+        var stateRoot = TempDir();
+        Directory.CreateDirectory(projectRoot);
+        Directory.CreateDirectory(stateRoot);
+        await File.WriteAllTextAsync(Path.Combine(projectRoot, "README.md"), "proyecto de prueba\n");
+        await RunGitAsync(projectRoot, "init", "--quiet");
+        await RunGitAsync(projectRoot, "config", "user.name", "Condor Tests");
+        await RunGitAsync(projectRoot, "config", "user.email", "condor-tests@example.invalid");
+        await RunGitAsync(projectRoot, "add", "README.md");
+        await RunGitAsync(projectRoot, "commit", "--quiet", "-m", "base de delegacion con presupuesto");
+
+        try
+        {
+            var store = new LocalStateStore(stateRoot);
+            var assessment = new StubAssessmentService(16, 8, new[] { "qwen2.5-coder:3b" });
+            using var http = new HttpClient(new StubOllamaHandler());
+            using var session = new LocalModelSession(http);
+            await session.EnsureAvailableAsync("qwen2.5-coder:3b", CancellationToken.None);
+            var llm = new SequenceLlmClient(
+                "{\"action\":\"delegate\",\"subtasks\":[{\"id\":\"bounded\",\"task\":\"Lista el directorio raíz.\",\"profileId\":\"engineer\",\"maxDurationSeconds\":30,\"maxIterations\":1,\"maxOutputTokens\":128}]}",
+                "{\"action\":\"list_dir\",\"path\":\".\"}");
+            var service = new AgentService(
+                store,
+                assessment,
+                new AgentLimits { MaxIterations = 1, MaxTokensPerRequest = 1024 },
+                llm,
+                new StubLlmDiagnostics(),
+                session,
+                () => projectRoot,
+                CreateModelAutoSetup(store, assessment, "qwen2.5-coder:3b"));
+
+            await service.RunAsync("Inspecciona el proyecto con un subagente.", cancellationToken: CancellationToken.None);
+
+            Assert.True(llm.CallCount >= 2);
+            Assert.Null(llm.Requests[0].MaxTokens);
+            Assert.Equal(128, llm.Requests[1].MaxTokens);
+        }
+        finally
+        {
+            foreach (var directory in new[] { projectRoot, stateRoot })
+            {
+                if (!Directory.Exists(directory))
+                    continue;
+                foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
+                {
+                    try { File.SetAttributes(file, FileAttributes.Normal); } catch { }
+                }
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+    }
+
     private static string TempDir()
     {
         return Path.Combine(Path.GetTempPath(), "condor-agent-resource-" + Guid.NewGuid().ToString("N"));
