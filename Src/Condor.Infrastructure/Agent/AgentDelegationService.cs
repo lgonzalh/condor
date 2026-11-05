@@ -424,15 +424,7 @@ public sealed class AgentDelegationService : IAgentDelegationService
         CancellationToken cancellationToken,
         bool allowDiffExitCode = false)
     {
-        var start = new ProcessStartInfo("git")
-        {
-            WorkingDirectory = workingDirectory,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            RedirectStandardInput = input is not null,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
+        var start = GitProcessStartInfoFactory.Create(workingDirectory, redirectStandardInput: input is not null);
         foreach (var argument in arguments)
             start.ArgumentList.Add(argument);
 

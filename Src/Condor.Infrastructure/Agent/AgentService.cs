@@ -215,14 +215,7 @@ public sealed class AgentService : IAgentService
     {
         try
         {
-            var start = new ProcessStartInfo("git")
-            {
-                WorkingDirectory = workingDirectory,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
+            var start = GitProcessStartInfoFactory.Create(workingDirectory);
             start.ArgumentList.Add("rev-parse");
             start.ArgumentList.Add("--verify");
             start.ArgumentList.Add("HEAD^{commit}");
@@ -4326,7 +4319,7 @@ public sealed class AgentService : IAgentService
     {
         try
         {
-            var start = CreateGitProcessStartInfo(workingDirectory);
+            var start = GitProcessStartInfoFactory.Create(workingDirectory);
             start.ArgumentList.Add("diff");
             start.ArgumentList.Add("--unified=0");
             start.ArgumentList.Add("--no-color");
@@ -4346,7 +4339,7 @@ public sealed class AgentService : IAgentService
             // una ruta no rastreada, cada línea presente pertenece al cambio actual.
             if (output.Length == 0)
             {
-                var tracked = CreateGitProcessStartInfo(workingDirectory);
+                var tracked = GitProcessStartInfoFactory.Create(workingDirectory);
                 tracked.ArgumentList.Add("ls-files");
                 tracked.ArgumentList.Add("--error-unmatch");
                 tracked.ArgumentList.Add("--");
@@ -4390,15 +4383,6 @@ public sealed class AgentService : IAgentService
             return null;
         }
     }
-
-    private static ProcessStartInfo CreateGitProcessStartInfo(string workingDirectory) => new("git")
-    {
-        WorkingDirectory = workingDirectory,
-        RedirectStandardOutput = true,
-        RedirectStandardError = true,
-        UseShellExecute = false,
-        CreateNoWindow = true
-    };
 
     private static string FormatReviewFindings(IEnumerable<AgentReviewFinding> findings)
     {
