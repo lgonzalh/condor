@@ -25,6 +25,8 @@ Fecha de actualizacion: 2026-11-05
 
 **CAP-048 2026-11-05:** Se actualizó la referencia remota: `main` no avanzó y sigue siendo la base común de la feature. En el HEAD actual se repitieron las pruebas Release de aprobación, revisión y delegación (5/5); build Release completo del mismo código fuente: 0 advertencias/errores. GitHub canceló el run de código por pushes posteriores; no se cuenta como check exitoso.
 
+**CAP-053/CAP-054 2026-11-05:** La guía del perfil de ingeniería exige activar gradualmente con flag apagado y entorno controlado; se probó que `undo_file` restaura el contenido previo y retira archivos nuevos tras simular una regresión. Pruebas focalizadas 2/2. No se desplegó ni se revirtió ninguna publicación.
+
 **Recuperación CAP-028 2026-11-04:** Condor ofrece una corrección al primer plan inválido y detiene la ejecución sin cambios si el modelo repite uno ya rechazado; la huella se conserva solo en memoria y se borra ante nueva instrucción o avance. Build Release sin incremental: 0 errores y 0 advertencias. No se ejecutaron pruebas; Ollama está desconectado y la aceptación real sigue pendiente.
 
 **Validación de TUI 2026-11-04:** CAP-014 se verificó en Condor interactivo mediante PTY: `/ayuda` y `/version` se ejecutaron consecutivamente en una sola sesión; `/salir` la cerró con código 0.

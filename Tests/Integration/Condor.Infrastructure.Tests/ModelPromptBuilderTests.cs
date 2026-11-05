@@ -141,6 +141,11 @@ public class ModelPromptBuilderTests
         Assert.Contains("TuiVisualSnapshotTests", testEngineerPrompt, System.StringComparison.Ordinal);
         Assert.Contains("Update-TuiVisualSnapshots.ps1", testEngineerPrompt, System.StringComparison.Ordinal);
         Assert.Contains("No afirmes cobertura que no verificaste", testEngineerPrompt, System.StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("un flag desactivado por defecto", engineerPrompt, System.StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("un entorno controlado", engineerPrompt, System.StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("habilitación gradual con criterios de avance y reversión", engineerPrompt, System.StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("no ejecutes la publicación ni la reversión sin autorización humana", engineerPrompt, System.StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("flag desactivado por defecto", testEngineerPrompt, System.StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

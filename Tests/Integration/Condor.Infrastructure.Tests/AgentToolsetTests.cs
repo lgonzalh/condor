@@ -124,6 +124,57 @@ public class AgentToolsetTests
         Assert.True(File.Exists(Path.Combine(dir, "src", "Nuevo.cs")));
     }
 
+    [Fact]
+    public async Task UndoFile_TrasCambioProblematico_RestauraVersionAnteriorYEliminaArchivoNuevo()
+    {
+        var dir = TempDir();
+        const string original = "# Proyecto\n\nLa versión estable suma correctamente.\n";
+        const string regressed = "# Proyecto\n\nLa versión defectuosa resta en lugar de sumar.\n";
+        var existingPath = Path.Combine(dir, "README.md");
+        try
+        {
+            await File.WriteAllTextAsync(existingPath, original);
+            var toolset = new AgentToolset(dir);
+
+            var edit = await toolset.ExecuteAsync(new AgentAction
+            {
+                Action = AgentAction.ActionEditFile,
+                Path = "README.md",
+                Content = regressed
+            }, 1, CancellationToken.None);
+            Assert.True(edit.Success, edit.ResultPreview);
+            Assert.Equal(regressed, await File.ReadAllTextAsync(existingPath));
+
+            var rollback = await toolset.ExecuteAsync(new AgentAction
+            {
+                Action = AgentAction.ActionUndoFile,
+                Path = "README.md"
+            }, 2, CancellationToken.None);
+            Assert.True(rollback.Success, rollback.ResultPreview);
+            Assert.Equal(original, await File.ReadAllTextAsync(existingPath));
+
+            var create = await toolset.ExecuteAsync(new AgentAction
+            {
+                Action = AgentAction.ActionCreateFile,
+                Path = "incident.txt",
+                Content = "artefacto introducido por el cambio problemático"
+            }, 3, CancellationToken.None);
+            Assert.True(create.Success, create.ResultPreview);
+
+            var rollbackCreate = await toolset.ExecuteAsync(new AgentAction
+            {
+                Action = AgentAction.ActionUndoFile,
+                Path = "incident.txt"
+            }, 4, CancellationToken.None);
+            Assert.True(rollbackCreate.Success, rollbackCreate.ResultPreview);
+            Assert.False(File.Exists(Path.Combine(dir, "incident.txt")));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
     [Theory]
     [InlineData(AgentAction.ActionCreateFile)]
     [InlineData(AgentAction.ActionEditFile)]
