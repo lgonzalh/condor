@@ -20,10 +20,11 @@ public sealed class AgentDelegationServiceTests
             await File.WriteAllTextAsync(Path.Combine(root, "README.md"), "base\n");
             await File.WriteAllTextAsync(Path.Combine(root, "WorkerA.md"), "pendiente A\n");
             await File.WriteAllTextAsync(Path.Combine(root, "WorkerB.md"), "pendiente B\n");
+            await File.WriteAllTextAsync(Path.Combine(root, "Shared.md"), "base compartida\n");
             await GitAsync(root, "init", "--quiet");
             await GitAsync(root, "config", "user.name", "Condor Tests");
             await GitAsync(root, "config", "user.email", "condor-tests@example.invalid");
-            await GitAsync(root, "add", "README.md", "WorkerA.md", "WorkerB.md");
+            await GitAsync(root, "add", "README.md", "WorkerA.md", "WorkerB.md", "Shared.md");
             await GitAsync(root, "commit", "--quiet", "-m", "base de delegacion");
             await File.WriteAllTextAsync(Path.Combine(root, "README.md"), "cambio local\n");
             await File.WriteAllTextAsync(Path.Combine(root, "nota-local.txt"), "archivo no rastreado\n");
@@ -47,9 +48,14 @@ public sealed class AgentDelegationServiceTests
                     Assert.Contains("cambio local", await File.ReadAllTextAsync(Path.Combine(workingDirectory, "README.md"), cancellationToken));
                     Assert.True(File.Exists(Path.Combine(workingDirectory, "nota-local.txt")));
 
+                    var sharedResult = "resultado compartido de " + subtask.Id + "\n";
+                    var sharedPath = Path.Combine(workingDirectory, "Shared.md");
+                    await File.WriteAllTextAsync(sharedPath, sharedResult, cancellationToken);
+
                     var outputName = subtask.Id == "a" ? "WorkerA.md" : "WorkerB.md";
                     await File.WriteAllTextAsync(Path.Combine(workingDirectory, outputName), "resultado de " + subtask.Id + "\n", cancellationToken);
                     await Task.Delay(40, cancellationToken);
+                    Assert.Equal(sharedResult, await File.ReadAllTextAsync(sharedPath, cancellationToken));
                     return new AgentResult { Success = true, Reason = "resultado " + subtask.Id };
                 }
                 finally
@@ -84,6 +90,7 @@ public sealed class AgentDelegationServiceTests
             Assert.Equal("cambio local\n", await File.ReadAllTextAsync(Path.Combine(root, "README.md")));
             Assert.Equal("pendiente A\n", await File.ReadAllTextAsync(Path.Combine(root, "WorkerA.md")));
             Assert.Equal("pendiente B\n", await File.ReadAllTextAsync(Path.Combine(root, "WorkerB.md")));
+            Assert.Equal("base compartida\n", await File.ReadAllTextAsync(Path.Combine(root, "Shared.md")));
             Assert.True(File.Exists(Path.Combine(root, "nota-local.txt")));
             var worktrees = await GitAsync(root, "worktree", "list", "--porcelain");
             Assert.Single(worktrees.Split("worktree ", StringSplitOptions.RemoveEmptyEntries));
