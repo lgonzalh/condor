@@ -23,6 +23,8 @@ Fecha de actualizacion: 2026-11-05
 
 **CAP-047 2026-11-05:** Diez iteraciones A/B del escenario de revisión del agente dieron +0,61% de tiempo, +1,21% de CPU y −0,22% de memoria pico respecto al commit base. Build Release y pruebas focalizadas pasan; la medición corresponde al flujo del agente con LLM determinista, no a inferencia real. Detalle: T-022.
 
+**CAP-048 2026-11-05:** Se actualizó la referencia remota: `main` no avanzó y sigue siendo la base común de la feature. En el HEAD actual se repitieron las pruebas Release de aprobación, revisión y delegación (5/5); build Release completo del mismo código fuente: 0 advertencias/errores. GitHub canceló el run de código por pushes posteriores; no se cuenta como check exitoso.
+
 **Recuperación CAP-028 2026-11-04:** Condor ofrece una corrección al primer plan inválido y detiene la ejecución sin cambios si el modelo repite uno ya rechazado; la huella se conserva solo en memoria y se borra ante nueva instrucción o avance. Build Release sin incremental: 0 errores y 0 advertencias. No se ejecutaron pruebas; Ollama está desconectado y la aceptación real sigue pendiente.
 
 **Validación de TUI 2026-11-04:** CAP-014 se verificó en Condor interactivo mediante PTY: `/ayuda` y `/version` se ejecutaron consecutivamente en una sola sesión; `/salir` la cerró con código 0.
