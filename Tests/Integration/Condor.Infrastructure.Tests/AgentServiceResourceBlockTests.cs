@@ -1790,6 +1790,18 @@ public class AgentServiceResourceBlockTests
         try
         {
             var store = new LocalStateStore(stateRoot);
+            const string changeId = "CAP064-SERVICE-LINK";
+            await store.SaveDeliveryMetricsAsync(projectRoot, new DeliveryMetricsState
+            {
+                Changes =
+                {
+                    new DeliveryChangeRecord
+                    {
+                        ChangeId = changeId,
+                        StartedAtUtc = DateTimeOffset.UtcNow
+                    }
+                }
+            });
             var assessment = new StubAssessmentService(16, 8, new[] { "qwen2.5-coder:3b" });
             using var http = new HttpClient(new StubOllamaHandler());
             using var session = new LocalModelSession(http);
@@ -1815,9 +1827,16 @@ public class AgentServiceResourceBlockTests
                 () => projectRoot,
                 CreateModelAutoSetup(store, assessment, "qwen2.5-coder:3b"));
 
-            var result = await service.RunAsync("corrige la suma en Calculator.cs");
+            var result = await service.RunAsync(
+                "corrige la suma en Calculator.cs [[condor:cambio:" + changeId + "]]");
 
             Assert.True(result.Success, result.Reason);
+            Assert.False(string.IsNullOrWhiteSpace(result.TaskExecutionId));
+            Assert.Equal(new[] { "cambio:" + changeId }, result.LinkedDeliveryMetricRecords);
+            var savedMetrics = await store.LoadDeliveryMetricsAsync(projectRoot);
+            Assert.Equal(
+                new[] { result.TaskExecutionId },
+                Assert.Single(savedMetrics.Changes, change => change.ChangeId == changeId).RelatedTaskExecutionIds);
             var rejectedPlan = Assert.Single(result.Steps, step => step.Action == "plan" && !step.Success);
             Assert.Contains("resultado esperado", rejectedPlan.ResultPreview, StringComparison.OrdinalIgnoreCase);
             var plan = Assert.Single(result.Steps, step => step.Action == "plan" && step.Success);
