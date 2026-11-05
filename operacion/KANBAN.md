@@ -21,6 +21,8 @@ Fecha de actualizacion: 2026-11-05
 
 **CAP-046 revalidada 2026-11-05:** `GitProcessStartInfoFactory` unifica el arranque Git de los dos flujos del agente. El diff actual reduce cinco bloques exactos; en la comparación acumulada ya no hay señal de duplicación lógica en `AgentService`, y la única de producción restante es una firma repetida por el doble de prueba. Pruebas focalizadas 5/5; no se asignaron estados a la matriz.
 
+**CAP-047 2026-11-05:** Diez iteraciones A/B del escenario de revisión del agente dieron +0,61% de tiempo, +1,21% de CPU y −0,22% de memoria pico respecto al commit base. Build Release y pruebas focalizadas pasan; la medición corresponde al flujo del agente con LLM determinista, no a inferencia real. Detalle: T-022.
+
 **Recuperación CAP-028 2026-11-04:** Condor ofrece una corrección al primer plan inválido y detiene la ejecución sin cambios si el modelo repite uno ya rechazado; la huella se conserva solo en memoria y se borra ante nueva instrucción o avance. Build Release sin incremental: 0 errores y 0 advertencias. No se ejecutaron pruebas; Ollama está desconectado y la aceptación real sigue pendiente.
 
 **Validación de TUI 2026-11-04:** CAP-014 se verificó en Condor interactivo mediante PTY: `/ayuda` y `/version` se ejecutaron consecutivamente en una sola sesión; `/salir` la cerró con código 0.
