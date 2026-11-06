@@ -29,6 +29,24 @@ public sealed class TaskIntentClassifierTests
     }
 
     [Fact]
+    public void LecturaDeArchivo_PrefiereModeloMinimoYCreacionSigueSiendoCoding()
+    {
+        var reading = TaskIntentClassifier.Classify("Lee README.md y dime que instrucciones contiene.");
+
+        Assert.Equal(TaskIntentKinds.Agent, reading.IntentKind);
+        Assert.Equal(0, reading.RequiredCodingLevel);
+        Assert.True(reading.RequiresToolUse);
+        Assert.True(reading.RequiresStructuredOutput);
+        Assert.True(reading.PreferSmallestSufficient);
+
+        var creation = TaskIntentClassifier.Classify("Crea un archivo README.md con instrucciones.");
+
+        Assert.Equal(TaskIntentKinds.Agent, creation.IntentKind);
+        Assert.Equal(3, creation.RequiredCodingLevel);
+        Assert.False(creation.PreferSmallestSufficient);
+    }
+
+    [Fact]
     public void PaginaWebEstaticaEnUnArchivo_NoExigeCapacidadMultifile()
     {
         var requirement = TaskIntentClassifier.Classify(
