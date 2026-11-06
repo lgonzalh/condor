@@ -1,0 +1,160 @@
+name: Condor CI
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+      - 'codex/**'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: condor-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secret-scan:
+    name: Condor CI / secret-scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install verified Gitleaks
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="8.30.1"
+          archive="gitleaks_${version}_linux_x64.tar.gz"
+          curl --fail --silent --show-error --location "https://github.com/gitleaks/gitleaks/releases/download/v${version}/${archive}" --output "$archive"
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  $archive" | sha256sum --check --status
+          tar -xzf "$archive" gitleaks
+
+      - name: Scan checkout for exposed secrets
+        run: ./gitleaks dir --redact --exit-code 1 .
+
+      - name: Scan repository history for exposed secrets
+        run: ./gitleaks git --redact --exit-code 1
+
+  build-and-test:
+    name: Condor CI / build-and-test
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate one commit and read its selected test
+        if: github.event_name != 'workflow_dispatch'
+        id: selected-test
+        shell: pwsh
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.after || github.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          $head = $env:HEAD_SHA
+          $base = $env:BASE_SHA
+          if ($env:EVENT_NAME -eq 'pull_request') {
+            $commitCount = [int](git rev-list --count --no-merges "$base..$head")
+            if ($commitCount -ne 1) {
+              throw "Cada entrega debe contener exactamente un commit; se encontraron $commitCount."
+            }
+            $compareBase = $base
+          }
+          else {
+            $compareBase = "$head^"
+          }
+
+          $message = (git show -s --format=%B $head) -join "`n"
+          $projectMatch = [regex]::Match($message, '(?m)^Test-Project:\s*(Tests/[A-Za-z0-9_./-]+\.csproj)\s*$')
+          $nameMatch = [regex]::Match($message, '(?m)^Test-Name:\s*([A-Za-z_][A-Za-z0-9_]*)\s*$')
+          if (-not $projectMatch.Success -or -not $nameMatch.Success) {
+            throw "El commit debe declarar Test-Project y Test-Name en su mensaje."
+          }
+          if (-not (Test-Path $projectMatch.Groups[1].Value)) {
+            throw "No existe el proyecto de prueba indicado: $($projectMatch.Groups[1].Value)"
+          }
+
+          $changedCs = @(git diff --name-only "$compareBase..$head" -- '*.cs')
+          "project=$($projectMatch.Groups[1].Value)" >> $env:GITHUB_OUTPUT
+          "test_name=$($nameMatch.Groups[1].Value)" >> $env:GITHUB_OUTPUT
+          "changed_cs=$($changedCs -join ';')" >> $env:GITHUB_OUTPUT
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore and audit NuGet dependencies
+        run: dotnet restore Condor.slnx -p:NuGetAudit=true -p:NuGetAuditMode=all -p:NuGetAuditLevel=low -p:WarningsAsErrors=NU1901%3BNU1902%3BNU1903%3BNU1904
+
+      - name: Verify whitespace formatting
+        if: github.event_name == 'workflow_dispatch' || steps.selected-test.outputs.changed_cs != ''
+        shell: pwsh
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          CHANGED_CS: ${{ steps.selected-test.outputs.changed_cs }}
+        run: |
+          if ($env:EVENT_NAME -eq 'workflow_dispatch') {
+            dotnet format whitespace Condor.slnx --verify-no-changes --no-restore --verbosity quiet
+          }
+          else {
+            $files = @($env:CHANGED_CS -split ';' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+            dotnet format whitespace Condor.slnx --verify-no-changes --no-restore --verbosity quiet --include $files
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Verify style errors
+        if: github.event_name == 'workflow_dispatch' || steps.selected-test.outputs.changed_cs != ''
+        shell: pwsh
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          CHANGED_CS: ${{ steps.selected-test.outputs.changed_cs }}
+        run: |
+          if ($env:EVENT_NAME -eq 'workflow_dispatch') {
+            dotnet format style Condor.slnx --verify-no-changes --no-restore --severity error --verbosity quiet
+          }
+          else {
+            $files = @($env:CHANGED_CS -split ';' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+            dotnet format style Condor.slnx --verify-no-changes --no-restore --severity error --verbosity quiet --include $files
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build Release
+        run: dotnet build Condor.slnx -c Release --no-restore
+
+      - name: Run exactly the selected test
+        if: github.event_name != 'workflow_dispatch'
+        shell: pwsh
+        env:
+          TEST_PROJECT: ${{ steps.selected-test.outputs.project }}
+          TEST_NAME: ${{ steps.selected-test.outputs.test_name }}
+        run: |
+          $resultsDirectory = Join-Path $env:RUNNER_TEMP "condor-one-test"
+          New-Item -ItemType Directory -Path $resultsDirectory -Force | Out-Null
+          $output = dotnet test $env:TEST_PROJECT -c Release --no-build --no-restore --filter "FullyQualifiedName~$($env:TEST_NAME)" --logger "trx;LogFileName=one-test.trx" --results-directory $resultsDirectory 2>&1
+          $output | ForEach-Object { Write-Output $_ }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $reportPath = Join-Path $resultsDirectory "one-test.trx"
+          if (-not (Test-Path $reportPath)) {
+            throw "No se generó el resultado de la prueba seleccionada."
+          }
+          [xml]$report = Get-Content $reportPath -Raw
+          $counters = $report.TestRun.ResultSummary.Counters
+          if ([int]$counters.total -ne 1 -or [int]$counters.passed -ne 1 -or [int]$counters.failed -ne 0) {
+            throw "La validación debe ejecutar exactamente una prueba y aprobarla; total=$($counters.total), aprobadas=$($counters.passed), fallidas=$($counters.failed)."
+          }
+
+      - name: Run full regression suite manually
+        if: github.event_name == 'workflow_dispatch'
+        run: dotnet test Condor.slnx -c Release --no-build --no-restore
