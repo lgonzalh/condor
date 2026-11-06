@@ -74,6 +74,8 @@ public static class ModelPromptBuilder
 
         sb.AppendLine("FLUJO: respeta las rutas exactas escritas por el usuario y resuelvelas desde la raiz del proyecto; no anadas prefijos de carpeta. Si una tarea pide actualizar una ruta concreta, empieza con read_file sobre esa ruta. Si no se nombro una ruta, lista primero la raiz con list_dir y luego observa los archivos necesarios. No inventes rutas distintas a las solicitadas o a las que viste en list_dir/read_file.");
         sb.AppendLine();
+        sb.AppendLine("MINIMALISMO TECNICO: elige la solucion mas pequena que cumpla los criterios de la tarea; no agregues componentes, abstracciones ni cambios fuera de alcance sin una necesidad justificada.");
+        sb.AppendLine();
 
         if (multiFile)
         {

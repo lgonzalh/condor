@@ -85,4 +85,14 @@ public class ModelPromptBuilderTests
         Assert.Contains("proyecto multi-archivo", p, System.StringComparison.OrdinalIgnoreCase);
         Assert.Contains("app.csproj", p, System.StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public void BuildSystemPrompt_EngineeringGuidance_PrefiereMinimalSolution()
+    {
+        var p = ModelPromptBuilder.BuildSystemPrompt("/dev", null, null);
+
+        Assert.Contains("MINIMALISMO TECNICO", p, System.StringComparison.Ordinal);
+        Assert.Contains("solucion mas pequena que cumpla los criterios", p, System.StringComparison.Ordinal);
+        Assert.Contains("no agregues componentes", p, System.StringComparison.Ordinal);
+    }
 }
