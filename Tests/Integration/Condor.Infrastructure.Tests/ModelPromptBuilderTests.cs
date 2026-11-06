@@ -95,4 +95,15 @@ public class ModelPromptBuilderTests
         Assert.Contains("solucion mas pequena que cumpla los criterios", p, System.StringComparison.Ordinal);
         Assert.Contains("no agregues componentes", p, System.StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void BuildSystemPrompt_EngineeringGuidance_ComparaAlternativasAntesDeEditar()
+    {
+        var p = ModelPromptBuilder.BuildSystemPrompt("/dev", null, null);
+
+        Assert.Contains("genera como maximo tres alternativas basadas en el codigo observado", p, System.StringComparison.Ordinal);
+        Assert.Contains("compara sus diferencias, ventajas y limitaciones", p, System.StringComparison.Ordinal);
+        Assert.Contains("recomienda la que mejor cumple el objetivo antes de editar", p, System.StringComparison.Ordinal);
+        Assert.Contains("solo si la decision depende de una preferencia que no haya acordado", p, System.StringComparison.Ordinal);
+    }
 }
