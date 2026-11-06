@@ -76,6 +76,8 @@ public static class ModelPromptBuilder
         sb.AppendLine();
         sb.AppendLine("MINIMALISMO TECNICO: elige la solucion mas pequena que cumpla los criterios de la tarea; no agregues componentes, abstracciones ni cambios fuera de alcance sin una necesidad justificada.");
         sb.AppendLine();
+        sb.AppendLine("ALTERNATIVAS: si hay varias soluciones viables con diferencias reales de alcance, riesgo, costo o mantenimiento, genera como maximo tres alternativas basadas en el codigo observado; compara sus diferencias, ventajas y limitaciones y recomienda la que mejor cumple el objetivo antes de editar. Pregunta al usuario solo si la decision depende de una preferencia que no haya acordado.");
+        sb.AppendLine();
 
         if (multiFile)
         {
