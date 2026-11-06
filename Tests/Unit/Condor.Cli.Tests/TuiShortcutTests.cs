@@ -47,9 +47,15 @@ public class TuiShortcutTests
         var input = new TuiInput(host);
         input.BeginCommandPalette();
 
+        Assert.Equal(new[] { "/modelo", "/agentes" }, TuiInput.CommandPaletteCommands.Take(2));
+        Assert.Equal(new[] { "/modelo", "/agentes" }, TuiInput.BusyCommandPaletteCommands.Take(2));
+
         var initialFrame = Ansi.StripSgr(host.SnapshotFullFrame());
         Assert.Contains("Comandos", initialFrame);
         Assert.Contains("/agentes", initialFrame);
+        var modelRow = initialFrame.IndexOf("/modelo", StringComparison.Ordinal);
+        var agentRow = initialFrame.IndexOf("/agentes", StringComparison.Ordinal);
+        Assert.True(modelRow >= 0 && agentRow > modelRow);
 
         foreach (var character in "modelo")
         {
@@ -69,6 +75,12 @@ public class TuiShortcutTests
         Assert.Equal(InputAction.Submit,
             input.Handle(new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false)));
         Assert.Equal("/modelo", input.Buffer);
+
+        input.SetText("/");
+        var slashFrame = Ansi.StripSgr(host.SnapshotFullFrame());
+        modelRow = slashFrame.IndexOf("/modelo", StringComparison.Ordinal);
+        agentRow = slashFrame.IndexOf("/agentes", StringComparison.Ordinal);
+        Assert.True(modelRow >= 0 && agentRow > modelRow);
     }
 
     [Fact]

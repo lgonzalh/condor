@@ -40,13 +40,13 @@ public sealed class TuiInput
 {
     private static readonly string[] KnownCommands =
     {
-        "/agentes", "/analizar", "/avanzar", "/ayuda", "/construir", "/consultar",
-        "/contexto", "/examinar", "/modelo", "/planear",
+        "/modelo", "/agentes", "/analizar", "/avanzar", "/ayuda", "/construir", "/consultar",
+        "/contexto", "/examinar", "/planear",
         "/preparar", "/recomendar", "/verificar", "/verificar-semantico", "/version", "/salir"
     };
 
     private static readonly string[] BusyCommands =
-        { "/agentes", "/ayuda", "/modelo", "/model", "/models", "/modelos" };
+        { "/modelo", "/agentes", "/ayuda", "/model", "/models", "/modelos" };
 
     private readonly TuiHost _host;
     private readonly List<string> _history = new();
